@@ -14,9 +14,7 @@ const nextConfig = {
   // See: https://nx.dev/recipes/next/next-config-setup
   nx: {},
   output: 'standalone',
-  experimental: {
-    outputFileTracingRoot: '../../',
-  },
+  outputFileTracingRoot: require('path').join(__dirname, '../../'),
   async rewrites() {
     return [
       {
