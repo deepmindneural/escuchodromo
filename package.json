@@ -9,13 +9,19 @@
     "build": "nx run-many --target=build --projects=backend,web",
     "build:backend": "nx build backend",
     "build:web": "nx build web",
+    "start": "npm run start:backend",
+    "start:backend": "node dist/apps/backend/main.js",
+    "start:web": "cd apps/web && npm start",
+    "start:production": "NODE_ENV=production npm run start:backend",
     "test": "nx run-many --target=test",
     "lint": "nx run-many --target=lint",
     "db:push": "npx prisma db push",
     "db:studio": "npx prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "db:generate": "npx prisma generate",
-    "seed": "tsx prisma/seed.ts"
+    "db:migrate": "npx prisma migrate deploy",
+    "seed": "tsx prisma/seed.ts",
+    "prepare:production": "npm run build && npm run db:generate && npm run db:migrate"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
