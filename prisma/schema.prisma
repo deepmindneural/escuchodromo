@@ -1,0 +1,214 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id                String         @id @default(cuid())
+  email             String         @unique
+  hashContrasena    String?
+  nombre            String?
+  imagen            String?
+  proveedor         String         @default("credenciales")
+  proveedorId       String?
+  rol               RolUsuario     @default(USUARIO)
+  estaActivo        Boolean        @default(true)
+  perfil            PerfilUsuario?
+  sesiones          Sesion[]
+  conversaciones    Conversacion[]
+  evaluaciones      Resultado[]
+  pagos             Pago[]
+  notificaciones    Notificacion[]
+  creadoEn          DateTime       @default(now())
+  actualizadoEn     DateTime       @updatedAt
+}
+
+model PerfilUsuario {
+  id                  String          @id @default(cuid())
+  usuario             Usuario         @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId           String          @unique
+  telefono            String?
+  fechaNacimiento     DateTime?
+  genero              String?
+  idiomaPreferido     String          @default("es")
+  moneda              String          @default("COP")
+  zonaHoraria         String          @default("America/Bogota")
+  consentimientoDatos Boolean         @default(false)
+  consentimientoMkt   Boolean         @default(false)
+  registrosAnimo      RegistroAnimo[]
+  creadoEn            DateTime        @default(now())
+  actualizadoEn       DateTime        @updatedAt
+}
+
+model Sesion {
+  id           String   @id @default(cuid())
+  tokenSesion  String   @unique
+  usuarioId    String
+  expira       DateTime
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  creadoEn     DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+}
+
+model RegistroAnimo {
+  id          String        @id @default(cuid())
+  perfil      PerfilUsuario @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+  perfilId    String
+  animo       Int           // escala 1-10
+  energia     Int           // escala 1-10
+  estres      Int           // escala 1-10
+  notas       String?
+  creadoEn    DateTime      @default(now())
+}
+
+model Conversacion {
+  id          String    @id @default(cuid())
+  usuario     Usuario?  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId   String?
+  titulo      String?
+  mensajes    Mensaje[]
+  estado      String    @default("activa") // activa, archivada
+  creadoEn    DateTime  @default(now())
+  actualizadoEn DateTime @updatedAt
+}
+
+model Mensaje {
+  id              String       @id @default(cuid())
+  conversacion    Conversacion @relation(fields: [conversacionId], references: [id], onDelete: Cascade)
+  conversacionId  String
+  contenido       String
+  rol             String       // usuario, asistente
+  tipo            String       @default("texto") // texto, audio
+  urlAudio        String?
+  sentimiento     Float?       // -1 a 1
+  emociones       String?      // JSON con puntuaciones de emociones
+  creadoEn        DateTime     @default(now())
+}
+
+model Prueba {
+  id          String     @id @default(cuid())
+  codigo      String     @unique // PHQ9, GAD7, etc
+  nombre      String
+  descripcion String?
+  categoria   String     // depresion, ansiedad, estres, etc
+  preguntas   Pregunta[]
+  resultados  Resultado[]
+  estaActiva  Boolean    @default(true)
+  creadoEn    DateTime   @default(now())
+  actualizadoEn DateTime @updatedAt
+}
+
+model Pregunta {
+  id        String   @id @default(cuid())
+  prueba    Prueba   @relation(fields: [pruebaId], references: [id], onDelete: Cascade)
+  pruebaId  String
+  orden     Int
+  texto     String
+  textoEn   String?
+  opciones  String   // Array JSON de opciones
+  creadoEn  DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+}
+
+model Resultado {
+  id              String   @id @default(cuid())
+  prueba          Prueba   @relation(fields: [pruebaId], references: [id])
+  pruebaId        String
+  usuario         Usuario? @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId       String?
+  puntuacion      Int
+  severidad       String   // minima, leve, moderada, severa
+  respuestas      String   // JSON con respuestas
+  interpretacion  String?
+  creadoEn        DateTime @default(now())
+}
+
+model Recomendacion {
+  id            String   @id @default(cuid())
+  usuarioId     String
+  tipo          String   // respiracion, meditacion, ayuda_profesional, etc
+  prioridad     Int      // 1-5
+  titulo        String
+  tituloEn      String?
+  descripcion   String
+  descripcionEn String?
+  urlAccion     String?
+  estaActiva    Boolean  @default(true)
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+}
+
+model Pago {
+  id              String   @id @default(cuid())
+  usuario         Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId       String
+  monto           Float
+  moneda          String   // COP, USD
+  estado          String   // pendiente, completado, fallido
+  proveedor       String   // stripe, paypal, etc
+  proveedorId     String?
+  suscripcionId   String?
+  metadatos       String?  // JSON
+  creadoEn        DateTime @default(now())
+  actualizadoEn   DateTime @updatedAt
+}
+
+model Notificacion {
+  id        String   @id @default(cuid())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId String
+  tipo      String   // email, push, sms
+  titulo    String
+  contenido String
+  leida     Boolean  @default(false)
+  enviadaEn DateTime?
+  creadoEn  DateTime @default(now())
+}
+
+model ArchivoAdjunto {
+  id          String   @id @default(cuid())
+  nombreArchivo String
+  tipoMime    String
+  tamano      Int
+  url         String
+  subidoPor   String
+  metadatos   String?  // JSON
+  creadoEn    DateTime @default(now())
+}
+
+// Tablas para chat público con límite
+model SesionPublica {
+  id             String          @id @default(cuid())
+  sesionId       String          @unique
+  mensajes       MensajePublico[]
+  iniciadoEn     DateTime        @default(now())
+  ultimaActividad DateTime       @updatedAt
+  ipAddress      String?
+  userAgent      String?
+}
+
+model MensajePublico {
+  id        String        @id @default(cuid())
+  sesion    SesionPublica @relation(fields: [sesionId], references: [sesionId], onDelete: Cascade)
+  sesionId  String
+  contenido String
+  rol       String        // usuario, asistente
+  tipo      String        @default("texto") // texto, audio
+  creadoEn  DateTime      @default(now())
+}
+
+enum RolUsuario {
+  USUARIO
+  TERAPEUTA
+  ADMIN
+}

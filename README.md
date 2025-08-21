@@ -1,96 +1,165 @@
 # Escuchodromo
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+Plataforma de bienestar emocional que utiliza inteligencia artificial afectiva para brindar apoyo personalizado.
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+## Características
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/getting-started/intro#learn-nx?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+- 🤖 **IA Afectiva**: Chat y voz con comprensión emocional
+- 📊 **Evaluaciones Psicológicas**: PHQ-9, GAD-7 y más pruebas validadas
+- 🎯 **Recomendaciones Personalizadas**: Basadas en tu estado emocional
+- 🌐 **Multiidioma**: Español e Inglés
+- 💳 **Pagos**: Soporte para COP y USD
 
-## Run tasks
+## Tecnologías
 
-To run tasks with Nx use:
+### Frontend
+- **Next.js 15** con App Router
+- **React 19**
+- **Tailwind CSS** para estilos
+- **GSAP** para animaciones profesionales
+- **Framer Motion** para micro-interacciones
+- **Radix UI** para componentes accesibles
+- **Recharts** para gráficos y visualizaciones
+- **React Table** para tablas avanzadas
+- **React Hook Form** para formularios
+- **Zod** para validación de esquemas
 
-```sh
-npx nx <target> <project-name>
+### Backend
+- **NestJS** con arquitectura modular
+- **Prisma** ORM con SQLite (desarrollo) / PostgreSQL (producción)
+- **JWT** para autenticación
+- **Socket.io** para chat en tiempo real
+
+### Monorepo
+- **Nx** para gestión del monorepo
+- Código compartido entre web, backend y futuras apps móviles
+
+## Instalación
+
+```bash
+# Clonar repositorio
+git clone https://github.com/tu-usuario/escuchodromo.git
+cd escuchodromo
+
+# Instalar dependencias
+npm install
+
+# Configurar variables de entorno
+cp .env.example .env
+# Editar .env con tus valores
+
+# Configurar base de datos
+npm run db:push      # Crear tablas
+npm run db:generate  # Generar cliente Prisma
+npm run db:seed      # Poblar con datos de prueba
+
+# Iniciar desarrollo
+npm run dev
 ```
 
-For example:
+## Scripts disponibles
 
-```sh
-npx nx build myproject
+### Desarrollo
+```bash
+# Ejecutar ambos servidores (frontend y backend)
+npm run dev
+
+# Ejecutar individualmente
+npm run dev:web       # Frontend en http://localhost:3000
+npm run dev:backend   # Backend en http://localhost:3333
 ```
 
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
+### Base de Datos - Comandos Prisma
+```bash
+# Configurar base de datos inicial y crear tablas
+npm run db:push
 
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+# Interfaz gráfica para ver/editar datos
+npm run db:studio
 
-## Add new projects
+# Generar cliente Prisma después de cambios en schema
+npm run db:generate
 
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
+# Poblar base de datos con datos de prueba
+npm run db:seed
 
-To install a new plugin you can use the `nx add` command. Here's an example of adding the React plugin:
-```sh
-npx nx add @nx/react
+# Crear migración (producción)
+npx prisma migrate dev --name nombre_migracion
+
+# Aplicar migraciones
+npx prisma migrate deploy
+
+# Resetear base de datos (¡CUIDADO! Borra todos los datos)
+npx prisma db push --force-reset
 ```
 
-Use the plugin's generator to create new projects. For example, to create a new React app or library:
+### Producción
+```bash
+# Construir ambos proyectos
+npm run build
 
-```sh
-# Generate an app
-npx nx g @nx/react:app demo
-
-# Generate a library
-npx nx g @nx/react:lib some-lib
+# Construir individualmente
+npm run build:web
+npm run build:backend
 ```
 
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
+### Testing y Calidad
+```bash
+# Ejecutar tests
+npm run test
 
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+# Linting
+npm run lint
 
-## Set up CI!
-
-### Step 1
-
-To connect to Nx Cloud, run the following command:
-
-```sh
-npx nx connect
+# Type checking
+nx run backend:typecheck
+nx run web:typecheck
 ```
 
-Connecting to Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
+## Variables de entorno
 
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Crear archivo `.env`:
 
-### Step 2
-
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-npx nx g ci-workflow
+```env
+DATABASE_URL="file:./dev.db"
+JWT_SECRET="tu-clave-secreta"
+NEXTAUTH_SECRET="tu-clave-secreta"
+NEXTAUTH_URL="http://localhost:3000"
 ```
 
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## Estructura del proyecto
 
-## Install Nx Console
+```
+escuchodromo/
+├── apps/
+│   ├── web/            # Frontend Next.js
+│   └── backend/        # Backend NestJS
+├── libs/
+│   └── shared/         # Código compartido
+├── prisma/
+│   └── schema.prisma   # Esquema de base de datos
+└── nx.json            # Configuración Nx
+```
 
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
+## Módulos del Backend
 
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+- **Autenticación**: JWT, registro, login
+- **Usuarios**: Gestión de perfiles
+- **Chat**: Conversaciones en tiempo real
+- **Voz**: Transcripción y síntesis
+- **Evaluaciones**: Tests psicológicos
+- **Recomendaciones**: IA personalizada
+- **Pagos**: Stripe/PayPal
+- **Notificaciones**: Email, Push, SMS
 
-## Useful links
+## Contribuir
 
-Learn more:
+1. Fork el proyecto
+2. Crea tu rama (`git checkout -b feature/AmazingFeature`)
+3. Commit cambios (`git commit -m 'Add AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
 
-- [Learn more about this workspace setup](https://nx.dev/getting-started/intro#learn-nx?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## Licencia
 
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Proyecto privado - Todos los derechos reservados
