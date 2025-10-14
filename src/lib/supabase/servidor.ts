@@ -52,8 +52,12 @@ export function crearClienteServicioServidor() {
         get() {
           return undefined
         },
-        set() {},
-        remove() {},
+        set() {
+          // No-op: Service role no requiere manejo de cookies
+        },
+        remove() {
+          // No-op: Service role no requiere manejo de cookies
+        },
       },
     }
   )

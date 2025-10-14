@@ -94,22 +94,20 @@ export function Modal({
                 tamanos[tamano]
               )}
             >
-              {/* Header */}
-              {(titulo || true) && (
-                <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                  {titulo && (
-                    <h2 className="text-xl font-semibold text-gray-900">
-                      {titulo}
-                    </h2>
-                  )}
-                  <button
-                    onClick={onCerrar}
-                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200"
-                  >
-                    <FaTimes className="text-lg" />
-                  </button>
-                </div>
-              )}
+              {/* Header - Siempre visible para mostrar botón de cerrar */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                {titulo && (
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    {titulo}
+                  </h2>
+                )}
+                <button
+                  onClick={onCerrar}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200"
+                >
+                  <FaTimes className="text-lg" />
+                </button>
+              </div>
 
               {/* Content */}
               <div className="p-6">
