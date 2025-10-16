@@ -89,7 +89,7 @@ export default function PaginaPlanAccion() {
         .from('Resultado')
         .select(`
           *,
-          Prueba (
+          Test (
             codigo,
             nombre,
             categoria

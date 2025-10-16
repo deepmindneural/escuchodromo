@@ -16,7 +16,7 @@ import { obtenerClienteNavegador } from '../../lib/supabase/cliente';
 
 interface RegistroAnimo {
   id: string;
-  perfil_id: string;
+  usuario_id: string;
   animo: number;
   energia: number;
   estres: number;
@@ -29,7 +29,7 @@ interface Resultado {
   puntuacion: number;
   severidad: string;
   creado_en: string;
-  Prueba?: {
+  Test?: {
     nombre: string;
     codigo: string;
   };
@@ -73,7 +73,7 @@ export default function PaginaProgreso() {
       const { data: animoData } = await supabase
         .from('RegistroAnimo')
         .select('*')
-        .eq('perfil_id', perfil.id)
+        .eq('usuario_id', perfil.id)
         .order('creado_en', { ascending: false })
         .limit(30);
 
@@ -86,7 +86,7 @@ export default function PaginaProgreso() {
         .from('Resultado')
         .select(`
           *,
-          Prueba (
+          Test (
             nombre,
             codigo
           )
@@ -432,7 +432,7 @@ export default function PaginaProgreso() {
                       <div className="flex items-center justify-between mb-2">
                         <div>
                           <h4 className="font-semibold text-gray-900">
-                            {evaluacion.Prueba?.nombre || 'Evaluación'}
+                            {evaluacion.Test?.nombre || 'Evaluación'}
                           </h4>
                           <p className="text-xs text-gray-500">
                             {new Date(evaluacion.creado_en).toLocaleDateString('es-CO', {

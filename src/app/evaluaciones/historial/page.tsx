@@ -23,7 +23,7 @@ interface Resultado {
   severidad: 'minima' | 'leve' | 'moderada' | 'moderadamente_severa' | 'severa';
   interpretacion: string | null;
   creado_en: string;
-  Prueba?: {
+  Test?: {
     id: string;
     codigo: string;
     nombre: string;
@@ -72,7 +72,7 @@ export default function PaginaHistorialEvaluaciones() {
         .from('Resultado')
         .select(`
           *,
-          Prueba (
+          Test (
             id,
             codigo,
             nombre,
@@ -98,7 +98,7 @@ export default function PaginaHistorialEvaluaciones() {
     let filtradas = [...evaluaciones];
 
     if (filtroCategoria !== 'todas') {
-      filtradas = filtradas.filter(e => e.Prueba?.categoria === filtroCategoria);
+      filtradas = filtradas.filter(e => e.Test?.categoria === filtroCategoria);
     }
 
     if (filtroSeveridad !== 'todas') {
@@ -146,7 +146,7 @@ export default function PaginaHistorialEvaluaciones() {
     return textos[severidad as keyof typeof textos] || severidad;
   };
 
-  const categorias = Array.from(new Set(evaluaciones.map(e => e.Prueba?.categoria).filter(Boolean)));
+  const categorias = Array.from(new Set(evaluaciones.map(e => e.Test?.categoria).filter(Boolean)));
   const tienesFiltrosActivos = filtroCategoria !== 'todas' || filtroSeveridad !== 'todas';
 
   if (cargando) {
@@ -320,10 +320,10 @@ export default function PaginaHistorialEvaluaciones() {
                         <div className="text-3xl">📊</div>
                         <div>
                           <h3 className="text-xl font-bold text-gray-900">
-                            {evaluacion.Prueba?.nombre || 'Evaluación'}
+                            {evaluacion.Test?.nombre || 'Evaluación'}
                           </h3>
                           <p className="text-sm text-gray-600">
-                            {evaluacion.Prueba?.codigo} • {evaluacion.Prueba?.categoria}
+                            {evaluacion.Test?.codigo} • {evaluacion.Test?.categoria}
                           </p>
                         </div>
                       </div>
