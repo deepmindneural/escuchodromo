@@ -250,6 +250,99 @@ export default function PaginaPerfil() {
     }
   };
 
+  const handleCancelarSuscripcion = async () => {
+    if (!suscripcion) return;
+
+    if (!confirm('¿Estás seguro de que deseas cancelar tu suscripción? Mantendrás acceso hasta el final del período actual.')) {
+      return;
+    }
+
+    try {
+      setGuardando(true);
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        toast.error('Sesión expirada');
+        router.push('/iniciar-sesion');
+        return;
+      }
+
+      // Llamar a la función de Supabase para cancelar
+      const { data, error } = await supabase.functions.invoke('gestionar-suscripcion', {
+        body: { accion: 'cancelar' },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
+
+      if (error) {
+        // Si la función de Supabase no está disponible, actualizar directamente en la BD
+        // Esto es un fallback mientras se configuran las Edge Functions
+        const { error: updateError } = await supabase
+          .from('Suscripcion')
+          .update({ cancelar_al_final: true, estado: 'cancelada' })
+          .eq('id', suscripcion.id);
+
+        if (updateError) throw updateError;
+      }
+
+      toast.success('Suscripción cancelada. Mantendrás acceso hasta ' +
+        new Date(suscripcion.fecha_fin).toLocaleDateString('es-CO'));
+
+      // Recargar perfil
+      await cargarPerfil();
+    } catch (error: any) {
+      console.error('Error al cancelar suscripción:', error);
+      toast.error(error.message || 'No se pudo cancelar la suscripción');
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const handleReactivarSuscripcion = async () => {
+    if (!suscripcion) return;
+
+    try {
+      setGuardando(true);
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        toast.error('Sesión expirada');
+        router.push('/iniciar-sesion');
+        return;
+      }
+
+      // Llamar a la función de Supabase para reactivar
+      const { data, error } = await supabase.functions.invoke('gestionar-suscripcion', {
+        body: { accion: 'reactivar' },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
+
+      if (error) {
+        // Si la función de Supabase no está disponible, actualizar directamente en la BD
+        // Esto es un fallback mientras se configuran las Edge Functions
+        const { error: updateError } = await supabase
+          .from('Suscripcion')
+          .update({ cancelar_al_final: false, estado: 'activa' })
+          .eq('id', suscripcion.id);
+
+        if (updateError) throw updateError;
+      }
+
+      toast.success('¡Suscripción reactivada exitosamente!');
+
+      // Recargar perfil
+      await cargarPerfil();
+    } catch (error: any) {
+      console.error('Error al reactivar suscripción:', error);
+      toast.error(error.message || 'No se pudo reactivar la suscripción');
+    } finally {
+      setGuardando(false);
+    }
+  };
+
   const handleEstablecerPredeterminado = async (metodoId: string) => {
     try {
       // TODO: Implementar llamada al backend para actualizar método predeterminado
@@ -370,37 +463,101 @@ export default function PaginaPerfil() {
             )}
           </div>
 
-          {/* Suscripción Activa */}
-          {suscripcion && (
+          {/* Suscripción Activa o CTA */}
+          {suscripcion ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl shadow-xl p-6 mb-8"
+              className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl shadow-xl p-6 mb-8 border-2 border-blue-200"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <FaCrown className="text-4xl text-yellow-500" />
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <FaCrown className="text-4xl text-yellow-500 flex-shrink-0" />
                   <div>
                     <h3 className="text-xl font-bold text-gray-900 mb-1">
-                      {suscripcion.plan === 'premium' ? 'Plan Premium' : 'Plan Profesional'}
+                      {suscripcion.plan === 'premium' ? 'Plan Premium' :
+                       suscripcion.plan === 'profesional' ? 'Plan Profesional' :
+                       'Plan Básico'}
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 mb-2">
                       Estado: <span className={`font-medium ${suscripcion.estado === 'activa' ? 'text-green-600' : 'text-orange-600'}`}>
                         {suscripcion.estado === 'activa' ? 'Activa' : 'Cancelada'}
                       </span> • Renovación: {new Date(suscripcion.fecha_fin).toLocaleDateString('es-CO')}
                     </p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {formatearPrecio(suscripcion.precio, suscripcion.moneda)}
+                      <span className="text-sm font-normal text-gray-600">/{suscripcion.periodo === 'mensual' ? 'mes' : 'año'}</span>
+                    </p>
                   </div>
                 </div>
-                <Link href="/suscripcion">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="px-6 py-3 bg-white text-gray-700 font-medium rounded-lg shadow hover:shadow-md"
-                  >
-                    Gestionar Suscripción
-                  </motion.button>
-                </Link>
+                <div className="flex flex-col gap-2 w-full sm:w-auto">
+                  {suscripcion.estado === 'activa' && !suscripcion.cancelar_al_final && (
+                    <>
+                      <Link href="/precios" className="w-full sm:w-auto">
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="w-full px-6 py-2 bg-blue-500 text-white font-medium rounded-lg shadow hover:bg-blue-600"
+                        >
+                          Cambiar Plan
+                        </motion.button>
+                      </Link>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handleCancelarSuscripcion}
+                        disabled={guardando}
+                        className="w-full px-6 py-2 bg-red-50 text-red-600 font-medium rounded-lg hover:bg-red-100 disabled:opacity-50"
+                      >
+                        {guardando ? 'Cancelando...' : 'Cancelar Suscripción'}
+                      </motion.button>
+                    </>
+                  )}
+                  {suscripcion.cancelar_al_final && (
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleReactivarSuscripcion}
+                      disabled={guardando}
+                      className="w-full px-6 py-2 bg-green-500 text-white font-medium rounded-lg shadow hover:bg-green-600 disabled:opacity-50"
+                    >
+                      {guardando ? 'Reactivando...' : 'Reactivar Suscripción'}
+                    </motion.button>
+                  )}
+                  <Link href="/suscripcion" className="w-full sm:w-auto">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="w-full px-6 py-2 bg-white text-gray-700 font-medium rounded-lg shadow hover:shadow-md border border-gray-200"
+                    >
+                      Ver Detalles
+                    </motion.button>
+                  </Link>
+                </div>
               </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-2xl shadow-xl p-8 mb-8 border-2 border-teal-200 text-center"
+            >
+              <FaCrown className="text-5xl text-teal-500 mx-auto mb-4" />
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                Desbloquea todo el potencial de Escuchodromo
+              </h3>
+              <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
+                Accede a evaluaciones ilimitadas, chat 24/7 con IA, análisis de voz emocional y mucho más.
+              </p>
+              <Link href="/precios">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-8 py-4 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl text-lg"
+                >
+                  Ver Planes y Precios
+                </motion.button>
+              </Link>
             </motion.div>
           )}
 
@@ -408,9 +565,16 @@ export default function PaginaPerfil() {
             {/* Sidebar - Info del usuario */}
             <div className="lg:col-span-1">
               <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
-                <div className="w-24 h-24 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl text-white font-bold">
-                  {usuario.nombre?.charAt(0)?.toUpperCase() || <FaUser />}
+                {/* Foto de perfil */}
+                <div className="relative w-32 h-32 mx-auto mb-6">
+                  <div className="w-full h-full bg-gradient-to-br from-teal-500 to-cyan-500 rounded-full flex items-center justify-center text-5xl text-white font-bold shadow-lg">
+                    {usuario.nombre?.charAt(0)?.toUpperCase() || <FaUser className="text-4xl" />}
+                  </div>
+                  <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-green-500 rounded-full border-4 border-white flex items-center justify-center">
+                    <FaCheckCircle className="text-white text-sm" />
+                  </div>
                 </div>
+
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">{usuario.nombre}</h3>
                 <p className="text-gray-600 mb-4">{usuario.email}</p>
                 <div className="flex items-center justify-center gap-2 bg-teal-50 text-teal-700 px-3 py-1 rounded-full text-sm font-medium">
