@@ -158,15 +158,20 @@
 
 **Solución**: Ejecutar script SQL creado
 
-**Archivo**: `scripts/CREAR_TABLAS_RESULTADO_ANIMO.sql`
+**Archivo**: `scripts/SETUP_COMPLETO_SEGURO.sql`
 
 **Pasos**:
 1. Ir a Supabase Dashboard: https://supabase.com/dashboard/project/cvezncgcdsjntzrzztrj/sql/new
-2. Copiar y pegar el contenido de `scripts/CREAR_TABLAS_RESULTADO_ANIMO.sql`
+2. Copiar y pegar el contenido de `scripts/SETUP_COMPLETO_SEGURO.sql`
 3. Ejecutar (Run)
-4. Verificar que aparezcan las tablas:
-   - `Resultado` (para guardar resultados de evaluaciones)
-   - `RegistroAnimo` (para seguimiento diario de ánimo)
+4. El script verificará y creará automáticamente:
+   - Tabla `Usuario` (si no existe)
+   - Tabla `Test` (si no existe) con datos iniciales PHQ-9 y GAD-7
+   - Tabla `Resultado` (para guardar resultados de evaluaciones)
+   - Tabla `RegistroAnimo` (para seguimiento diario de ánimo)
+   - Todas las políticas RLS necesarias
+
+**Nota**: Este script es seguro y NO eliminará datos existentes. Solo crea lo que falta.
 
 **Tablas que se crearán**:
 
