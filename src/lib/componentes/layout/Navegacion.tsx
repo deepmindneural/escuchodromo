@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaHeart, FaBars, FaTimes, FaUser, FaSignOutAlt } from 'react-icons/fa';
-import { useUsuario } from '../../supabase/hooks';
+import { useUsuario, usePerfilUsuario } from '../../supabase/hooks';
 import { cerrarSesion } from '../../supabase/auth';
 
 export default function Navegacion() {
@@ -14,6 +14,7 @@ export default function Navegacion() {
   const pathname = usePathname();
   const router = useRouter();
   const { usuario, cargando: cargandoAuth } = useUsuario();
+  const { perfil } = usePerfilUsuario();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -51,8 +52,8 @@ export default function Navegacion() {
       ];
 
   return (
-    <nav className="fixed w-full z-50 bg-white shadow-md py-3">
-      <div className="container mx-auto px-4">
+    <nav className="fixed w-full z-50 bg-white shadow-md">
+      <div className="container mx-auto px-4 py-4">
         <div className="flex justify-between items-center">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-3">
@@ -99,19 +100,28 @@ export default function Navegacion() {
               <>
                 <Link
                   href="/perfil"
-                  className="px-2 xl:px-4 py-2 rounded-xl font-medium text-xs xl:text-sm transition-all duration-200 text-gray-700 hover:bg-teal-50 hover:text-teal-600 flex items-center gap-2"
+                  className="flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 hover:bg-teal-50"
                 >
-                  <FaUser />
-                  Perfil
+                  {/* Foto del usuario */}
+                  <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-full flex items-center justify-center text-white font-bold shadow-md">
+                    {perfil?.nombre?.charAt(0)?.toUpperCase() || usuario?.email?.charAt(0)?.toUpperCase() || 'U'}
+                  </div>
+                  {/* Nombre del usuario */}
+                  <div className="flex flex-col items-start">
+                    <span className="text-sm font-semibold text-gray-900">
+                      {perfil?.nombre || usuario?.email?.split('@')[0] || 'Usuario'}
+                    </span>
+                    <span className="text-xs text-gray-500">Ver perfil</span>
+                  </div>
                 </Link>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={handleCerrarSesion}
-                  className="px-3 xl:px-6 py-2 bg-gradient-to-r from-red-500 to-rose-500 text-white font-bold text-xs xl:text-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
+                  className="px-4 py-2 bg-gradient-to-r from-red-500 to-rose-500 text-white font-bold text-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
                 >
                   <FaSignOutAlt />
-                  Cerrar Sesión
+                  Salir
                 </motion.button>
               </>
             ) : (
@@ -180,13 +190,21 @@ export default function Navegacion() {
                 <div className="border-t pt-4 space-y-2">
                   {usuario ? (
                     <>
+                      {/* Perfil del usuario en móvil */}
                       <Link
                         href="/perfil"
                         onClick={() => setMenuMovilAbierto(false)}
-                        className="block text-center px-6 py-4 text-gray-700 font-medium rounded-xl hover:bg-teal-50 hover:text-teal-600 transition-colors flex items-center justify-center gap-2"
+                        className="flex items-center gap-4 px-6 py-4 bg-teal-50 rounded-xl hover:bg-teal-100 transition-colors"
                       >
-                        <FaUser />
-                        Mi Perfil
+                        <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-full flex items-center justify-center text-white font-bold shadow-md">
+                          {perfil?.nombre?.charAt(0)?.toUpperCase() || usuario?.email?.charAt(0)?.toUpperCase() || 'U'}
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="font-bold text-gray-900">
+                            {perfil?.nombre || usuario?.email?.split('@')[0] || 'Usuario'}
+                          </p>
+                          <p className="text-sm text-gray-600">Ver perfil</p>
+                        </div>
                       </Link>
                       <button
                         onClick={handleCerrarSesion}
