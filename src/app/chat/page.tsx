@@ -85,7 +85,7 @@ export default function PaginaChat() {
           puntuacion,
           severidad,
           creado_en,
-          Prueba (
+          Test (
             nombre,
             codigo
           )
@@ -99,7 +99,7 @@ export default function PaginaChat() {
       const { data: registrosAnimo } = await supabase
         .from('RegistroAnimo')
         .select('animo, energia, estres, creado_en')
-        .eq('perfil_id', perfil.id)
+        .eq('usuario_id', perfil.id)
         .order('creado_en', { ascending: false })
         .limit(5);
 
@@ -267,7 +267,9 @@ export default function PaginaChat() {
 
     if (estaGrabando) {
       detenerGrabacion();
-      toast.info('Grabación detenida');
+      toast('Grabación detenida', {
+        icon: 'ℹ️',
+      });
     } else {
       setModoVoz(true); // Activar modo voz para que la respuesta se lea
       iniciarGrabacion();

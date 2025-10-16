@@ -370,7 +370,9 @@ export default function PaginaPerfil() {
 
   const handleAgregarMetodo = () => {
     // TODO: Implementar integración con Stripe Elements o PayPal
-    toast.info('Esta funcionalidad se habilitará cuando se configure Stripe/PayPal');
+    toast('Esta funcionalidad se habilitará cuando se configure Stripe/PayPal', {
+      icon: 'ℹ️',
+    });
     setMostrarAgregarMetodo(false);
   };
 

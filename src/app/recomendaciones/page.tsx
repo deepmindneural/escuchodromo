@@ -82,7 +82,9 @@ export default function PaginaRecomendaciones() {
 
       if (!data || data.length === 0) {
         // Si no hay recomendaciones, ofrecer generarlas
-        toast.info('No tienes recomendaciones aún. ¡Genera algunas!');
+        toast('No tienes recomendaciones aún. ¡Genera algunas!', {
+          icon: 'ℹ️',
+        });
         setRecomendaciones([]);
       } else {
         // Mapear el tipo a categoría para compatibilidad con la UI
