@@ -2,7 +2,7 @@
 nixPkgs = ["nodejs_20"]
 
 [phases.install]
-cmds = ["npm ci"]
+cmds = ["npm ci --include=dev"]
 
 [phases.build]
 cmds = ["npm run build"]
@@ -11,6 +11,5 @@ cmds = ["npm run build"]
 cmd = "npm run start:production"
 
 [variables]
-NODE_ENV = "production"
 PORT = "3000"
 HOSTNAME = "0.0.0.0"
