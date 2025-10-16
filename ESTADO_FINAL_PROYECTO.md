@@ -158,20 +158,21 @@
 
 **Solución**: Ejecutar script SQL creado
 
-**Archivo**: `scripts/SETUP_COMPLETO_SEGURO.sql`
+**Archivo**: `scripts/SETUP_FINAL_ADAPTATIVO.sql` ⭐
 
 **Pasos**:
 1. Ir a Supabase Dashboard: https://supabase.com/dashboard/project/cvezncgcdsjntzrzztrj/sql/new
-2. Copiar y pegar el contenido de `scripts/SETUP_COMPLETO_SEGURO.sql`
+2. Copiar y pegar el contenido de `scripts/SETUP_FINAL_ADAPTATIVO.sql`
 3. Ejecutar (Run)
-4. El script verificará y creará automáticamente:
-   - Tabla `Usuario` (si no existe)
-   - Tabla `Test` (si no existe) con datos iniciales PHQ-9 y GAD-7
-   - Tabla `Resultado` (para guardar resultados de evaluaciones)
-   - Tabla `RegistroAnimo` (para seguimiento diario de ánimo)
-   - Todas las políticas RLS necesarias
+4. El script se adaptará automáticamente a tu base de datos:
+   - ✅ Detecta tipo de dato de `auth_id` (UUID o TEXT)
+   - ✅ Crea políticas RLS compatibles automáticamente
+   - ✅ Crea tabla `Test` con datos iniciales (PHQ-9 y GAD-7)
+   - ✅ Crea tabla `Resultado` (para resultados de evaluaciones)
+   - ✅ Crea tabla `RegistroAnimo` (para seguimiento diario)
+   - ✅ Configura todas las foreign keys correctamente
 
-**Nota**: Este script es seguro y NO eliminará datos existentes. Solo crea lo que falta.
+**Nota**: Este script es 100% seguro y se adapta a cualquier estructura existente.
 
 **Tablas que se crearán**:
 
