@@ -1,0 +1,16 @@
+[phases.setup]
+nixPkgs = ["nodejs_18"]
+
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npm run start:production"
+
+[variables]
+NODE_ENV = "production"
+PORT = "3000"
+HOSTNAME = "0.0.0.0"
