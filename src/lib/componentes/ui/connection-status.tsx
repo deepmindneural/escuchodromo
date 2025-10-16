@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaWifi, FaExclamationTriangle, FaCheckCircle } from 'react-icons/fa';
+import { obtenerClienteNavegador } from '../../supabase/cliente';
 
 interface ConnectionStatusProps {
   showWhenOnline?: boolean;
@@ -31,12 +32,11 @@ export function ConnectionStatus({ showWhenOnline = false }: ConnectionStatusPro
   useEffect(() => {
     const checkApiStatus = async () => {
       try {
-        const response = await fetch('http://localhost:3333/api', {
-          method: 'GET',
-          timeout: 5000,
-        } as any);
-        
-        setApiStatus(response.ok ? 'online' : 'offline');
+        // Verificar conexión con Supabase
+        const supabase = obtenerClienteNavegador();
+        const { error } = await supabase.from('SesionPublica').select('count').limit(1);
+
+        setApiStatus(!error ? 'online' : 'offline');
       } catch (error) {
         setApiStatus('offline');
       }

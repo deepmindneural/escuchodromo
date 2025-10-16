@@ -7,6 +7,7 @@ import {
   FaUserPlus, FaRobot, FaHeart, FaCheckCircle 
 } from 'react-icons/fa';
 import Navegacion from '../../lib/componentes/layout/Navegacion';
+import Footer from '../../lib/componentes/layout/Footer';
 
 export default function PaginaComoFunciona() {
   const pasos = [
@@ -239,6 +240,7 @@ export default function PaginaComoFunciona() {
           </motion.div>
         </div>
       </section>
+      <Footer />
     </div>
   );
 }

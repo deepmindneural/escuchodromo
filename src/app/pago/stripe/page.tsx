@@ -10,6 +10,7 @@ import {
 } from 'react-icons/fa';
 import { toast, Toaster } from 'react-hot-toast';
 import Navegacion from '../../../lib/componentes/layout/Navegacion';
+import { obtenerClienteNavegador } from '../../../lib/supabase/cliente';
 
 interface PlanSuscripcion {
   id: string;
@@ -22,6 +23,7 @@ interface PlanSuscripcion {
 
 export default function PaginaPagoStripe() {
   const router = useRouter();
+  const supabase = obtenerClienteNavegador();
   const [plan, setPlan] = useState<PlanSuscripcion | null>(null);
   const [cargando, setCargando] = useState(true);
   const [procesando, setProcesando] = useState(false);
@@ -34,12 +36,6 @@ export default function PaginaPagoStripe() {
     direccion: '',
     codigoPostal: ''
   });
-  const [datosTarjeta, setDatosTarjeta] = useState({
-    numero: '',
-    expiracion: '',
-    cvv: '',
-    nombre: ''
-  });
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
 
   useEffect(() => {
@@ -47,134 +43,168 @@ export default function PaginaPagoStripe() {
     cargarPlan();
   }, []);
 
-  const verificarAutenticacion = () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+  const verificarAutenticacion = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       router.push('/iniciar-sesion');
       return;
     }
   };
 
   const cargarPlan = async () => {
-    // Simular plan para el ejemplo  
-    const planId = 'basico';
-    const moneda = 'COP';
-    
-    if (!planId) {
-      router.push('/precios');
-      return;
-    }
+    // Obtener plan de query params o usar default
+    const searchParams = new URLSearchParams(window.location.search);
+    const planId = searchParams.get('plan') || 'premium';
+    const periodo = searchParams.get('periodo') || 'mensual';
 
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3333/api/suscripciones/plan/${planId}?moneda=${moneda}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setPlan(data);
-      } else {
-        // Usar datos mock para desarrollo
-        setPlan(planMock);
+    // Usar datos del plan
+    const planesDisponibles: Record<string, PlanSuscripcion> = {
+      premium_mensual: {
+        id: 'premium',
+        nombre: 'Plan Premium',
+        precio: 49900,
+        moneda: 'COP',
+        periodo: 'mensual',
+        caracteristicas: [
+          'Chat ilimitado con IA',
+          'Evaluaciones psicológicas ilimitadas',
+          'Sesiones de voz con IA',
+          'Reportes detallados',
+          'Soporte prioritario'
+        ]
+      },
+      premium_anual: {
+        id: 'premium',
+        nombre: 'Plan Premium',
+        precio: 479000,
+        moneda: 'COP',
+        periodo: 'anual',
+        caracteristicas: [
+          'Chat ilimitado con IA',
+          'Evaluaciones psicológicas ilimitadas',
+          'Sesiones de voz con IA',
+          'Reportes detallados',
+          'Soporte prioritario',
+          '20% de descuento'
+        ]
+      },
+      profesional_mensual: {
+        id: 'profesional',
+        nombre: 'Plan Profesional',
+        precio: 99900,
+        moneda: 'COP',
+        periodo: 'mensual',
+        caracteristicas: [
+          'Todo del plan Premium',
+          'Dashboard para pacientes (50)',
+          'Integración con consulta',
+          'Reportes profesionales',
+          'API personalizada',
+          'Soporte dedicado 24/7'
+        ]
+      },
+      profesional_anual: {
+        id: 'profesional',
+        nombre: 'Plan Profesional',
+        precio: 959000,
+        moneda: 'COP',
+        periodo: 'anual',
+        caracteristicas: [
+          'Todo del plan Premium',
+          'Dashboard para pacientes (50)',
+          'Integración con consulta',
+          'Reportes profesionales',
+          'API personalizada',
+          'Soporte dedicado 24/7',
+          '20% de descuento'
+        ]
       }
-    } catch (error) {
-      console.error('Error:', error);
-      setPlan(planMock);
-    } finally {
-      setCargando(false);
+    };
+
+    const planKey = `${planId}_${periodo}` as keyof typeof planesDisponibles;
+    const planSeleccionado = planesDisponibles[planKey];
+
+    if (planSeleccionado) {
+      setPlan(planSeleccionado);
+    } else {
+      router.push('/precios');
     }
+
+    setCargando(false);
   };
 
   const procesarPago = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!aceptaTerminos) {
       toast.error('Debes aceptar los términos y condiciones');
+      return;
+    }
+
+    if (!plan) {
+      toast.error('No se ha seleccionado un plan');
+      return;
+    }
+
+    // Validar datos de facturación
+    if (!datosFacturacion.nombre || !datosFacturacion.email || !datosFacturacion.ciudad || !datosFacturacion.direccion) {
+      toast.error('Por favor completa todos los campos de facturación');
       return;
     }
 
     setProcesando(true);
 
     try {
-      // Simular validación de tarjeta
-      if (!datosTarjeta.numero || datosTarjeta.numero.length < 16) {
-        throw new Error('Número de tarjeta inválido');
-      }
-      if (!datosTarjeta.cvv || datosTarjeta.cvv.length < 3) {
-        throw new Error('CVV inválido');
-      }
-      if (!datosTarjeta.expiracion) {
-        throw new Error('Fecha de expiración requerida');
+      // Obtener sesión de autenticación
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        toast.error('Sesión no válida. Por favor inicia sesión nuevamente.');
+        router.push('/iniciar-sesion');
+        return;
       }
 
-      // Simular procesamiento de pago con Stripe
-      await new Promise(resolve => setTimeout(resolve, 3000));
-
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3333/api/pagos/stripe/procesar', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+      // Llamar al Edge Function para crear sesión de Stripe
+      const { data, error } = await supabase.functions.invoke('crear-checkout-stripe', {
+        body: {
+          plan: plan.id,
+          periodo: plan.periodo,
+          moneda: plan.moneda
         },
-        body: JSON.stringify({
-          planId: plan?.id,
-          datosTarjeta: {
-            numero: datosTarjeta.numero.replace(/\s/g, ''),
-            expiracion: datosTarjeta.expiracion,
-            cvv: datosTarjeta.cvv,
-            nombre: datosTarjeta.nombre
-          },
-          datosFacturacion,
-          moneda: plan?.moneda
-        }),
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        toast.success('¡Pago procesado exitosamente!');
-        
-        // Redirigir a página de confirmación
-        setTimeout(() => {
-          router.push(`/pago/confirmacion?transaccion=${data.transaccionId}`);
-        }, 1500);
-      } else {
-        const error = await response.json();
-        throw new Error(error.message || 'Error al procesar el pago');
+      if (error) {
+        console.error('Error al crear checkout:', error);
+        throw new Error(error.message || 'Error al iniciar proceso de pago');
       }
+
+      if (data.redirect_url) {
+        // Plan gratuito - redirigir directamente
+        toast.success(data.message);
+        setTimeout(() => {
+          router.push(data.redirect_url);
+        }, 1000);
+        return;
+      }
+
+      if (!data.checkout_url) {
+        throw new Error('No se recibió URL de checkout');
+      }
+
+      // Redirigir a Stripe Checkout
+      toast.success('Redirigiendo a pago seguro...');
+      window.location.href = data.checkout_url;
+
     } catch (error) {
       console.error('Error:', error);
       toast.error(error instanceof Error ? error.message : 'Error al procesar el pago');
-    } finally {
       setProcesando(false);
     }
   };
 
-  const formatearNumeroTarjeta = (value: string) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    const matches = v.match(/\d{4,16}/g);
-    const match = matches && matches[0] || '';
-    const parts = [];
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4));
-    }
-    if (parts.length) {
-      return parts.join(' ');
-    } else {
-      return v;
-    }
-  };
-
-  const formatearExpiracion = (value: string) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    if (v.length >= 2) {
-      return v.substring(0, 2) + '/' + v.substring(2, 4);
-    }
-    return v;
-  };
 
   if (cargando) {
     return (
@@ -388,74 +418,30 @@ export default function PaginaPagoStripe() {
                   </div>
                 </div>
 
-                {/* Información de pago */}
-                <div className="bg-white rounded-2xl shadow-xl p-8">
-                  <div className="flex items-center gap-3 mb-6">
-                    <FaCreditCard className="text-blue-600 text-xl" />
-                    <h3 className="text-2xl font-bold text-gray-900">Información de Pago</h3>
-                    <FaLock className="text-gray-500" />
-                  </div>
-                  
-                  <div className="space-y-6">
+                {/* Nota sobre procesamiento seguro */}
+                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
+                  <div className="flex items-start gap-3">
+                    <FaShieldAlt className="text-blue-600 text-2xl flex-shrink-0 mt-1" />
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Número de tarjeta *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        maxLength={19}
-                        value={datosTarjeta.numero}
-                        onChange={(e) => setDatosTarjeta(prev => ({ ...prev, numero: formatearNumeroTarjeta(e.target.value) }))}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="1234 5678 9012 3456"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Nombre en la tarjeta *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={datosTarjeta.nombre}
-                        onChange={(e) => setDatosTarjeta(prev => ({ ...prev, nombre: e.target.value }))}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Juan Pérez"
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          MM/AA *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          maxLength={5}
-                          value={datosTarjeta.expiracion}
-                          onChange={(e) => setDatosTarjeta(prev => ({ ...prev, expiracion: formatearExpiracion(e.target.value) }))}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="12/28"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          CVV *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          maxLength={4}
-                          value={datosTarjeta.cvv}
-                          onChange={(e) => setDatosTarjeta(prev => ({ ...prev, cvv: e.target.value.replace(/\D/g, '') }))}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="123"
-                        />
-                      </div>
+                      <h4 className="font-semibold text-blue-900 mb-2">Pago 100% Seguro con Stripe</h4>
+                      <p className="text-blue-800 text-sm mb-3">
+                        Al hacer clic en "Continuar al Pago", serás redirigido a Stripe,
+                        nuestro procesador de pagos seguro y certificado PCI DSS Level 1.
+                      </p>
+                      <ul className="space-y-1 text-sm text-blue-700">
+                        <li className="flex items-center gap-2">
+                          <FaCheckCircle className="text-green-600" />
+                          No almacenamos datos de tarjetas
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <FaCheckCircle className="text-green-600" />
+                          Encriptación SSL de 256 bits
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <FaCheckCircle className="text-green-600" />
+                          Cumplimiento total con PCI DSS
+                        </li>
+                      </ul>
                     </div>
                   </div>
                 </div>
@@ -504,7 +490,7 @@ export default function PaginaPagoStripe() {
                   ) : (
                     <div className="flex items-center justify-center gap-3">
                       <FaLock />
-                      Pagar {plan.precio.toLocaleString()} {plan.moneda}
+                      Continuar al Pago Seguro
                     </div>
                   )}
                 </motion.button>

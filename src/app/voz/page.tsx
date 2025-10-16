@@ -9,6 +9,9 @@ import { FaArrowLeft, FaMicrophone, FaBrain, FaHeart, FaShieldAlt } from 'react-
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import Navegacion from '../../lib/componentes/layout/Navegacion';
+import Footer from '../../lib/componentes/layout/Footer';
+import { obtenerClienteNavegador } from '../../lib/supabase/cliente';
+import { toast } from 'react-hot-toast';
 
 export default function PaginaVoz() {
   const router = useRouter();
@@ -16,34 +19,61 @@ export default function PaginaVoz() {
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+    verificarYCrearConversacion();
+  }, [router]);
+
+  const verificarYCrearConversacion = async () => {
+    const supabase = obtenerClienteNavegador();
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
       router.push('/iniciar-sesion');
       return;
     }
 
     crearConversacionVoz();
-  }, [router]);
+  };
 
   const crearConversacionVoz = async () => {
     try {
-      const response = await fetch('http://localhost:3333/api/chat/conversaciones', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({ 
-          titulo: `Sesión de voz - ${new Date().toLocaleDateString('es-ES')}` 
-        }),
-      });
+      const supabase = obtenerClienteNavegador();
 
-      if (response.ok) {
-        const conversacion = await response.json();
-        setConversacionId(conversacion.id);
+      // Obtener sesión
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      // Obtener usuario_id
+      const { data: usuario } = await supabase
+        .from('Usuario')
+        .select('id')
+        .eq('auth_id', session.user.id)
+        .single();
+
+      if (!usuario) {
+        toast.error('Usuario no encontrado');
+        return;
       }
+
+      // Crear conversación
+      const { data: conversacion, error } = await supabase
+        .from('Conversacion')
+        .insert({
+          usuario_id: usuario.id,
+          titulo: `Sesión de voz - ${new Date().toLocaleDateString('es-ES')}`,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error al crear conversación de voz:', error);
+        toast.error('Error al crear sesión de voz');
+        return;
+      }
+
+      setConversacionId(conversacion.id);
     } catch (error) {
       console.error('Error al crear conversación de voz:', error);
+      toast.error('Error al crear sesión de voz');
     } finally {
       setCargando(false);
     }
@@ -51,23 +81,40 @@ export default function PaginaVoz() {
 
   const manejarMensajeVoz = async (mensaje: string, emociones?: any) => {
     try {
-      const response = await fetch('http://localhost:3333/api/chat/mensajes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          conversacionId,
-          contenido: mensaje,
-          tipo: 'audio',
-          emociones,
-        }),
-      });
+      const supabase = obtenerClienteNavegador();
 
-      if (response.ok) {
-        console.log('Mensaje de voz guardado');
+      // Obtener sesión
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      // Obtener usuario_id
+      const { data: usuario } = await supabase
+        .from('Usuario')
+        .select('id')
+        .eq('auth_id', session.user.id)
+        .single();
+
+      if (!usuario) return;
+
+      // Insertar mensaje
+      const { error } = await supabase
+        .from('Mensaje')
+        .insert({
+          conversacion_id: conversacionId,
+          usuario_id: usuario.id,
+          contenido: mensaje,
+          remitente: 'usuario',
+          tipo: 'audio',
+          emociones: emociones || null,
+        });
+
+      if (error) {
+        console.error('Error al guardar mensaje de voz:', error);
+        toast.error('Error al guardar mensaje');
+        return;
       }
+
+      console.log('Mensaje de voz guardado');
     } catch (error) {
       console.error('Error al guardar mensaje de voz:', error);
     }
@@ -257,6 +304,7 @@ export default function PaginaVoz() {
           </motion.div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Boton } from '../lib/componentes/ui/boton';
 import Navegacion from '../lib/componentes/layout/Navegacion';
+import Footer from '../lib/componentes/layout/Footer';
 import { gsap, useGSAP } from '../lib/hooks/useGsap';
 import { motion } from 'framer-motion';
 import CountUp from 'react-countup';
@@ -612,6 +613,7 @@ export default function PaginaInicio() {
           animation-delay: 4s;
         }
       `}</style>
+      <Footer />
     </div>
   );
 }

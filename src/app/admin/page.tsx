@@ -8,17 +8,18 @@ import { Boton } from '../../lib/componentes/ui/boton';
 import { motion } from 'framer-motion';
 import CountUp from 'react-countup';
 import Navegacion from '../../lib/componentes/layout/Navegacion';
-import { 
-  FaUsers, FaComments, FaChartLine, FaMoneyBillWave, 
+import {
+  FaUsers, FaComments, FaChartLine, FaMoneyBillWave,
   FaCog, FaBell, FaClipboardCheck, FaChartBar,
-  FaUserPlus, FaArrowUp, FaArrowDown
+  FaUserPlus, FaArrowUp, FaArrowDown, FaHistory
 } from 'react-icons/fa';
-import { 
-  LineChart, Line, AreaChart, Area, BarChart, Bar, 
-  PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, 
-  Tooltip, Legend, ResponsiveContainer 
+import {
+  LineChart, Line, AreaChart, Area, BarChart, Bar,
+  PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import { toast, Toaster } from 'react-hot-toast';
+import { obtenerClienteNavegador } from '../../lib/supabase/cliente';
 
 // Importación dinámica para evitar errores de SSR
 const ApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
@@ -103,62 +104,108 @@ export default function PaginaAdmin() {
 
   useEffect(() => {
     verificarAdmin();
-    cargarEstadisticas();
   }, []);
 
   const verificarAdmin = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      router.push('/iniciar-sesion');
-      return;
-    }
+    const supabase = obtenerClienteNavegador();
 
     try {
-      const response = await fetch('http://localhost:3333/api/usuarios/perfil', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const { data: { session } } = await supabase.auth.getSession();
 
-      if (!response.ok) {
-        throw new Error('No autorizado');
+      if (!session) {
+        router.push('/iniciar-sesion');
+        return;
       }
 
-      const data = await response.json();
-      if (data.rol !== 'ADMIN') {
+      // Obtener datos del usuario
+      const { data: usuarioData, error } = await supabase
+        .from('Usuario')
+        .select('id, email, nombre, rol')
+        .eq('auth_id', session.user.id)
+        .single();
+
+      if (error || !usuarioData) {
+        router.push('/iniciar-sesion');
+        return;
+      }
+
+      // Verificar que sea admin
+      if (usuarioData.rol !== 'ADMIN') {
         router.push('/dashboard');
         return;
       }
-      
-      setUsuario(data);
+
+      setUsuario(usuarioData);
+      await cargarEstadisticas();
     } catch (error) {
-      localStorage.removeItem('token');
+      console.error('Error al verificar admin:', error);
       router.push('/iniciar-sesion');
     }
   };
 
   const cargarEstadisticas = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3333/api/administracion/estadisticas', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+    const supabase = obtenerClienteNavegador();
 
-      if (response.ok) {
-        const data = await response.json();
-        setEstadisticas((prev: any) => ({ ...prev, ...data }));
-      }
+    try {
+      // Total de usuarios
+      const { count: totalUsuarios } = await supabase
+        .from('Usuario')
+        .select('*', { count: 'exact', head: true });
+
+      // Usuarios nuevos hoy
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+      const { count: nuevosUsuariosHoy } = await supabase
+        .from('Usuario')
+        .select('*', { count: 'exact', head: true })
+        .gte('creado_en', hoy.toISOString());
+
+      // Total de conversaciones
+      const { count: conversacionesActivas } = await supabase
+        .from('Conversacion')
+        .select('*', { count: 'exact', head: true });
+
+      // Total de evaluaciones
+      const { count: evaluacionesRealizadas } = await supabase
+        .from('Evaluacion')
+        .select('*', { count: 'exact', head: true });
+
+      // Suscripciones activas
+      const { count: suscripcionesActivas } = await supabase
+        .from('Suscripcion')
+        .select('*', { count: 'exact', head: true })
+        .eq('estado', 'activa');
+
+      // Calcular ingresos mensuales (suma de suscripciones activas)
+      const { data: suscripciones } = await supabase
+        .from('Suscripcion')
+        .select('precio')
+        .eq('estado', 'activa');
+
+      const ingresosMensuales = suscripciones?.reduce((sum, s) => sum + (s.precio || 0), 0) || 0;
+
+      setEstadisticas({
+        totalUsuarios: totalUsuarios || 0,
+        nuevosUsuariosHoy: nuevosUsuariosHoy || 0,
+        conversacionesActivas: conversacionesActivas || 0,
+        evaluacionesRealizadas: evaluacionesRealizadas || 0,
+        tasaRetencion: suscripcionesActivas && totalUsuarios
+          ? Math.round((suscripcionesActivas / totalUsuarios) * 100)
+          : 0,
+        ingresosMensuales: Math.round(ingresosMensuales),
+        usuariosActivos: suscripcionesActivas || 0
+      });
     } catch (error) {
       console.error('Error cargando estadísticas:', error);
+      toast.error('Error al cargar estadísticas');
     } finally {
       setCargando(false);
     }
   };
 
-  const cerrarSesion = () => {
-    localStorage.removeItem('token');
+  const cerrarSesion = async () => {
+    const supabase = obtenerClienteNavegador();
+    await supabase.auth.signOut();
     router.push('/');
   };
 
@@ -416,29 +463,29 @@ export default function PaginaAdmin() {
             </h3>
             <div className="grid grid-cols-2 gap-4">
               {[
-                { 
-                  titulo: 'Gestión de Usuarios', 
-                  icono: FaUsers, 
+                {
+                  titulo: 'Historiales de Usuarios',
+                  icono: FaHistory,
+                  color: 'from-teal-500 to-cyan-700',
+                  href: '/admin/historiales'
+                },
+                {
+                  titulo: 'Gestión de Usuarios',
+                  icono: FaUsers,
                   color: 'from-blue-500 to-blue-700',
                   href: '/admin/usuarios'
                 },
-                { 
-                  titulo: 'Métricas Avanzadas', 
-                  icono: FaChartBar, 
+                {
+                  titulo: 'Métricas Avanzadas',
+                  icono: FaChartBar,
                   color: 'from-green-500 to-green-700',
                   href: '/admin/metricas'
                 },
-                { 
-                  titulo: 'Configuración', 
-                  icono: FaCog, 
+                {
+                  titulo: 'Configuración',
+                  icono: FaCog,
                   color: 'from-purple-500 to-purple-700',
                   href: '/admin/configuracion'
-                },
-                { 
-                  titulo: 'Pagos y Finanzas', 
-                  icono: FaMoneyBillWave, 
-                  color: 'from-orange-500 to-orange-700',
-                  href: '/admin/pagos'
                 }
               ].map((accion, index) => (
                 <Link key={index} href={accion.href}>

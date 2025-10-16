@@ -4,100 +4,171 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { 
-  FaUser, FaEnvelope, FaPhone, FaCalendarAlt, FaGlobe,
+import {
+  FaUser, FaEnvelope, FaPhone, FaCalendarAlt,
   FaArrowLeft, FaEdit, FaSave, FaTimes, FaEye, FaEyeSlash,
-  FaShieldAlt, FaBell, FaLanguage, FaMoneyBillWave, FaClock,
-  FaCheckCircle, FaExclamationTriangle
+  FaShieldAlt, FaLanguage, FaSignOutAlt, FaCrown, FaCheckCircle,
+  FaExclamationTriangle, FaSpinner, FaCreditCard, FaPlus, FaTrash
 } from 'react-icons/fa';
 import { toast, Toaster } from 'react-hot-toast';
 import Navegacion from '../../lib/componentes/layout/Navegacion';
+import Footer from '../../lib/componentes/layout/Footer';
+import { obtenerClienteNavegador } from '../../lib/supabase/cliente';
 
 interface PerfilUsuario {
   id: string;
   nombre: string;
   email: string;
   telefono?: string;
-  fechaNacimiento?: string;
+  fecha_nacimiento?: string;
   genero?: string;
-  idiomaPreferido: string;
-  moneda: string;
-  zonaHoraria: string;
-  consentimientoDatos: boolean;
-  consentimientoMkt: boolean;
-  imagen?: string;
-  creadoEn: string;
+  idioma_preferido: string;
   rol: string;
+  creado_en: string;
+}
+
+interface Suscripcion {
+  id: string;
+  plan: string;
+  estado: string;
+  precio: number;
+  moneda: string;
+  periodo: string;
+  fecha_fin: string;
+}
+
+interface Pago {
+  id: string;
+  monto: number;
+  moneda: string;
+  estado: string;
+  creado_en: string;
+}
+
+interface MetodoPago {
+  id: string;
+  tipo: 'tarjeta' | 'paypal';
+  ultimos_digitos?: string;
+  marca?: string;
+  nombre_titular: string;
+  fecha_expiracion?: string;
+  es_predeterminado: boolean;
 }
 
 export default function PaginaPerfil() {
   const router = useRouter();
+  const supabase = obtenerClienteNavegador();
   const [usuario, setUsuario] = useState<PerfilUsuario | null>(null);
+  const [suscripcion, setSuscripcion] = useState<Suscripcion | null>(null);
+  const [historialPagos, setHistorialPagos] = useState<Pago[]>([]);
   const [cargando, setCargando] = useState(true);
   const [editando, setEditando] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [mostrarCambiarContrasena, setMostrarCambiarContrasena] = useState(false);
+  const [mostrarHistorialPagos, setMostrarHistorialPagos] = useState(false);
   const [formData, setFormData] = useState({
     nombre: '',
     telefono: '',
-    fechaNacimiento: '',
+    fecha_nacimiento: '',
     genero: '',
-    idiomaPreferido: 'es',
-    moneda: 'COP',
-    zonaHoraria: 'America/Bogota',
-    consentimientoDatos: false,
-    consentimientoMkt: false
+    idioma_preferido: 'es'
   });
   const [cambioContrasena, setCambioContrasena] = useState({
-    contrasenaActual: '',
     nuevaContrasena: '',
     confirmarContrasena: ''
   });
   const [mostrarContrasenas, setMostrarContrasenas] = useState({
-    actual: false,
     nueva: false,
     confirmar: false
   });
+  const [metodosPago, setMetodosPago] = useState<MetodoPago[]>([]);
+  const [mostrarAgregarMetodo, setMostrarAgregarMetodo] = useState(false);
 
   useEffect(() => {
     verificarAutenticacion();
-    cargarPerfil();
   }, []);
 
-  const verificarAutenticacion = () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+  const verificarAutenticacion = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        router.push('/iniciar-sesion');
+        return;
+      }
+
+      await cargarPerfil();
+    } catch (error) {
+      console.error('Error al verificar autenticación:', error);
       router.push('/iniciar-sesion');
-      return;
     }
   };
 
   const cargarPerfil = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3333/api/usuarios/perfil', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+      setCargando(true);
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) return;
+
+      // Obtener datos del usuario
+      const { data: usuarioData, error: usuarioError } = await supabase
+        .from('Usuario')
+        .select('*')
+        .eq('email', session.user.email)
+        .single();
+
+      if (usuarioError) throw usuarioError;
+
+      setUsuario(usuarioData);
+      setFormData({
+        nombre: usuarioData.nombre || '',
+        telefono: usuarioData.telefono || '',
+        fecha_nacimiento: usuarioData.fecha_nacimiento?.split('T')[0] || '',
+        genero: usuarioData.genero || '',
+        idioma_preferido: usuarioData.idioma_preferido || 'es'
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setUsuario(data);
-        setFormData({
-          nombre: data.nombre || '',
-          telefono: data.perfil?.telefono || '',
-          fechaNacimiento: data.perfil?.fechaNacimiento?.split('T')[0] || '',
-          genero: data.perfil?.genero || '',
-          idiomaPreferido: data.perfil?.idiomaPreferido || 'es',
-          moneda: data.perfil?.moneda || 'COP',
-          zonaHoraria: data.perfil?.zonaHoraria || 'America/Bogota',
-          consentimientoDatos: data.perfil?.consentimientoDatos || false,
-          consentimientoMkt: data.perfil?.consentimientoMkt || false
-        });
-      } else {
-        throw new Error('Error al cargar perfil');
+      // Obtener suscripción activa
+      const { data: suscripcionData } = await supabase
+        .from('Suscripcion')
+        .select('*')
+        .eq('usuario_id', usuarioData.id)
+        .in('estado', ['activa', 'cancelada'])
+        .order('creado_en', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (suscripcionData) {
+        setSuscripcion(suscripcionData);
       }
+
+      // Obtener historial de pagos
+      const { data: pagosData } = await supabase
+        .from('Pago')
+        .select('*')
+        .eq('usuario_id', usuarioData.id)
+        .order('creado_en', { ascending: false })
+        .limit(10);
+
+      if (pagosData) {
+        setHistorialPagos(pagosData);
+      }
+
+      // Cargar métodos de pago (mock data por ahora)
+      // TODO: Implementar integración con Stripe/PayPal cuando las API keys estén configuradas
+      setMetodosPago([
+        {
+          id: '1',
+          tipo: 'tarjeta',
+          marca: 'Visa',
+          ultimos_digitos: '4242',
+          nombre_titular: usuarioData.nombre,
+          fecha_expiracion: '12/25',
+          es_predeterminado: true
+        }
+      ]);
+
     } catch (error) {
       console.error('Error:', error);
       toast.error('Error al cargar el perfil');
@@ -111,24 +182,26 @@ export default function PaginaPerfil() {
     setGuardando(true);
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3333/api/usuarios/perfil', {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || !usuario) return;
 
-      if (response.ok) {
-        const data = await response.json();
-        setUsuario(data);
-        setEditando(false);
-        toast.success('Perfil actualizado correctamente');
-      } else {
-        throw new Error('Error al actualizar perfil');
-      }
+      const { error } = await supabase
+        .from('Usuario')
+        .update({
+          nombre: formData.nombre,
+          telefono: formData.telefono,
+          fecha_nacimiento: formData.fecha_nacimiento || null,
+          genero: formData.genero || null,
+          idioma_preferido: formData.idioma_preferido
+        })
+        .eq('id', usuario.id);
+
+      if (error) throw error;
+
+      // Recargar perfil
+      await cargarPerfil();
+      setEditando(false);
+      toast.success('Perfil actualizado correctamente');
     } catch (error) {
       console.error('Error:', error);
       toast.error('Error al actualizar el perfil');
@@ -151,55 +224,83 @@ export default function PaginaPerfil() {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3333/api/usuarios/cambiar-contrasena', {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contrasenaActual: cambioContrasena.contrasenaActual,
-          nuevaContrasena: cambioContrasena.nuevaContrasena,
-        }),
+      const { error } = await supabase.auth.updateUser({
+        password: cambioContrasena.nuevaContrasena
       });
 
-      if (response.ok) {
-        toast.success('Contraseña actualizada correctamente');
-        setMostrarCambiarContrasena(false);
-        setCambioContrasena({ contrasenaActual: '', nuevaContrasena: '', confirmarContrasena: '' });
-      } else {
-        const error = await response.json();
-        throw new Error(error.message || 'Error al cambiar contraseña');
-      }
-    } catch (error) {
+      if (error) throw error;
+
+      toast.success('Contraseña actualizada correctamente');
+      setMostrarCambiarContrasena(false);
+      setCambioContrasena({ nuevaContrasena: '', confirmarContrasena: '' });
+    } catch (error: any) {
       console.error('Error:', error);
-      toast.error(error instanceof Error ? error.message : 'Error al cambiar la contraseña');
+      toast.error(error.message || 'Error al cambiar la contraseña');
     }
   };
 
-  const handleEliminarCuenta = async () => {
-    if (confirm('¿Estás seguro de que quieres eliminar tu cuenta? Esta acción no se puede deshacer.')) {
-      try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:3333/api/usuarios/eliminar-cuenta', {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
+  const handleCerrarSesion = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast.success('Sesión cerrada correctamente');
+      router.push('/');
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Error al cerrar sesión');
+    }
+  };
 
-        if (response.ok) {
-          localStorage.removeItem('token');
-          toast.success('Cuenta eliminada correctamente');
-          router.push('/');
-        } else {
-          throw new Error('Error al eliminar cuenta');
-        }
-      } catch (error) {
-        console.error('Error:', error);
-        toast.error('Error al eliminar la cuenta');
-      }
+  const handleEstablecerPredeterminado = async (metodoId: string) => {
+    try {
+      // TODO: Implementar llamada al backend para actualizar método predeterminado
+      setMetodosPago(prev => prev.map(metodo => ({
+        ...metodo,
+        es_predeterminado: metodo.id === metodoId
+      })));
+      toast.success('Método de pago predeterminado actualizado');
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Error al actualizar método de pago');
+    }
+  };
+
+  const handleEliminarMetodo = async (metodoId: string) => {
+    try {
+      // TODO: Implementar llamada al backend para eliminar método de pago
+      setMetodosPago(prev => prev.filter(metodo => metodo.id !== metodoId));
+      toast.success('Método de pago eliminado');
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Error al eliminar método de pago');
+    }
+  };
+
+  const handleAgregarMetodo = () => {
+    // TODO: Implementar integración con Stripe Elements o PayPal
+    toast.info('Esta funcionalidad se habilitará cuando se configure Stripe/PayPal');
+    setMostrarAgregarMetodo(false);
+  };
+
+  const formatearPrecio = (precio: number, moneda: string) => {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: moneda,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(precio);
+  };
+
+  const obtenerColorMarca = (marca?: string) => {
+    switch (marca?.toLowerCase()) {
+      case 'visa':
+        return 'from-blue-500 to-blue-700';
+      case 'mastercard':
+        return 'from-red-500 to-orange-600';
+      case 'amex':
+      case 'american express':
+        return 'from-cyan-500 to-blue-600';
+      default:
+        return 'from-gray-500 to-gray-700';
     }
   };
 
@@ -209,7 +310,7 @@ export default function PaginaPerfil() {
         <Navegacion />
         <div className="pt-32 flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-teal-500 mx-auto mb-4"></div>
+            <FaSpinner className="h-16 w-16 text-teal-500 animate-spin mx-auto mb-4" />
             <p className="text-gray-600">Cargando perfil...</p>
           </div>
         </div>
@@ -235,9 +336,9 @@ export default function PaginaPerfil() {
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-cyan-50">
       <Toaster position="top-center" />
       <Navegacion />
-      
+
       <div className="pt-28 pb-12 px-4">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
@@ -252,10 +353,10 @@ export default function PaginaPerfil() {
               </Link>
               <div>
                 <h1 className="text-4xl font-bold text-gray-900 mb-2">Mi Perfil</h1>
-                <p className="text-gray-600 text-lg">Gestiona tu información personal</p>
+                <p className="text-gray-600 text-lg">Gestiona tu información y suscripción</p>
               </div>
             </div>
-            
+
             {!editando && (
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -269,16 +370,46 @@ export default function PaginaPerfil() {
             )}
           </div>
 
+          {/* Suscripción Activa */}
+          {suscripcion && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl shadow-xl p-6 mb-8"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <FaCrown className="text-4xl text-yellow-500" />
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-1">
+                      {suscripcion.plan === 'premium' ? 'Plan Premium' : 'Plan Profesional'}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Estado: <span className={`font-medium ${suscripcion.estado === 'activa' ? 'text-green-600' : 'text-orange-600'}`}>
+                        {suscripcion.estado === 'activa' ? 'Activa' : 'Cancelada'}
+                      </span> • Renovación: {new Date(suscripcion.fecha_fin).toLocaleDateString('es-CO')}
+                    </p>
+                  </div>
+                </div>
+                <Link href="/suscripcion">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="px-6 py-3 bg-white text-gray-700 font-medium rounded-lg shadow hover:shadow-md"
+                  >
+                    Gestionar Suscripción
+                  </motion.button>
+                </Link>
+              </div>
+            </motion.div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Sidebar - Info del usuario */}
             <div className="lg:col-span-1">
               <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
                 <div className="w-24 h-24 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl text-white font-bold">
-                  {usuario.imagen ? (
-                    <img src={usuario.imagen} alt="Avatar" className="w-24 h-24 rounded-full object-cover" />
-                  ) : (
-                    usuario.nombre?.charAt(0)?.toUpperCase() || <FaUser />
-                  )}
+                  {usuario.nombre?.charAt(0)?.toUpperCase() || <FaUser />}
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">{usuario.nombre}</h3>
                 <p className="text-gray-600 mb-4">{usuario.email}</p>
@@ -286,16 +417,26 @@ export default function PaginaPerfil() {
                   <FaShieldAlt />
                   {usuario.rol}
                 </div>
-                
+
                 <div className="mt-6 pt-6 border-t border-gray-200">
                   <p className="text-sm text-gray-500 mb-1">Miembro desde</p>
                   <p className="font-medium text-gray-900">
-                    {new Date(usuario.creadoEn).toLocaleDateString('es-ES', { 
-                      year: 'numeric', 
-                      month: 'long' 
+                    {new Date(usuario.creado_en).toLocaleDateString('es-CO', {
+                      year: 'numeric',
+                      month: 'long'
                     })}
                   </p>
                 </div>
+
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleCerrarSesion}
+                  className="mt-6 w-full px-4 py-3 bg-red-50 text-red-600 font-medium rounded-lg hover:bg-red-100 transition-colors"
+                >
+                  <FaSignOutAlt className="inline mr-2" />
+                  Cerrar Sesión
+                </motion.button>
               </div>
             </div>
 
@@ -382,8 +523,8 @@ export default function PaginaPerfil() {
                       </label>
                       <input
                         type="date"
-                        value={formData.fechaNacimiento}
-                        onChange={(e) => setFormData(prev => ({ ...prev, fechaNacimiento: e.target.value }))}
+                        value={formData.fecha_nacimiento}
+                        onChange={(e) => setFormData(prev => ({ ...prev, fecha_nacimiento: e.target.value }))}
                         disabled={!editando}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-gray-100"
                       />
@@ -413,8 +554,8 @@ export default function PaginaPerfil() {
                         Idioma preferido
                       </label>
                       <select
-                        value={formData.idiomaPreferido}
-                        onChange={(e) => setFormData(prev => ({ ...prev, idiomaPreferido: e.target.value }))}
+                        value={formData.idioma_preferido}
+                        onChange={(e) => setFormData(prev => ({ ...prev, idioma_preferido: e.target.value }))}
                         disabled={!editando}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-gray-100"
                       >
@@ -422,96 +563,59 @@ export default function PaginaPerfil() {
                         <option value="en">English</option>
                       </select>
                     </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        <FaMoneyBillWave className="inline mr-2" />
-                        Moneda
-                      </label>
-                      <select
-                        value={formData.moneda}
-                        onChange={(e) => setFormData(prev => ({ ...prev, moneda: e.target.value }))}
-                        disabled={!editando}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-gray-100"
-                      >
-                        <option value="COP">Peso Colombiano (COP)</option>
-                        <option value="USD">Dólar Americano (USD)</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        <FaClock className="inline mr-2" />
-                        Zona horaria
-                      </label>
-                      <select
-                        value={formData.zonaHoraria}
-                        onChange={(e) => setFormData(prev => ({ ...prev, zonaHoraria: e.target.value }))}
-                        disabled={!editando}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-gray-100"
-                      >
-                        <option value="America/Bogota">Bogotá (UTC-5)</option>
-                        <option value="America/Mexico_City">Ciudad de México (UTC-6)</option>
-                        <option value="America/New_York">Nueva York (UTC-5)</option>
-                        <option value="Europe/Madrid">Madrid (UTC+1)</option>
-                      </select>
-                    </div>
                   </div>
                 </form>
               </div>
 
-              {/* Privacidad y Consentimientos */}
-              <div className="bg-white rounded-2xl shadow-xl p-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Privacidad y Consentimientos</h2>
-                
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <FaShieldAlt className="text-teal-600" />
-                      <div>
-                        <h4 className="font-medium text-gray-900">Consentimiento de datos</h4>
-                        <p className="text-sm text-gray-600">Permitir el procesamiento de datos personales</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {formData.consentimientoDatos ? (
-                        <FaCheckCircle className="text-green-500" />
-                      ) : (
-                        <FaExclamationTriangle className="text-yellow-500" />
-                      )}
-                      <input
-                        type="checkbox"
-                        checked={formData.consentimientoDatos}
-                        onChange={(e) => setFormData(prev => ({ ...prev, consentimientoDatos: e.target.checked }))}
-                        disabled={!editando}
-                        className="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
-                      />
-                    </div>
+              {/* Historial de Pagos */}
+              {historialPagos.length > 0 && (
+                <div className="bg-white rounded-2xl shadow-xl p-8">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">Historial de Pagos</h2>
+                    <button
+                      onClick={() => setMostrarHistorialPagos(!mostrarHistorialPagos)}
+                      className="text-teal-600 hover:text-teal-700 font-medium"
+                    >
+                      {mostrarHistorialPagos ? 'Ocultar' : 'Mostrar'}
+                    </button>
                   </div>
 
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <FaBell className="text-purple-600" />
-                      <div>
-                        <h4 className="font-medium text-gray-900">Marketing</h4>
-                        <p className="text-sm text-gray-600">Recibir comunicaciones promocionales</p>
-                      </div>
+                  {mostrarHistorialPagos && (
+                    <div className="space-y-4">
+                      {historialPagos.map((pago) => (
+                        <div key={pago.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              {formatearPrecio(pago.monto, pago.moneda)}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              {new Date(pago.creado_en).toLocaleDateString('es-CO', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                            </p>
+                          </div>
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                            pago.estado === 'completado'
+                              ? 'bg-green-100 text-green-700'
+                              : pago.estado === 'pendiente'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}>
+                            {pago.estado}
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                    <input
-                      type="checkbox"
-                      checked={formData.consentimientoMkt}
-                      onChange={(e) => setFormData(prev => ({ ...prev, consentimientoMkt: e.target.checked }))}
-                      disabled={!editando}
-                      className="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
-                    />
-                  </div>
+                  )}
                 </div>
-              </div>
+              )}
 
               {/* Seguridad */}
               <div className="bg-white rounded-2xl shadow-xl p-8">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Seguridad</h2>
-                
+
                 <div className="space-y-4">
                   <motion.button
                     whileHover={{ scale: 1.02 }}
@@ -535,28 +639,6 @@ export default function PaginaPerfil() {
                       className="p-4 bg-gray-50 rounded-lg"
                     >
                       <form onSubmit={handleCambiarContrasena} className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Contraseña actual
-                          </label>
-                          <div className="relative">
-                            <input
-                              type={mostrarContrasenas.actual ? 'text' : 'password'}
-                              value={cambioContrasena.contrasenaActual}
-                              onChange={(e) => setCambioContrasena(prev => ({ ...prev, contrasenaActual: e.target.value }))}
-                              className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                              required
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setMostrarContrasenas(prev => ({ ...prev, actual: !prev.actual }))}
-                              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                            >
-                              {mostrarContrasenas.actual ? <FaEyeSlash /> : <FaEye />}
-                            </button>
-                          </div>
-                        </div>
-
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Nueva contraseña
@@ -623,27 +705,13 @@ export default function PaginaPerfil() {
                       </form>
                     </motion.div>
                   )}
-
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={handleEliminarCuenta}
-                    className="w-full p-4 bg-red-50 border border-red-200 rounded-lg text-left hover:bg-red-100 transition-colors duration-200"
-                  >
-                    <div className="flex items-center gap-3">
-                      <FaExclamationTriangle className="text-red-600" />
-                      <div>
-                        <h4 className="font-medium text-red-900">Eliminar cuenta</h4>
-                        <p className="text-sm text-red-600">Esta acción no se puede deshacer</p>
-                      </div>
-                    </div>
-                  </motion.button>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
-  FaEnvelope, FaLock, FaUser, FaGoogle, FaFacebook,
+  FaEnvelope, FaLock, FaUser,
   FaEye, FaEyeSlash, FaHeart, FaCheckCircle, FaShieldAlt
 } from 'react-icons/fa';
 import { toast, Toaster } from 'react-hot-toast';
 import { ImageWithFallback } from '../../lib/componentes/ui/image-with-fallback';
 import Navegacion from '../../lib/componentes/layout/Navegacion';
+import Footer from '../../lib/componentes/layout/Footer';
 import { registrarUsuario } from '../../lib/supabase/auth';
 
 export default function PaginaRegistrar() {
@@ -421,37 +422,6 @@ export default function PaginaRegistrar() {
                 </motion.button>
               </form>
 
-              {/* Separador */}
-              <div className="relative my-8">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-white text-gray-500">O regístrate con</span>
-                </div>
-              </div>
-
-              {/* Botones sociales */}
-              <div className="space-y-3">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200"
-                >
-                  <FaGoogle className="text-red-500 text-xl" />
-                  <span className="font-medium text-gray-700">Continuar con Google</span>
-                </motion.button>
-                
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200"
-                >
-                  <FaFacebook className="text-blue-600 text-xl" />
-                  <span className="font-medium text-gray-700">Continuar con Facebook</span>
-                </motion.button>
-              </div>
-
               {/* Mensaje de seguridad */}
               <div className="mt-8 p-4 bg-teal-50 rounded-lg">
                 <div className="flex items-center gap-3">
@@ -470,6 +440,7 @@ export default function PaginaRegistrar() {
           </motion.div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

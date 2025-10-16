@@ -9,9 +9,11 @@ import {
 } from 'react-icons/fa';
 import { toast, Toaster } from 'react-hot-toast';
 import Navegacion from '../../lib/componentes/layout/Navegacion';
+import Footer from '../../lib/componentes/layout/Footer';
 import { ConnectionStatus } from '../../lib/componentes/ui/connection-status';
 import { obtenerClienteNavegador } from '../../lib/supabase/cliente';
-import { useUsuario } from '../../lib/supabase/hooks';
+import { useUsuario, usePerfilUsuario } from '../../lib/supabase/hooks';
+import { useVoz } from '../../lib/hooks/useVoz';
 
 interface Mensaje {
   id: string;
@@ -22,16 +24,41 @@ interface Mensaje {
 
 export default function PaginaChat() {
   const { usuario } = useUsuario();
+  const { perfil } = usePerfilUsuario();
   const [sesionId, setSesionId] = useState<string>('');
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [inputMensaje, setInputMensaje] = useState('');
   const [escribiendo, setEscribiendo] = useState(false);
   const [mostrarLimite, setMostrarLimite] = useState(false);
-  const [grabandoVoz, setGrabandoVoz] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [mensajesRestantes, setMensajesRestantes] = useState(20);
+  const [modoVoz, setModoVoz] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const supabase = obtenerClienteNavegador();
+  const ultimaRespuestaRef = useRef<string>('');
+  const [contextoUsuario, setContextoUsuario] = useState<any>(null);
+
+  // Hook de voz (100% GRATIS - Web Speech API)
+  const {
+    estaGrabando,
+    transcripcion,
+    estaHablando,
+    soportaReconocimiento,
+    soportaSintesis,
+    iniciarGrabacion,
+    detenerGrabacion,
+    hablar,
+    detenerHabla,
+  } = useVoz({
+    onTranscripcionFinal: (texto) => {
+      // Cuando termine de transcribir, actualizar el input
+      setInputMensaje(texto);
+      toast.success('¡Voz transcrita! Envía el mensaje para obtener respuesta.');
+    },
+    onError: (error) => {
+      toast.error(error);
+    },
+  });
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -40,6 +67,51 @@ export default function PaginaChat() {
   useEffect(() => {
     inicializarChat();
   }, []);
+
+  useEffect(() => {
+    if (perfil?.id) {
+      cargarContextoUsuario();
+    }
+  }, [perfil?.id]);
+
+  const cargarContextoUsuario = async () => {
+    if (!perfil?.id) return;
+
+    try {
+      // Cargar última evaluación
+      const { data: ultimaEvaluacion } = await supabase
+        .from('Resultado')
+        .select(`
+          puntuacion,
+          severidad,
+          creado_en,
+          Prueba (
+            nombre,
+            codigo
+          )
+        `)
+        .eq('usuario_id', perfil.id)
+        .order('creado_en', { ascending: false })
+        .limit(1)
+        .single();
+
+      // Cargar registros de ánimo recientes
+      const { data: registrosAnimo } = await supabase
+        .from('RegistroAnimo')
+        .select('animo, energia, estres, creado_en')
+        .eq('perfil_id', perfil.id)
+        .order('creado_en', { ascending: false })
+        .limit(5);
+
+      setContextoUsuario({
+        nombre: perfil.nombre,
+        ultimaEvaluacion,
+        registrosAnimo,
+      });
+    } catch (error) {
+      console.error('Error al cargar contexto:', error);
+    }
+  };
 
   const emociones = ['😊', '😔', '😰', '😡', '😴', '🤔', '😌', '💪'];
 
@@ -64,10 +136,12 @@ export default function PaginaChat() {
       } else {
         setSesionId(nuevoSesionId);
 
-        // Mensaje de bienvenida
+        // Mensaje de bienvenida personalizado
+        const nombreUsuario = perfil?.nombre || '';
+        const saludo = nombreUsuario ? `¡Hola ${nombreUsuario}! 👋` : '¡Hola! 👋';
         const mensajeBienvenida: Mensaje = {
           id: 'bienvenida',
-          contenido: '¡Hola! 👋 Soy Escuchodromo, tu compañero de bienestar emocional. Este es un espacio seguro donde puedes compartir lo que sientes sin juicios. ¿Cómo te sientes hoy?',
+          contenido: `${saludo} Soy Escuchodromo, tu compañero de bienestar emocional. Este es un espacio seguro donde puedes compartir lo que sientes sin juicios. ¿Cómo te sientes hoy?`,
           rol: 'asistente',
           creado_en: new Date().toISOString()
         };
@@ -112,34 +186,66 @@ export default function PaginaChat() {
           rol: 'usuario'
         });
 
-      // Simular respuesta de IA (después crearás la Edge Function)
-      setTimeout(async () => {
-        const respuesta = generarRespuestaSimple(inputMensaje);
+      // Llamar a Edge Function de IA con Groq (100% GRATIS)
+      const historial = mensajes.slice(-6).map(m => ({
+        rol: m.rol,
+        contenido: m.contenido
+      }));
 
-        const mensajeIA: Mensaje = {
-          id: `msg-${Date.now()}-ia`,
-          contenido: respuesta,
-          rol: 'asistente',
-          creado_en: new Date().toISOString()
+      // Preparar contexto del usuario para la IA
+      let contextoParaIA = null;
+      if (contextoUsuario) {
+        contextoParaIA = {
+          nombre: contextoUsuario.nombre,
+          ultimaEvaluacion: contextoUsuario.ultimaEvaluacion ? {
+            prueba: contextoUsuario.ultimaEvaluacion.Prueba?.nombre,
+            puntuacion: contextoUsuario.ultimaEvaluacion.puntuacion,
+            severidad: contextoUsuario.ultimaEvaluacion.severidad,
+            fecha: contextoUsuario.ultimaEvaluacion.creado_en
+          } : null,
+          animoReciente: contextoUsuario.registrosAnimo?.length > 0 ? {
+            animo: contextoUsuario.registrosAnimo[0].animo,
+            energia: contextoUsuario.registrosAnimo[0].energia,
+            estres: contextoUsuario.registrosAnimo[0].estres
+          } : null
         };
+      }
 
-        setMensajes(prev => [...prev, mensajeIA]);
-
-        // Guardar respuesta en Supabase
-        await supabase
-          .from('MensajePublico')
-          .insert({
-            sesion_id: sesionId,
-            contenido: respuesta,
-            rol: 'asistente'
-          });
-
-        setEscribiendo(false);
-
-        if (!usuario) {
-          setMensajesRestantes(prev => prev - 1);
+      const { data, error: iaError } = await supabase.functions.invoke('chat-ia', {
+        body: {
+          mensaje: inputMensaje,
+          sesion_id: sesionId,
+          historial,
+          contexto_usuario: contextoParaIA
         }
-      }, 1500);
+      });
+
+      if (iaError) {
+        console.error('Error al invocar Edge Function:', iaError);
+        toast.error('Error al obtener respuesta de IA');
+        setEscribiendo(false);
+        return;
+      }
+
+      const mensajeIA: Mensaje = {
+        id: `msg-${Date.now()}-ia`,
+        contenido: data.respuesta,
+        rol: 'asistente',
+        creado_en: new Date().toISOString()
+      };
+
+      setMensajes(prev => [...prev, mensajeIA]);
+      setEscribiendo(false);
+
+      // Si el modo voz está activado, leer la respuesta en voz alta
+      if (modoVoz && soportaSintesis) {
+        ultimaRespuestaRef.current = data.respuesta;
+        hablar(data.respuesta);
+      }
+
+      if (!usuario) {
+        setMensajesRestantes(prev => prev - 1);
+      }
 
     } catch (error) {
       console.error('Error:', error);
@@ -148,47 +254,24 @@ export default function PaginaChat() {
     }
   };
 
-  const generarRespuestaSimple = (mensaje: string): string => {
-    const mensajeLower = mensaje.toLowerCase();
-
-    if (mensajeLower.includes('hola') || mensajeLower.includes('buenos')) {
-      return '¡Hola! 😊 Me alegra mucho que estés aquí. ¿En qué puedo ayudarte hoy? Puedes contarme cómo te sientes o qué te preocupa.';
-    }
-
-    if (mensajeLower.includes('triste') || mensajeLower.includes('mal') || mensajeLower.includes('deprimido')) {
-      return 'Entiendo que te sientes triste 💙. Es completamente válido sentirse así. ¿Quieres contarme más sobre lo que está pasando? Estoy aquí para escucharte sin juzgar.';
-    }
-
-    if (mensajeLower.includes('ansiedad') || mensajeLower.includes('ansioso') || mensajeLower.includes('nervios')) {
-      return 'La ansiedad puede ser muy difícil 🌿. Una técnica que puede ayudar es la respiración profunda: inhala contando hasta 4, sostén por 4, exhala contando hasta 4. ¿Te gustaría que te guíe en algún ejercicio de relajación?';
-    }
-
-    if (mensajeLower.includes('estrés') || mensajeLower.includes('estresado') || mensajeLower.includes('agobiado')) {
-      return 'El estrés es una respuesta natural, pero es importante manejarlo 🧘‍♀️. ¿Qué aspectos de tu vida sientes que te están generando más estrés? Podemos hablar sobre formas de abordarlo.';
-    }
-
-    if (mensajeLower.includes('gracias') || mensajeLower.includes('ayuda')) {
-      return '¡De nada! 💕 Estoy aquí para ti siempre que lo necesites. Recuerda que buscar apoyo es un signo de fortaleza, no de debilidad.';
-    }
-
-    // Respuesta por defecto
-    return 'Entiendo. Cuéntame más sobre eso, estoy aquí para escucharte 💚. ¿Cómo te hace sentir? Recuerda que este es un espacio seguro donde puedes expresarte libremente.';
-  };
-
   const toggleGrabacionVoz = () => {
     if (mensajesRestantes <= 0 && !usuario) {
       setMostrarLimite(true);
       return;
     }
 
-    setGrabandoVoz(!grabandoVoz);
-    if (!grabandoVoz) {
-      toast.success('Grabación iniciada. Habla claramente.');
-      setTimeout(() => {
-        setGrabandoVoz(false);
-        setInputMensaje('Mensaje de voz transcrito...');
-        toast.success('Voz transcrita correctamente');
-      }, 3000);
+    if (!soportaReconocimiento) {
+      toast.error('Tu navegador no soporta reconocimiento de voz. Usa Chrome, Edge o Safari.');
+      return;
+    }
+
+    if (estaGrabando) {
+      detenerGrabacion();
+      toast.info('Grabación detenida');
+    } else {
+      setModoVoz(true); // Activar modo voz para que la respuesta se lea
+      iniciarGrabacion();
+      toast.success('🎤 Grabando... Habla claramente', { duration: 10000 });
     }
   };
 
@@ -234,7 +317,16 @@ export default function PaginaChat() {
                 </div>
               </div>
 
-              {!usuario && (
+              {usuario ? (
+                contextoUsuario && (
+                  <div className="flex items-center gap-3 bg-gradient-to-r from-purple-100 to-pink-100 px-6 py-3 rounded-full border-2 border-purple-300">
+                    <FaUser className="text-purple-600" />
+                    <span className="text-purple-800 font-bold">
+                      IA personalizada con tu historial
+                    </span>
+                  </div>
+                )
+              ) : (
                 <div className="flex items-center gap-3 bg-teal-50 px-6 py-3 rounded-full border border-teal-200">
                   <FaInfoCircle className="text-teal-600" />
                   <span className="text-teal-700 font-bold">
@@ -348,6 +440,21 @@ export default function PaginaChat() {
 
           {/* Área de entrada */}
           <div className="bg-white rounded-b-3xl shadow-xl p-6 border-t border-teal-100">
+            {/* Indicador de transcripción en tiempo real */}
+            {estaGrabando && transcripcion && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-4 p-4 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-2xl border-2 border-teal-200"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                  <span className="text-sm font-bold text-teal-700">Transcribiendo en tiempo real...</span>
+                </div>
+                <p className="text-gray-700 italic">&quot;{transcripcion}&quot;</p>
+              </motion.div>
+            )}
+
             <form onSubmit={handleEnviarMensaje} className="flex gap-4">
               <input
                 type="text"
@@ -364,12 +471,27 @@ export default function PaginaChat() {
                 whileTap={{ scale: 0.95 }}
                 onClick={toggleGrabacionVoz}
                 className={`p-5 rounded-3xl transition-all duration-300 shadow-lg ${
-                  grabandoVoz
-                    ? 'bg-red-500 text-white'
+                  estaGrabando
+                    ? 'bg-red-500 text-white animate-pulse'
+                    : estaHablando
+                    ? 'bg-purple-500 text-white'
                     : 'bg-gradient-to-r from-teal-400 to-teal-500 text-white hover:shadow-teal-200'
                 }`}
+                title={
+                  estaGrabando
+                    ? 'Grabando... Haz clic para detener'
+                    : estaHablando
+                    ? 'IA está hablando...'
+                    : 'Hablar con la IA'
+                }
               >
-                {grabandoVoz ? <FaMicrophoneSlash size={24} /> : <FaMicrophone size={24} />}
+                {estaGrabando ? (
+                  <FaMicrophoneSlash size={24} />
+                ) : estaHablando ? (
+                  <FaHeart size={24} className="animate-pulse" />
+                ) : (
+                  <FaMicrophone size={24} />
+                )}
               </motion.button>
 
               <motion.button
@@ -466,6 +588,7 @@ export default function PaginaChat() {
           </motion.div>
         )}
       </AnimatePresence>
+      <Footer />
     </div>
   );
 }

@@ -4,13 +4,15 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { 
+import {
   FaHeart, FaChartLine, FaCalendarAlt, FaStickyNote,
   FaBolt, FaFrown, FaMeh, FaSmile, FaGrin, FaArrowLeft,
   FaArrowUp, FaArrowDown
 } from 'react-icons/fa';
 import { toast, Toaster } from 'react-hot-toast';
 import Navegacion from '../../lib/componentes/layout/Navegacion';
+import Footer from '../../lib/componentes/layout/Footer';
+import { obtenerClienteNavegador } from '../../lib/supabase/cliente';
 
 interface RegistroAnimo {
   id: string;
@@ -39,9 +41,11 @@ export default function PaginaAnimo() {
     cargarRegistros();
   }, []);
 
-  const verificarAutenticacion = () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+  const verificarAutenticacion = async () => {
+    const supabase = obtenerClienteNavegador();
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
       router.push('/iniciar-sesion');
       return;
     }
@@ -49,19 +53,52 @@ export default function PaginaAnimo() {
 
   const cargarRegistros = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3333/api/usuarios/animo', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const supabase = obtenerClienteNavegador();
 
-      if (response.ok) {
-        const data = await response.json();
-        setRegistros(data);
+      // Obtener sesión para obtener el usuario actual
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      // Obtener el usuario_id desde la tabla Usuario
+      const { data: usuario } = await supabase
+        .from('Usuario')
+        .select('id')
+        .eq('auth_id', session.user.id)
+        .single();
+
+      if (!usuario) return;
+
+      // Obtener registros de ánimo de los últimos 30 días
+      const fechaLimite = new Date();
+      fechaLimite.setDate(fechaLimite.getDate() - 30);
+
+      const { data: registrosData, error } = await supabase
+        .from('RegistroAnimo')
+        .select('id, animo, energia, estres, notas, creado_en')
+        .eq('usuario_id', usuario.id)
+        .gte('creado_en', fechaLimite.toISOString())
+        .order('creado_en', { ascending: false });
+
+      if (error) {
+        console.error('Error al cargar registros:', error);
+        toast.error('Error al cargar registros');
+        return;
       }
+
+      // Formatear datos
+      const registrosFormateados = (registrosData || []).map((registro: any) => ({
+        id: registro.id,
+        animo: registro.animo,
+        energia: registro.energia,
+        estres: registro.estres,
+        notas: registro.notas,
+        creadoEn: registro.creado_en,
+      }));
+
+      setRegistros(registrosFormateados);
     } catch (error) {
       console.error('Error al cargar registros:', error);
+      toast.error('Error al cargar registros');
     } finally {
       setCargando(false);
     }
@@ -72,25 +109,51 @@ export default function PaginaAnimo() {
     setEnviando(true);
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3333/api/usuarios/animo', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formulario),
-      });
+      const supabase = obtenerClienteNavegador();
 
-      if (response.ok) {
-        toast.success('¡Registro guardado exitosamente!');
-        setMostrarFormulario(false);
-        setFormulario({ animo: 5, energia: 5, estres: 5, notas: '' });
-        cargarRegistros();
-      } else {
-        throw new Error('Error al guardar registro');
+      // Obtener sesión
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Sesión expirada');
+        router.push('/iniciar-sesion');
+        return;
       }
+
+      // Obtener el usuario_id
+      const { data: usuario } = await supabase
+        .from('Usuario')
+        .select('id')
+        .eq('auth_id', session.user.id)
+        .single();
+
+      if (!usuario) {
+        toast.error('Usuario no encontrado');
+        return;
+      }
+
+      // Insertar registro de ánimo
+      const { error } = await supabase
+        .from('RegistroAnimo')
+        .insert({
+          usuario_id: usuario.id,
+          animo: formulario.animo,
+          energia: formulario.energia,
+          estres: formulario.estres,
+          notas: formulario.notas || null,
+        });
+
+      if (error) {
+        console.error('Error al guardar registro:', error);
+        toast.error('Error al guardar el registro');
+        return;
+      }
+
+      toast.success('¡Registro guardado exitosamente!');
+      setMostrarFormulario(false);
+      setFormulario({ animo: 5, energia: 5, estres: 5, notas: '' });
+      cargarRegistros();
     } catch (error) {
+      console.error('Error:', error);
       toast.error('Error al guardar el registro');
     } finally {
       setEnviando(false);
@@ -442,6 +505,7 @@ export default function PaginaAnimo() {
           </motion.div>
         </div>
       )}
+      <Footer />
     </div>
   );
 }

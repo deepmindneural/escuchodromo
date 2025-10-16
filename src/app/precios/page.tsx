@@ -8,6 +8,7 @@ import {
   FaCrown, FaQuestion, FaWhatsapp, FaEnvelope
 } from 'react-icons/fa';
 import Navegacion from '../../lib/componentes/layout/Navegacion';
+import Footer from '../../lib/componentes/layout/Footer';
 
 export default function PaginaPrecios() {
   const [facturacionAnual, setFacturacionAnual] = useState(false);
@@ -230,7 +231,11 @@ export default function PaginaPrecios() {
                     </ul>
                     
                     {/* Botón CTA */}
-                    <Link href={plan.precio === 'Gratis' ? '/registrar' : '/registrar'}>
+                    <Link href={
+                      plan.precio === 'Gratis'
+                        ? '/registrar'
+                        : `/pago/stripe?plan=${plan.nombre.toLowerCase()}&periodo=${facturacionAnual ? 'anual' : 'mensual'}`
+                    }>
                       <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
@@ -331,6 +336,7 @@ export default function PaginaPrecios() {
           </div>
         </div>
       </section>
+      <Footer />
     </div>
   );
 }

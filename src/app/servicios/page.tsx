@@ -8,6 +8,7 @@ import {
   FaClock, FaGlobe, FaShieldAlt
 } from 'react-icons/fa';
 import Navegacion from '../../lib/componentes/layout/Navegacion';
+import Footer from '../../lib/componentes/layout/Footer';
 import { ImageWithFallback } from '../../lib/componentes/ui/image-with-fallback';
 
 export default function PaginaServicios() {
@@ -288,6 +289,7 @@ export default function PaginaServicios() {
           </div>
         </motion.div>
       </section>
+      <Footer />
     </div>
   );
 }

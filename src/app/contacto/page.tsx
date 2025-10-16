@@ -8,8 +8,11 @@ import {
 } from 'react-icons/fa';
 import { toast, Toaster } from 'react-hot-toast';
 import Navegacion from '../../lib/componentes/layout/Navegacion';
+import Footer from '../../lib/componentes/layout/Footer';
+import { obtenerClienteNavegador } from '../../lib/supabase/cliente';
 
 export default function PaginaContacto() {
+  const supabase = obtenerClienteNavegador();
   const [formData, setFormData] = useState({
     nombre: '',
     email: '',
@@ -63,9 +66,22 @@ export default function PaginaContacto() {
     setEnviando(true);
 
     try {
-      // Simulación de envío
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      const { data, error } = await supabase.functions.invoke('enviar-contacto', {
+        body: {
+          nombre: formData.nombre,
+          email: formData.email,
+          asunto: formData.asunto,
+          mensaje: formData.mensaje,
+          tipo: formData.tipo
+        }
+      });
+
+      if (error) {
+        console.error('Error al enviar mensaje:', error);
+        toast.error('Error al enviar el mensaje. Inténtalo de nuevo.');
+        return;
+      }
+
       toast.success('¡Mensaje enviado correctamente! Te responderemos pronto.');
       setFormData({
         nombre: '',
@@ -75,6 +91,7 @@ export default function PaginaContacto() {
         tipo: 'consulta'
       });
     } catch (error) {
+      console.error('Error:', error);
       toast.error('Error al enviar el mensaje. Inténtalo de nuevo.');
     } finally {
       setEnviando(false);
@@ -362,6 +379,7 @@ export default function PaginaContacto() {
           </motion.div>
         </div>
       </section>
+      <Footer />
     </div>
   );
 }

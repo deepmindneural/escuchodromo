@@ -4,13 +4,14 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { 
+import {
   FaArrowLeft, FaChartLine, FaDownload, FaCalendarAlt, FaLightbulb,
   FaExclamationTriangle, FaCheckCircle, FaInfoCircle, FaHeart,
   FaArrowUp, FaArrowDown, FaEquals, FaPrint, FaShare
 } from 'react-icons/fa';
 import { toast, Toaster } from 'react-hot-toast';
 import Navegacion from '../../../../lib/componentes/layout/Navegacion';
+import { obtenerClienteNavegador } from '../../../../lib/supabase/cliente';
 
 interface ResultadoEvaluacion {
   id: string;
@@ -54,9 +55,11 @@ export default function PaginaResultadoEvaluacion() {
     }
   }, [params.id]);
 
-  const verificarAutenticacion = () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+  const verificarAutenticacion = async () => {
+    const supabase = obtenerClienteNavegador();
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
       router.push('/iniciar-sesion');
       return;
     }
@@ -64,23 +67,99 @@ export default function PaginaResultadoEvaluacion() {
 
   const cargarResultado = async (id: string) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3333/api/evaluaciones/resultado/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const supabase = obtenerClienteNavegador();
 
-      if (response.ok) {
-        const data = await response.json();
-        setResultado(data);
-      } else {
-        // Usar datos mock para desarrollo
-        setResultado(resultadoMock);
+      // Obtener la evaluación con los datos del test
+      const { data: evaluacion, error: errorEvaluacion } = await supabase
+        .from('Evaluacion')
+        .select(`
+          id,
+          usuario_id,
+          test_id,
+          puntuacion,
+          severidad,
+          interpretacion,
+          recomendaciones,
+          respuestas,
+          creado_en,
+          Test (
+            id,
+            codigo,
+            nombre,
+            rangos
+          )
+        `)
+        .eq('id', id)
+        .single();
+
+      if (errorEvaluacion || !evaluacion) {
+        console.error('Error al cargar evaluación:', errorEvaluacion);
+        setError(true);
+        setCargando(false);
+        return;
       }
+
+      // Obtener evaluaciones anteriores del mismo test para calcular progreso
+      const { data: evaluacionesAnteriores } = await supabase
+        .from('Evaluacion')
+        .select('puntuacion, creado_en')
+        .eq('usuario_id', evaluacion.usuario_id)
+        .eq('test_id', evaluacion.test_id)
+        .lt('creado_en', evaluacion.creado_en)
+        .order('creado_en', { ascending: false })
+        .limit(5);
+
+      // Calcular tendencia y cambio
+      let progreso = undefined;
+      if (evaluacionesAnteriores && evaluacionesAnteriores.length > 0) {
+        const ultimaEvaluacion = evaluacionesAnteriores[0];
+        const cambio = evaluacion.puntuacion - ultimaEvaluacion.puntuacion;
+
+        let tendencia: 'mejoria' | 'estable' | 'empeoramiento';
+        if (cambio < -2) {
+          tendencia = 'mejoria';
+        } else if (cambio > 2) {
+          tendencia = 'empeoramiento';
+        } else {
+          tendencia = 'estable';
+        }
+
+        progreso = {
+          evaluacionesAnteriores: evaluacionesAnteriores.map((e: any) => ({
+            fecha: e.creado_en,
+            puntuacion: e.puntuacion,
+          })).reverse(),
+          tendencia,
+          cambio: Math.abs(cambio),
+        };
+      }
+
+      // Formatear resultado
+      const resultado: ResultadoEvaluacion = {
+        id: evaluacion.id,
+        pruebaId: evaluacion.Test.id,
+        pruebaCodigo: evaluacion.Test.codigo,
+        pruebaNombre: evaluacion.Test.nombre,
+        puntuacion: evaluacion.puntuacion,
+        severidad: evaluacion.severidad,
+        interpretacion: evaluacion.interpretacion,
+        recomendaciones: evaluacion.recomendaciones || [],
+        fecha: evaluacion.creado_en,
+        respuestas: evaluacion.respuestas || {},
+        progreso,
+        rangos: evaluacion.Test.rangos || {
+          minimo: 0,
+          leve: 4,
+          moderado: 9,
+          severo: 14,
+          maximo: 27,
+        },
+      };
+
+      setResultado(resultado);
     } catch (error) {
       console.error('Error:', error);
-      setResultado(resultadoMock);
+      setError(true);
     } finally {
       setCargando(false);
     }

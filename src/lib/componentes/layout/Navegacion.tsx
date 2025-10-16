@@ -2,14 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaHeart, FaBars, FaTimes } from 'react-icons/fa';
+import { FaHeart, FaBars, FaTimes, FaUser, FaSignOutAlt } from 'react-icons/fa';
+import { useUsuario } from '../../supabase/hooks';
+import { cerrarSesion } from '../../supabase/auth';
 
 export default function Navegacion() {
   const [menuMovilAbierto, setMenuMovilAbierto] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+  const { usuario, cargando: cargandoAuth } = useUsuario();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -19,14 +23,32 @@ export default function Navegacion() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const enlacesNavegacion = [
-    { href: '/', label: 'Inicio' },
-    { href: '/chat', label: 'Hablar con Escuchodromo' },
-    { href: '/como-funciona', label: 'Cómo Funciona' },
-    { href: '/servicios', label: 'Servicios' },
-    { href: '/evaluaciones', label: 'Evaluaciones' },
-    { href: '/precios', label: 'Precios' },
-  ];
+  const handleCerrarSesion = async () => {
+    try {
+      await cerrarSesion();
+      router.push('/');
+      setMenuMovilAbierto(false);
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    }
+  };
+
+  // Enlaces diferentes según autenticación
+  const enlacesNavegacion = usuario
+    ? [
+        { href: '/dashboard', label: 'Dashboard' },
+        { href: '/chat', label: 'Chat' },
+        { href: '/evaluaciones', label: 'Evaluaciones' },
+        { href: '/animo', label: 'Ánimo' },
+      ]
+    : [
+        { href: '/', label: 'Inicio' },
+        { href: '/chat', label: 'Hablar con Escuchodromo' },
+        { href: '/como-funciona', label: 'Cómo Funciona' },
+        { href: '/servicios', label: 'Servicios' },
+        { href: '/evaluaciones', label: 'Evaluaciones' },
+        { href: '/precios', label: 'Precios' },
+      ];
 
   return (
     <nav className="fixed w-full z-50 bg-white shadow-md py-3">
@@ -73,27 +95,50 @@ export default function Navegacion() {
 
           {/* Botones de Usuario Desktop */}
           <div className="hidden lg:flex items-center space-x-2">
-            <Link
-              href="/contacto"
-              className="px-2 xl:px-4 py-2 rounded-xl font-medium text-xs xl:text-sm transition-all duration-200 text-gray-700 hover:bg-teal-50 hover:text-teal-600"
-            >
-              Contacto
-            </Link>
-            <Link
-              href="/iniciar-sesion"
-              className="px-2 xl:px-4 py-2 rounded-xl font-medium text-xs xl:text-sm transition-all duration-200 text-gray-700 hover:bg-teal-50 hover:text-teal-600"
-            >
-              Acceder
-            </Link>
-            <Link href="/registrar">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="px-3 xl:px-6 py-2 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-bold text-xs xl:text-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
-              >
-                Registrarse
-              </motion.button>
-            </Link>
+            {usuario ? (
+              <>
+                <Link
+                  href="/perfil"
+                  className="px-2 xl:px-4 py-2 rounded-xl font-medium text-xs xl:text-sm transition-all duration-200 text-gray-700 hover:bg-teal-50 hover:text-teal-600 flex items-center gap-2"
+                >
+                  <FaUser />
+                  Perfil
+                </Link>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleCerrarSesion}
+                  className="px-3 xl:px-6 py-2 bg-gradient-to-r from-red-500 to-rose-500 text-white font-bold text-xs xl:text-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
+                >
+                  <FaSignOutAlt />
+                  Cerrar Sesión
+                </motion.button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/contacto"
+                  className="px-2 xl:px-4 py-2 rounded-xl font-medium text-xs xl:text-sm transition-all duration-200 text-gray-700 hover:bg-teal-50 hover:text-teal-600"
+                >
+                  Contacto
+                </Link>
+                <Link
+                  href="/iniciar-sesion"
+                  className="px-2 xl:px-4 py-2 rounded-xl font-medium text-xs xl:text-sm transition-all duration-200 text-gray-700 hover:bg-teal-50 hover:text-teal-600"
+                >
+                  Acceder
+                </Link>
+                <Link href="/registrar">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="px-3 xl:px-6 py-2 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-bold text-xs xl:text-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    Registrarse
+                  </motion.button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Botón Menú Móvil */}
@@ -131,29 +176,51 @@ export default function Navegacion() {
                     {enlace.label}
                   </Link>
                 ))}
-                
+
                 <div className="border-t pt-4 space-y-2">
-                  <Link
-                    href="/contacto"
-                    onClick={() => setMenuMovilAbierto(false)}
-                    className="block text-center px-6 py-4 text-gray-700 font-medium rounded-xl hover:bg-teal-50 hover:text-teal-600 transition-colors"
-                  >
-                    Contacto
-                  </Link>
-                  <Link
-                    href="/iniciar-sesion"
-                    onClick={() => setMenuMovilAbierto(false)}
-                    className="block text-center px-6 py-4 text-gray-700 font-medium rounded-xl hover:bg-teal-50 hover:text-teal-600 transition-colors"
-                  >
-                    Acceder
-                  </Link>
-                  <Link
-                    href="/registrar"
-                    onClick={() => setMenuMovilAbierto(false)}
-                    className="block text-center px-6 py-4 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-bold rounded-xl shadow-lg"
-                  >
-                    Registrarse
-                  </Link>
+                  {usuario ? (
+                    <>
+                      <Link
+                        href="/perfil"
+                        onClick={() => setMenuMovilAbierto(false)}
+                        className="block text-center px-6 py-4 text-gray-700 font-medium rounded-xl hover:bg-teal-50 hover:text-teal-600 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <FaUser />
+                        Mi Perfil
+                      </Link>
+                      <button
+                        onClick={handleCerrarSesion}
+                        className="w-full text-center px-6 py-4 bg-gradient-to-r from-red-500 to-rose-500 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2"
+                      >
+                        <FaSignOutAlt />
+                        Cerrar Sesión
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        href="/contacto"
+                        onClick={() => setMenuMovilAbierto(false)}
+                        className="block text-center px-6 py-4 text-gray-700 font-medium rounded-xl hover:bg-teal-50 hover:text-teal-600 transition-colors"
+                      >
+                        Contacto
+                      </Link>
+                      <Link
+                        href="/iniciar-sesion"
+                        onClick={() => setMenuMovilAbierto(false)}
+                        className="block text-center px-6 py-4 text-gray-700 font-medium rounded-xl hover:bg-teal-50 hover:text-teal-600 transition-colors"
+                      >
+                        Acceder
+                      </Link>
+                      <Link
+                        href="/registrar"
+                        onClick={() => setMenuMovilAbierto(false)}
+                        className="block text-center px-6 py-4 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-bold rounded-xl shadow-lg"
+                      >
+                        Registrarse
+                      </Link>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

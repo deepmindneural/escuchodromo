@@ -14,24 +14,24 @@ import {
   LogOut,
   Menu,
   X,
+  FileText,
 } from 'lucide-react';
 import { Button } from '../../lib/componentes/ui/button';
 import { cn } from '../../lib/utilidades';
+import { obtenerClienteNavegador } from '../../lib/supabase/cliente';
 
 interface Usuario {
   id: string;
   email: string;
   rol: string;
+  nombre: string;
 }
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/admin' },
+  { icon: FileText, label: 'Historiales', href: '/admin/historiales' },
   { icon: Users, label: 'Usuarios', href: '/admin/usuarios' },
-  { icon: MessageSquare, label: 'Conversaciones', href: '/admin/conversaciones' },
-  { icon: Brain, label: 'Evaluaciones', href: '/admin/evaluaciones' },
-  { icon: CreditCard, label: 'Finanzas', href: '/admin/finanzas' },
-  { icon: Bell, label: 'Notificaciones', href: '/admin/notificaciones' },
-  { icon: Settings, label: 'Configuración', href: '/admin/configuracion' },
+  { icon: CreditCard, label: 'Suscripciones', href: '/admin/suscripciones' },
 ];
 
 export default function AdminLayout({
@@ -49,29 +49,35 @@ export default function AdminLayout({
   }, []);
 
   const verificarAdmin = async () => {
+    const supabase = obtenerClienteNavegador();
+
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
         router.push('/iniciar-sesion');
         return;
       }
 
-      const response = await fetch('http://localhost:3333/api/autenticacion/yo', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      // Obtener datos del usuario
+      const { data: usuarioData, error } = await supabase
+        .from('Usuario')
+        .select('id, email, nombre, rol')
+        .eq('auth_id', session.user.id)
+        .single();
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.rol === 'ADMIN') {
-          setUsuario(data);
-        } else {
-          router.push('/dashboard');
-        }
-      } else {
+      if (error || !usuarioData) {
         router.push('/iniciar-sesion');
+        return;
       }
+
+      // Verificar que sea admin
+      if (usuarioData.rol !== 'ADMIN') {
+        router.push('/dashboard');
+        return;
+      }
+
+      setUsuario(usuarioData);
     } catch (error) {
       console.error('Error al verificar admin:', error);
       router.push('/iniciar-sesion');
@@ -80,8 +86,9 @@ export default function AdminLayout({
     }
   };
 
-  const cerrarSesion = () => {
-    localStorage.removeItem('token');
+  const cerrarSesion = async () => {
+    const supabase = obtenerClienteNavegador();
+    await supabase.auth.signOut();
     router.push('/');
   };
 

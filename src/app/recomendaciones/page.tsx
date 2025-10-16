@@ -4,13 +4,15 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
+import {
   FaHeart, FaBrain, FaLeaf, FaDumbbell, FaMusic, FaBook,
   FaArrowLeft, FaPlay, FaCheckCircle, FaExternalLinkAlt,
-  FaStar, FaClock, FaFilter, FaRandom
+  FaStar, FaClock, FaFilter, FaRandom, FaUserMd, FaLightbulb
 } from 'react-icons/fa';
 import { toast, Toaster } from 'react-hot-toast';
 import Navegacion from '../../lib/componentes/layout/Navegacion';
+import Footer from '../../lib/componentes/layout/Footer';
+import { obtenerClienteNavegador } from '../../lib/supabase/cliente';
 
 interface Recomendacion {
   id: string;
@@ -18,110 +20,164 @@ interface Recomendacion {
   prioridad: number;
   titulo: string;
   descripcion: string;
-  urlAccion?: string;
+  url_accion?: string;
   duracion?: string;
   dificultad?: string;
   categoria: string;
-  completada?: boolean;
+  esta_activa: boolean;
 }
 
 export default function PaginaRecomendaciones() {
   const router = useRouter();
+  const supabase = obtenerClienteNavegador();
   const [recomendaciones, setRecomendaciones] = useState<Recomendacion[]>([]);
   const [cargando, setCargando] = useState(true);
-  const [filtroCategoria, setFiltroCategoria] = useState('todas');
-  const [mostrarCompletadas, setMostrarCompletadas] = useState(false);
+  const [generando, setGenerando] = useState(false);
+  const [filtroTipo, setFiltroTipo] = useState('todos');
+  const [usuarioId, setUsuarioId] = useState<string | null>(null);
 
   useEffect(() => {
     verificarAutenticacion();
-    cargarRecomendaciones();
   }, []);
 
-  const verificarAutenticacion = () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+  const verificarAutenticacion = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
       router.push('/iniciar-sesion');
       return;
     }
+
+    // Buscar el usuario en la tabla Usuario
+    const { data: usuario } = await supabase
+      .from('Usuario')
+      .select('id')
+      .eq('auth_id', user.id)
+      .single();
+
+    if (usuario) {
+      setUsuarioId(usuario.id);
+      cargarRecomendaciones(usuario.id);
+    }
   };
 
-  const cargarRecomendaciones = async () => {
+  const cargarRecomendaciones = async (userId: string) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3333/api/recomendaciones', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      setCargando(true);
 
-      if (response.ok) {
-        const data = await response.json();
-        setRecomendaciones(data);
+      // Cargar recomendaciones activas del usuario
+      const { data, error } = await supabase
+        .from('Recomendacion')
+        .select('*')
+        .eq('usuario_id', userId)
+        .eq('esta_activa', true)
+        .order('prioridad', { ascending: false })
+        .order('creado_en', { ascending: false });
+
+      if (error) {
+        console.error('Error al cargar recomendaciones:', error);
+        toast.error('Error al cargar recomendaciones');
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        // Si no hay recomendaciones, ofrecer generarlas
+        toast.info('No tienes recomendaciones aún. ¡Genera algunas!');
+        setRecomendaciones([]);
       } else {
-        // Si no hay recomendaciones del backend, usar datos mock
-        setRecomendaciones(recomendacionesMock);
+        // Mapear el tipo a categoría para compatibilidad con la UI
+        const recomendacionesMapeadas = data.map(rec => ({
+          ...rec,
+          categoria: rec.tipo
+        }));
+        setRecomendaciones(recomendacionesMapeadas);
       }
     } catch (error) {
       console.error('Error al cargar recomendaciones:', error);
-      // Usar datos mock como fallback
-      setRecomendaciones(recomendacionesMock);
+      toast.error('Error al cargar recomendaciones');
     } finally {
       setCargando(false);
     }
   };
 
-  const marcarCompletada = async (id: string) => {
+  const generarNuevasRecomendaciones = async () => {
+    if (!usuarioId) return;
+
+    setGenerando(true);
+    toast.loading('Generando recomendaciones personalizadas...', { id: 'generando' });
+
     try {
-      const token = localStorage.getItem('token');
-      await fetch(`http://localhost:3333/api/recomendaciones/${id}/completar`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+      const { data, error } = await supabase.functions.invoke('generar-recomendaciones', {
+        body: { usuario_id: usuarioId }
       });
 
-      setRecomendaciones(prev => 
-        prev.map(rec => 
-          rec.id === id ? { ...rec, completada: true } : rec
-        )
-      );
+      if (error) {
+        console.error('Error al generar recomendaciones:', error);
+        toast.error('Error al generar recomendaciones', { id: 'generando' });
+        return;
+      }
+
+      toast.success(`¡${data.total} recomendaciones generadas!`, { id: 'generando' });
+
+      // Recargar recomendaciones
+      await cargarRecomendaciones(usuarioId);
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Error al generar recomendaciones', { id: 'generando' });
+    } finally {
+      setGenerando(false);
+    }
+  };
+
+  const desactivarRecomendacion = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('Recomendacion')
+        .update({ esta_activa: false })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error al desactivar recomendación:', error);
+        return;
+      }
+
+      setRecomendaciones(prev => prev.filter(rec => rec.id !== id));
       toast.success('¡Recomendación completada! 🎉');
     } catch (error) {
-      // Actualizar localmente aunque falle la API
-      setRecomendaciones(prev => 
-        prev.map(rec => 
-          rec.id === id ? { ...rec, completada: true } : rec
-        )
-      );
-      toast.success('¡Recomendación completada! 🎉');
+      console.error('Error:', error);
+      toast.error('Error al completar recomendación');
     }
   };
 
   const obtenerIconoCategoria = (categoria: string) => {
     const iconos = {
+      'actividad': <FaDumbbell className="text-blue-500" />,
+      'recurso': <FaBook className="text-indigo-500" />,
+      'habito': <FaLeaf className="text-green-500" />,
+      'profesional': <FaUserMd className="text-red-500" />,
+      'emergencia': <FaHeart className="text-red-600" />,
       'respiracion': <FaLeaf className="text-green-500" />,
       'meditacion': <FaBrain className="text-purple-500" />,
       'ejercicio': <FaDumbbell className="text-blue-500" />,
       'musica': <FaMusic className="text-pink-500" />,
       'lectura': <FaBook className="text-indigo-500" />,
-      'bienestar': <FaHeart className="text-red-500" />
+      'bienestar': <FaHeart className="text-teal-500" />
     };
-    return iconos[categoria as keyof typeof iconos] || <FaHeart className="text-teal-500" />;
+    return iconos[categoria as keyof typeof iconos] || <FaLightbulb className="text-yellow-500" />;
   };
 
   const obtenerColorPrioridad = (prioridad: number) => {
-    if (prioridad >= 4) return 'border-red-300 bg-red-50';
+    if (prioridad >= 5) return 'border-red-400 bg-red-50';
+    if (prioridad >= 4) return 'border-orange-300 bg-orange-50';
     if (prioridad >= 3) return 'border-yellow-300 bg-yellow-50';
     return 'border-green-300 bg-green-50';
   };
 
   const recomendacionesFiltradas = recomendaciones.filter(rec => {
-    const cumpleFiltroCategoria = filtroCategoria === 'todas' || rec.categoria === filtroCategoria;
-    const cumpleFiltroCompletada = mostrarCompletadas || !rec.completada;
-    return cumpleFiltroCategoria && cumpleFiltroCompletada;
+    return filtroTipo === 'todos' || rec.tipo === filtroTipo;
   });
 
-  const categorias = ['todas', 'respiracion', 'meditacion', 'ejercicio', 'musica', 'lectura', 'bienestar'];
+  const tipos = ['todos', 'actividad', 'recurso', 'habito', 'profesional'];
 
   if (cargando) {
     return (
@@ -165,37 +221,32 @@ export default function PaginaRecomendaciones() {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => window.location.reload()}
-              className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+              onClick={generarNuevasRecomendaciones}
+              disabled={generando}
+              className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
             >
               <FaRandom className="inline mr-2" />
-              Nuevas Sugerencias
+              {generando ? 'Generando...' : 'Generar Recomendaciones'}
             </motion.button>
           </div>
 
           {/* Estadísticas rápidas */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div className="bg-white rounded-xl p-6 shadow-lg text-center">
               <div className="text-3xl font-bold text-teal-600 mb-1">{recomendaciones.length}</div>
               <div className="text-sm text-gray-600">Total Recomendaciones</div>
             </div>
             <div className="bg-white rounded-xl p-6 shadow-lg text-center">
-              <div className="text-3xl font-bold text-green-600 mb-1">
-                {recomendaciones.filter(r => r.completada).length}
-              </div>
-              <div className="text-sm text-gray-600">Completadas</div>
-            </div>
-            <div className="bg-white rounded-xl p-6 shadow-lg text-center">
-              <div className="text-3xl font-bold text-yellow-600 mb-1">
+              <div className="text-3xl font-bold text-red-600 mb-1">
                 {recomendaciones.filter(r => r.prioridad >= 4).length}
               </div>
               <div className="text-sm text-gray-600">Alta Prioridad</div>
             </div>
             <div className="bg-white rounded-xl p-6 shadow-lg text-center">
-              <div className="text-3xl font-bold text-blue-600 mb-1">
-                {Math.round((recomendaciones.filter(r => r.completada).length / recomendaciones.length) * 100) || 0}%
+              <div className="text-3xl font-bold text-purple-600 mb-1">
+                {recomendaciones.filter(r => r.tipo === 'profesional').length}
               </div>
-              <div className="text-sm text-gray-600">Progreso</div>
+              <div className="text-sm text-gray-600">Consultas Profesionales</div>
             </div>
           </div>
 
@@ -206,36 +257,23 @@ export default function PaginaRecomendaciones() {
                 <FaFilter className="text-gray-600" />
                 <span className="font-medium text-gray-700">Filtros:</span>
               </div>
-              
+
               <div className="flex flex-wrap gap-2">
-                {categorias.map(categoria => (
+                {tipos.map(tipo => (
                   <motion.button
-                    key={categoria}
+                    key={tipo}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => setFiltroCategoria(categoria)}
+                    onClick={() => setFiltroTipo(tipo)}
                     className={`px-4 py-2 rounded-full font-medium transition-all duration-200 ${
-                      filtroCategoria === categoria
+                      filtroTipo === tipo
                         ? 'bg-teal-500 text-white shadow-lg'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
-                    {categoria.charAt(0).toUpperCase() + categoria.slice(1)}
+                    {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
                   </motion.button>
                 ))}
-              </div>
-              
-              <div className="ml-auto flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="mostrarCompletadas"
-                  checked={mostrarCompletadas}
-                  onChange={(e) => setMostrarCompletadas(e.target.checked)}
-                  className="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
-                />
-                <label htmlFor="mostrarCompletadas" className="text-sm text-gray-700">
-                  Mostrar completadas
-                </label>
               </div>
             </div>
           </div>
@@ -251,9 +289,7 @@ export default function PaginaRecomendaciones() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ delay: index * 0.1 }}
-                  className={`bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-l-4 ${
-                    recomendacion.completada ? 'opacity-75' : ''
-                  } ${obtenerColorPrioridad(recomendacion.prioridad)}`}
+                  className={`bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-l-4 ${obtenerColorPrioridad(recomendacion.prioridad)}`}
                 >
                   <div className="p-6">
                     <div className="flex items-start justify-between mb-4">
@@ -273,13 +309,6 @@ export default function PaginaRecomendaciones() {
                           )}
                         </div>
                       </div>
-                      
-                      {recomendacion.completada && (
-                        <div className="flex items-center gap-1 bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium">
-                          <FaCheckCircle />
-                          Completada
-                        </div>
-                      )}
                     </div>
                     
                     <h3 className="text-xl font-bold text-gray-900 mb-3">
@@ -306,28 +335,28 @@ export default function PaginaRecomendaciones() {
                         )}
                       </div>
                     )}
-                    
+
                     <div className="flex gap-2">
-                      {!recomendacion.completada && (
+                      {recomendacion.esta_activa && (
                         <motion.button
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
-                          onClick={() => marcarCompletada(recomendacion.id)}
+                          onClick={() => desactivarRecomendacion(recomendacion.id)}
                           className="flex-1 px-4 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-bold rounded-xl hover:shadow-lg transition-all duration-200"
                         >
-                          <FaPlay className="inline mr-2" />
-                          Comenzar
+                          <FaCheckCircle className="inline mr-2" />
+                          Marcar Completada
                         </motion.button>
                       )}
-                      
-                      {recomendacion.urlAccion && (
+
+                      {recomendacion.url_accion && (
                         <motion.a
-                          href={recomendacion.urlAccion}
+                          href={recomendacion.url_accion}
                           target="_blank"
                           rel="noopener noreferrer"
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
-                          className={`${recomendacion.completada ? 'flex-1' : ''} px-4 py-3 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-all duration-200 text-center`}
+                          className="px-4 py-3 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-all duration-200 text-center"
                         >
                           <FaExternalLinkAlt className="inline mr-2" />
                           Ver Más
@@ -362,72 +391,7 @@ export default function PaginaRecomendaciones() {
           )}
         </div>
       </div>
+      <Footer />
     </div>
   );
 }
-
-// Datos mock para cuando no hay conexión con el backend
-const recomendacionesMock: Recomendacion[] = [
-  {
-    id: '1',
-    tipo: 'respiracion',
-    prioridad: 5,
-    titulo: 'Ejercicio de Respiración 4-7-8',
-    descripcion: 'Una técnica simple pero poderosa para reducir la ansiedad y promover la relajación profunda.',
-    categoria: 'respiracion',
-    duracion: '5-10 min',
-    dificultad: 'Fácil'
-  },
-  {
-    id: '2',
-    tipo: 'meditacion',
-    prioridad: 4,
-    titulo: 'Meditación Mindfulness Matutina',
-    descripcion: 'Comienza tu día con claridad mental y tranquilidad interior a través de esta meditación guiada.',
-    categoria: 'meditacion',
-    duracion: '15 min',
-    dificultad: 'Principiante',
-    urlAccion: 'https://www.youtube.com/watch?v=meditation'
-  },
-  {
-    id: '3',
-    tipo: 'ejercicio',
-    prioridad: 3,
-    titulo: 'Caminata Consciente al Aire Libre',
-    descripcion: 'Conecta con la naturaleza mientras ejercitas tu cuerpo y calmas tu mente.',
-    categoria: 'ejercicio',
-    duracion: '30 min',
-    dificultad: 'Fácil'
-  },
-  {
-    id: '4',
-    tipo: 'musica',
-    prioridad: 2,
-    titulo: 'Playlist de Relajación Personalizada',
-    descripcion: 'Música cuidadosamente seleccionada para reducir el estrés y mejorar tu estado de ánimo.',
-    categoria: 'musica',
-    duracion: '20-60 min',
-    dificultad: 'Fácil',
-    urlAccion: 'https://open.spotify.com/playlist/relaxation'
-  },
-  {
-    id: '5',
-    tipo: 'lectura',
-    prioridad: 3,
-    titulo: 'Diario de Gratitud',
-    descripcion: 'Escribe tres cosas por las que te sientes agradecido cada día para mejorar tu bienestar emocional.',
-    categoria: 'lectura',
-    duracion: '10 min',
-    dificultad: 'Fácil'
-  },
-  {
-    id: '6',
-    tipo: 'bienestar',
-    prioridad: 4,
-    titulo: 'Rutina de Autocuidado Nocturna',
-    descripcion: 'Crea un ritual relajante antes de dormir para mejorar la calidad de tu descanso.',
-    categoria: 'bienestar',
-    duracion: '45 min',
-    dificultad: 'Medio'
-  }
-];

@@ -33,7 +33,19 @@
       "Bash(xargs kill:*)",
       "Bash(cat:*)",
       "Bash(pbcopy)",
-      "Bash(open \"https://supabase.com/dashboard/project/cvezncgcdsjntzrzztrj/sql/new\")"
+      "Bash(open \"https://supabase.com/dashboard/project/cvezncgcdsjntzrzztrj/sql/new\")",
+      "WebSearch",
+      "Bash(mkdir:*)",
+      "WebFetch(domain:groq.com)",
+      "WebFetch(domain:ai.google.dev)",
+      "Bash(supabase --version:*)",
+      "Bash(npx supabase:*)",
+      "Bash(npx tsx:*)",
+      "Bash(for page in \"como-funciona\" \"servicios\" \"contacto\" \"iniciar-sesion\" \"precios\" \"registrar\")",
+      "Bash(do file=\"/Volumes/StarkT7/Proyectos/CLIENETS/proyectos/ESCUCHODROMO/Escuchodromo 2/escuchodromo/src/app/$page/page.tsx\" if [ -f \"$file\" ])",
+      "Bash(then echo \"=== $page ===\" head -20 \"$file\")",
+      "Bash(head -5 echo \"...\" tail -5 \"$file\" fi done)",
+      "Bash(git log:*)"
     ],
     "deny": []
   }

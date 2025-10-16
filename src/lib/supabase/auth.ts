@@ -19,11 +19,15 @@ interface CredencialesLogin {
 
 /**
  * Registrar un nuevo usuario
+ *
+ * NOTA: El perfil de usuario se crea automáticamente mediante un trigger de base de datos.
+ * Ver: CREAR_TRIGGER_REGISTRO.sql
  */
 export async function registrarUsuario({ email, password, nombre }: CredencialesRegistro) {
   const supabase = obtenerClienteNavegador()
 
-  // 1. Crear usuario en Supabase Auth
+  // Crear usuario en Supabase Auth
+  // El trigger 'on_auth_user_created' creará automáticamente el perfil en Usuario y PerfilUsuario
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
@@ -31,6 +35,9 @@ export async function registrarUsuario({ email, password, nombre }: Credenciales
       data: {
         nombre: nombre || email.split('@')[0],
       },
+      // Desactivar confirmación de email para desarrollo (opcional)
+      // En producción, esto debe estar habilitado en Supabase Dashboard
+      emailRedirectTo: `${window.location.origin}/dashboard`,
     },
   })
 
@@ -42,36 +49,7 @@ export async function registrarUsuario({ email, password, nombre }: Credenciales
     throw new Error('No se pudo crear el usuario')
   }
 
-  // 2. Crear perfil en tabla Usuario
-  const { error: perfilError } = await supabase.from('Usuario').insert({
-    auth_id: authData.user.id,
-    email,
-    nombre: nombre || email.split('@')[0],
-    rol: 'USUARIO',
-  })
-
-  if (perfilError) {
-    console.error('Error al crear perfil:', perfilError)
-    throw new Error(`Error al crear perfil: ${perfilError.message}`)
-  }
-
-  // 3. Crear PerfilUsuario
-  const { data: usuarioData } = await supabase
-    .from('Usuario')
-    .select('id')
-    .eq('auth_id', authData.user.id)
-    .single()
-
-  if (usuarioData) {
-    await supabase.from('PerfilUsuario').insert({
-      usuario_id: usuarioData.id,
-      idioma_preferido: 'es',
-      moneda: 'COP',
-      zona_horaria: 'America/Bogota',
-      consentimiento_datos: true,
-    })
-  }
-
+  // El perfil ya fue creado por el trigger, solo retornamos los datos
   return authData
 }
 
@@ -87,6 +65,18 @@ export async function iniciarSesion({ email, password }: CredencialesLogin) {
   })
 
   if (error) {
+    console.error('Error completo de login:', error)
+    console.error('Código:', error.status)
+    console.error('Mensaje:', error.message)
+
+    // Mensajes más claros según el error
+    if (error.message.includes('Invalid login credentials')) {
+      throw new Error('Email o contraseña incorrectos')
+    }
+    if (error.message.includes('Email not confirmed')) {
+      throw new Error('Debes confirmar tu email antes de iniciar sesión. Revisa tu bandeja de entrada.')
+    }
+
     throw new Error(`Error al iniciar sesión: ${error.message}`)
   }
 

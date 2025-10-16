@@ -4,230 +4,263 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Boton } from '../../../lib/componentes/ui/boton';
 import Navegacion from '../../../lib/componentes/layout/Navegacion';
+import { obtenerClienteNavegador } from '../../../lib/supabase/cliente';
+import toast from 'react-hot-toast';
+
+interface Opcion {
+  valor: number;
+  texto: string;
+  texto_en?: string;
+}
 
 interface Pregunta {
   id: string;
   orden: number;
   texto: string;
-  textoEn?: string;
-  opciones: string;
+  texto_en?: string;
+  opciones: Opcion[];
 }
 
-interface Prueba {
+interface Test {
   id: string;
   codigo: string;
   nombre: string;
   descripcion: string;
-  preguntas: Pregunta[];
+  categoria: string;
 }
 
-interface Opcion {
-  valor: number;
-  etiqueta: string;
-  etiquetaEn?: string;
-}
-
-export default function PaginaEvaluacion() {
+export default function PaginaTestIndividual() {
   const router = useRouter();
   const params = useParams();
   const codigo = params.codigo as string;
-  
-  const [prueba, setPrueba] = useState<Prueba | null>(null);
-  const [preguntaActual, setPreguntaActual] = useState(0);
-  const [respuestas, setRespuestas] = useState<number[]>([]);
+
+  const [test, setTest] = useState<Test | null>(null);
+  const [preguntas, setPreguntas] = useState<Pregunta[]>([]);
+  const [respuestas, setRespuestas] = useState<Record<string, number>>({});
   const [cargando, setCargando] = useState(true);
-  const [enviando, setEnviando] = useState(false);
+  const [procesando, setProcesando] = useState(false);
+  const supabase = obtenerClienteNavegador();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      router.push('/iniciar-sesion');
-      return;
-    }
+    cargarTestYPreguntas();
+  }, [codigo]);
 
-    cargarPrueba();
-  }, [codigo, router]);
-
-  const cargarPrueba = async () => {
+  const cargarTestYPreguntas = async () => {
     try {
-      const response = await fetch(`http://localhost:3333/evaluaciones/pruebas/${codigo}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+      // Cargar información del test
+      const { data: testData, error: testError } = await supabase
+        .from('Test')
+        .select('*')
+        .eq('codigo', codigo)
+        .single();
 
-      if (response.ok) {
-        const data = await response.json();
-        setPrueba(data);
-        setRespuestas(new Array(data.preguntas.length).fill(-1));
+      if (testError || !testData) {
+        toast.error('Test no encontrado');
+        router.push('/evaluaciones');
+        return;
       }
+
+      setTest(testData);
+
+      // Cargar preguntas
+      const { data: preguntasData, error: preguntasError } = await supabase
+        .from('Pregunta')
+        .select('*')
+        .eq('test_id', testData.id)
+        .order('orden');
+
+      if (preguntasError) {
+        console.error('Error al cargar preguntas:', preguntasError);
+        toast.error('Error al cargar las preguntas');
+        return;
+      }
+
+      setPreguntas(preguntasData || []);
     } catch (error) {
-      console.error('Error al cargar prueba:', error);
+      console.error('Error:', error);
+      toast.error('Error al cargar el test');
     } finally {
       setCargando(false);
     }
   };
 
-  const seleccionarRespuesta = (valor: number) => {
-    const nuevasRespuestas = [...respuestas];
-    nuevasRespuestas[preguntaActual] = valor;
-    setRespuestas(nuevasRespuestas);
+  const handleRespuesta = (preguntaId: string, valor: number) => {
+    setRespuestas((prev) => ({
+      ...prev,
+      [preguntaId]: valor
+    }));
   };
 
-  const siguientePregunta = () => {
-    if (preguntaActual < (prueba?.preguntas.length || 0) - 1) {
-      setPreguntaActual(preguntaActual + 1);
+  const todasRespondidas = () => {
+    return preguntas.every((pregunta) => respuestas[pregunta.id] !== undefined);
+  };
+
+  const handleEnviar = async () => {
+    if (!todasRespondidas()) {
+      toast.error('Por favor responde todas las preguntas');
+      return;
     }
-  };
 
-  const preguntaAnterior = () => {
-    if (preguntaActual > 0) {
-      setPreguntaActual(preguntaActual - 1);
-    }
-  };
+    if (!test) return;
 
-  const enviarRespuestas = async () => {
-    if (!prueba) return;
-    
-    setEnviando(true);
-    
+    setProcesando(true);
+
     try {
-      const response = await fetch('http://localhost:3333/evaluaciones/respuestas', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          codigoPrueba: prueba.codigo,
-          respuestas: respuestas,
-        }),
+      // Preparar respuestas en el formato esperado
+      const respuestasArray = Object.entries(respuestas).map(([pregunta_id, valor]) => ({
+        pregunta_id,
+        valor
+      }));
+
+      // Llamar al Edge Function
+      const { data, error } = await supabase.functions.invoke('procesar-evaluacion', {
+        body: {
+          test_id: test.id,
+          respuestas: respuestasArray
+        }
       });
 
-      if (response.ok) {
-        const resultado = await response.json();
-        router.push(`/evaluaciones/resultado/${resultado.id}`);
+      if (error) {
+        console.error('Error al procesar evaluación:', error);
+        toast.error('Error al procesar la evaluación');
+        return;
       }
+
+      // Guardar resultado en localStorage para mostrar en página de resultados
+      localStorage.setItem('ultimo_resultado_evaluacion', JSON.stringify(data));
+
+      // Redirigir a página de resultados
+      router.push(`/evaluaciones/${codigo}/resultados`);
     } catch (error) {
-      console.error('Error al enviar respuestas:', error);
+      console.error('Error:', error);
+      toast.error('Error al enviar la evaluación');
     } finally {
-      setEnviando(false);
+      setProcesando(false);
     }
+  };
+
+  const porcentajeCompletado = () => {
+    const respondidas = Object.keys(respuestas).length;
+    return Math.round((respondidas / preguntas.length) * 100);
   };
 
   if (cargando) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="min-h-screen bg-gray-50">
+        <Navegacion />
+        <div className="flex justify-center items-center h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        </div>
       </div>
     );
   }
 
-  if (!prueba) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Prueba no encontrada</p>
-      </div>
-    );
+  if (!test) {
+    return null;
   }
-
-  const pregunta = prueba.preguntas[preguntaActual];
-  const opciones: Opcion[] = JSON.parse(pregunta.opciones);
-  const progreso = ((preguntaActual + 1) / prueba.preguntas.length) * 100;
-  const todasRespondidas = respuestas.every(r => r !== -1);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Navegacion />
-      <div className="container mx-auto px-4 py-8 max-w-2xl pt-20">
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold mb-2">{prueba.nombre}</h1>
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-sm text-gray-600">
-                Pregunta {preguntaActual + 1} de {prueba.preguntas.length}
-              </span>
-              <span className="text-sm text-gray-600">
-                {Math.round(progreso)}% completado
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-primary-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${progreso}%` }}
-              />
-            </div>
-          </div>
 
-          <div className="mb-8">
-            <h2 className="text-lg font-medium mb-6">{pregunta.texto}</h2>
-            
-            <div className="space-y-3">
-              {opciones.map((opcion) => (
-                <button
-                  key={opcion.valor}
-                  onClick={() => seleccionarRespuesta(opcion.valor)}
-                  className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                    respuestas[preguntaActual] === opcion.valor
-                      ? 'border-primary-600 bg-primary-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <div
-                      className={`w-5 h-5 rounded-full border-2 mr-3 flex items-center justify-center ${
-                        respuestas[preguntaActual] === opcion.valor
-                          ? 'border-primary-600'
-                          : 'border-gray-400'
-                      }`}
-                    >
-                      {respuestas[preguntaActual] === opcion.valor && (
-                        <div className="w-3 h-3 bg-primary-600 rounded-full" />
-                      )}
-                    </div>
-                    <span className="font-medium">{opcion.etiqueta}</span>
-                  </div>
-                </button>
-              ))}
+      <header className="bg-white shadow mt-20">
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{test.nombre}</h1>
+              <p className="text-gray-600 mt-1">{test.descripcion}</p>
+              <div className="mt-2 flex items-center gap-4">
+                <span className="text-sm text-gray-500">
+                  {preguntas.length} preguntas
+                </span>
+                <span className="text-sm font-medium text-primary-600">
+                  {porcentajeCompletado()}% completado
+                </span>
+              </div>
             </div>
-          </div>
-
-          <div className="flex justify-between">
             <Boton
               variante="contorno"
-              onClick={preguntaAnterior}
-              disabled={preguntaActual === 0}
+              onClick={() => router.push('/evaluaciones')}
             >
-              Anterior
+              Cancelar
             </Boton>
+          </div>
 
-            {preguntaActual === prueba.preguntas.length - 1 ? (
-              <Boton
-                onClick={enviarRespuestas}
-                disabled={!todasRespondidas || enviando}
-              >
-                {enviando ? 'Enviando...' : 'Finalizar'}
-              </Boton>
-            ) : (
-              <Boton
-                onClick={siguientePregunta}
-                disabled={respuestas[preguntaActual] === -1}
-              >
-                Siguiente
-              </Boton>
-            )}
+          {/* Barra de progreso */}
+          <div className="mt-4 w-full bg-gray-200 rounded-full h-2">
+            <div
+              className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${porcentajeCompletado()}%` }}
+            ></div>
+          </div>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-8 max-w-3xl">
+        <div className="space-y-8">
+          {preguntas.map((pregunta, index) => (
+            <div key={pregunta.id} className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-8 h-8 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center font-bold">
+                  {index + 1}
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">
+                    {pregunta.texto}
+                  </h3>
+
+                  <div className="space-y-2">
+                    {pregunta.opciones.map((opcion) => (
+                      <label
+                        key={opcion.valor}
+                        className={`flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                          respuestas[pregunta.id] === opcion.valor
+                            ? 'border-primary-500 bg-primary-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name={`pregunta-${pregunta.id}`}
+                          value={opcion.valor}
+                          checked={respuestas[pregunta.id] === opcion.valor}
+                          onChange={() => handleRespuesta(pregunta.id, opcion.valor)}
+                          className="w-4 h-4 text-primary-600 focus:ring-primary-500"
+                        />
+                        <span className="ml-3 text-gray-700">{opcion.texto}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-8 bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">
+                {Object.keys(respuestas).length} de {preguntas.length} preguntas respondidas
+              </p>
+            </div>
+            <Boton
+              onClick={handleEnviar}
+              deshabilitado={!todasRespondidas() || procesando}
+              className="min-w-[200px]"
+            >
+              {procesando ? 'Procesando...' : 'Enviar Evaluación'}
+            </Boton>
           </div>
         </div>
 
-        <div className="mt-6 text-center">
-          <button
-            onClick={() => router.push('/evaluaciones')}
-            className="text-gray-600 hover:text-gray-800"
-          >
-            Cancelar evaluación
-          </button>
+        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-800">
+            <strong>Importante:</strong> Responde con honestidad basándote en cómo te has sentido
+            en las últimas 2 semanas. No hay respuestas correctas o incorrectas.
+          </p>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

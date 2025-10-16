@@ -5,53 +5,66 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Boton } from '../../lib/componentes/ui/boton';
 import Navegacion from '../../lib/componentes/layout/Navegacion';
+import Footer from '../../lib/componentes/layout/Footer';
+import { obtenerClienteNavegador } from '../../lib/supabase/cliente';
 
-interface Prueba {
+interface Test {
   id: string;
   codigo: string;
   nombre: string;
   descripcion: string;
   categoria: string;
-  _count: {
-    preguntas: number;
-  };
+  total_preguntas: number;
 }
 
 export default function PaginaEvaluaciones() {
   const router = useRouter();
-  const [pruebas, setPruebas] = useState<Prueba[]>([]);
+  const [tests, setTests] = useState<Test[]>([]);
   const [cargando, setCargando] = useState(true);
+  const supabase = obtenerClienteNavegador();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      router.push('/iniciar-sesion');
-      return;
-    }
+    cargarTests();
+  }, []);
 
-    cargarPruebas();
-  }, [router]);
-
-  const cargarPruebas = async () => {
+  const cargarTests = async () => {
     try {
-      const response = await fetch('http://localhost:3333/evaluaciones/pruebas', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+      // Obtener todos los tests
+      const { data: testsData, error: testsError } = await supabase
+        .from('Test')
+        .select('id, codigo, nombre, descripcion, categoria')
+        .order('codigo');
 
-      if (response.ok) {
-        const data = await response.json();
-        setPruebas(data);
+      if (testsError) {
+        console.error('Error al cargar tests:', testsError);
+        return;
       }
+
+      // Contar preguntas por test
+      const testsConPreguntas = await Promise.all(
+        (testsData || []).map(async (test) => {
+          const { count } = await supabase
+            .from('Pregunta')
+            .select('*', { count: 'exact', head: true })
+            .eq('test_id', test.id);
+
+          return {
+            ...test,
+            total_preguntas: count || 0
+          };
+        })
+      );
+
+      setTests(testsConPreguntas);
     } catch (error) {
-      console.error('Error al cargar pruebas:', error);
+      console.error('Error al cargar tests:', error);
     } finally {
       setCargando(false);
     }
   };
 
   const categoriasIconos: Record<string, string> = {
+    'salud mental': '🧠',
     depresion: '😔',
     ansiedad: '😰',
     estres: '😣',
@@ -59,6 +72,7 @@ export default function PaginaEvaluaciones() {
   };
 
   const categoriasColores: Record<string, string> = {
+    'salud mental': 'bg-purple-100 text-purple-700',
     depresion: 'bg-blue-100 text-blue-700',
     ansiedad: 'bg-yellow-100 text-yellow-700',
     estres: 'bg-red-100 text-red-700',
@@ -89,59 +103,46 @@ export default function PaginaEvaluaciones() {
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
           </div>
-        ) : pruebas.length === 0 ? (
+        ) : tests.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-600">No hay pruebas disponibles en este momento.</p>
-            <Boton
-              className="mt-4"
-              onClick={async () => {
-                const response = await fetch('http://localhost:3333/evaluaciones/inicializar', {
-                  method: 'POST',
-                  headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`,
-                  },
-                });
-                if (response.ok) {
-                  cargarPruebas();
-                }
-              }}
-            >
-              Inicializar Pruebas
-            </Boton>
+            <p className="text-gray-600">No hay evaluaciones disponibles en este momento.</p>
+            <p className="text-sm text-gray-500 mt-2">
+              Por favor contacta al administrador.
+            </p>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {pruebas.map((prueba) => (
-              <div key={prueba.id} className="bg-white rounded-lg shadow-md overflow-hidden">
+            {tests.map((test) => (
+              <div key={test.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-4xl">
-                      {categoriasIconos[prueba.categoria] || '📝'}
+                      {categoriasIconos[test.categoria.toLowerCase()] || '📝'}
                     </span>
                     <span
                       className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        categoriasColores[prueba.categoria] || 'bg-gray-100 text-gray-700'
+                        categoriasColores[test.categoria.toLowerCase()] || 'bg-gray-100 text-gray-700'
                       }`}
                     >
-                      {prueba.categoria}
+                      {test.categoria}
                     </span>
                   </div>
-                  
-                  <h3 className="text-xl font-semibold mb-2">{prueba.nombre}</h3>
-                  <p className="text-gray-600 mb-4">{prueba.descripcion}</p>
-                  
+
+                  <h3 className="text-xl font-semibold mb-2">{test.nombre}</h3>
+                  <p className="text-gray-600 mb-4 line-clamp-2">{test.descripcion}</p>
+
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-500">
-                      {prueba._count.preguntas} preguntas
+                      {test.total_preguntas} preguntas
                     </span>
                     <span className="text-sm text-gray-500">
-                      ~{Math.ceil(prueba._count.preguntas * 0.5)} min
+                      ~{Math.ceil(test.total_preguntas * 0.5)} min
                     </span>
                   </div>
                 </div>
-                
+
                 <div className="bg-gray-50 px-6 py-4">
-                  <Link href={`/evaluaciones/${prueba.codigo}`}>
+                  <Link href={`/evaluaciones/${test.codigo}`}>
                     <Boton className="w-full">
                       Iniciar Evaluación
                     </Boton>
@@ -176,6 +177,7 @@ export default function PaginaEvaluaciones() {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

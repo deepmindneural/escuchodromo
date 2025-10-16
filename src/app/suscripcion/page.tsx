@@ -4,124 +4,165 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../../lib/componentes/ui/card';
 import { Boton } from '../../lib/componentes/ui/boton';
-import { RadioGroup, RadioGroupItem } from '../../lib/componentes/ui/radio-group';
-import { Label } from '../../lib/componentes/ui/label';
-import { FaCheck, FaCreditCard, FaArrowLeft, FaSpinner, FaCrown, FaStar } from 'react-icons/fa';
+import Footer from '../../lib/componentes/layout/Footer';
+import { FaArrowLeft, FaSpinner, FaCrown, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
-import Navegacion from '../../lib/componentes/layout/Navegacion';
+import { obtenerClienteNavegador } from '../../lib/supabase/cliente';
 
-interface Plan {
+interface Suscripcion {
   id: string;
-  nombre: string;
-  precio: {
-    COP: number;
-    USD: number;
-  };
-  caracteristicas: string[];
-  duracionDias: number;
+  plan: string;
+  estado: string;
+  precio: number;
+  moneda: string;
+  periodo: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  stripe_suscripcion_id: string;
+  cancelar_al_final?: boolean;
 }
 
 export default function PaginaSuscripcion() {
   const router = useRouter();
-  const [planes, setPlanes] = useState<Plan[]>([]);
-  const [planSeleccionado, setPlanSeleccionado] = useState<string>('');
-  const [moneda, setMoneda] = useState<'COP' | 'USD'>('COP');
-  const [proveedor, setProveedor] = useState<'stripe' | 'paypal'>('stripe');
-  const [cargando, setCargando] = useState(false);
-  const [suscripcionActiva, setSuscripcionActiva] = useState<any>(null);
+  const [cargando, setCargando] = useState(true);
+  const [procesando, setProcesando] = useState(false);
+  const [suscripcionActiva, setSuscripcionActiva] = useState<Suscripcion | null>(null);
+  const supabase = obtenerClienteNavegador();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+    verificarAutenticacion();
+  }, []);
+
+  const verificarAutenticacion = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        router.push('/iniciar-sesion');
+        return;
+      }
+
+      await cargarSuscripcion();
+    } catch (error) {
+      console.error('Error al verificar autenticación:', error);
       router.push('/iniciar-sesion');
-      return;
-    }
-
-    cargarPlanes();
-    verificarSuscripcion();
-  }, [router]);
-
-  const cargarPlanes = async () => {
-    try {
-      const response = await fetch('http://localhost:3333/api/pagos/planes');
-      if (response.ok) {
-        const data = await response.json();
-        setPlanes(data);
-        if (data.length > 0) {
-          setPlanSeleccionado(data[1].id); // Seleccionar plan profesional por defecto
-        }
-      }
-    } catch (error) {
-      console.error('Error al cargar planes:', error);
     }
   };
 
-  const verificarSuscripcion = async () => {
+  const cargarSuscripcion = async () => {
     try {
-      const response = await fetch('http://localhost:3333/api/pagos/suscripcion/activa', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setSuscripcionActiva(data);
+      setCargando(true);
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) return;
+
+      // Obtener datos del usuario
+      const { data: usuarioData } = await supabase
+        .from('Usuario')
+        .select('id')
+        .eq('email', session.user.email)
+        .single();
+
+      if (!usuarioData) {
+        toast.error('Usuario no encontrado');
+        return;
       }
-    } catch (error) {
-      console.error('Error al verificar suscripción:', error);
-    }
-  };
 
-  const iniciarPago = async () => {
-    if (!planSeleccionado) {
-      toast.error('Por favor selecciona un plan');
-      return;
-    }
+      // Obtener suscripción activa
+      const { data: suscripcion, error } = await supabase
+        .from('Suscripcion')
+        .select('*')
+        .eq('usuario_id', usuarioData.id)
+        .in('estado', ['activa', 'cancelada'])
+        .order('creado_en', { ascending: false })
+        .limit(1)
+        .single();
 
-    setCargando(true);
-
-    try {
-      const response = await fetch('http://localhost:3333/api/pagos/crear', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          planId: planSeleccionado,
-          proveedor,
-          moneda,
-        }),
-      });
-
-      if (response.ok) {
-        const { pagoId, proveedorId, clientSecret, urlAprobacion } = await response.json();
-
-        // Guardar información del pago
-        sessionStorage.setItem('pagoEnProceso', JSON.stringify({
-          pagoId,
-          proveedorId,
-          proveedor,
-        }));
-
-        // Redirigir según el proveedor
-        if (proveedor === 'stripe') {
-          // En producción, usar Stripe Checkout o Elements
-          router.push(`/pago/stripe?payment_intent_client_secret=${clientSecret}`);
-        } else if (proveedor === 'paypal' && urlAprobacion) {
-          // Redirigir a PayPal
-          window.location.href = urlAprobacion;
-        }
+      if (suscripcion) {
+        setSuscripcionActiva(suscripcion);
       } else {
-        throw new Error('Error al crear el pago');
+        // Si no hay suscripción activa, redirigir a precios
+        router.push('/precios');
       }
     } catch (error) {
-      console.error('Error:', error);
-      toast.error('No se pudo iniciar el proceso de pago');
+      console.error('Error al cargar suscripción:', error);
     } finally {
       setCargando(false);
+    }
+  };
+
+  const cancelarSuscripcion = async () => {
+    if (!suscripcionActiva) return;
+
+    if (!confirm('¿Estás seguro de que deseas cancelar tu suscripción? Mantendrás acceso hasta el final del período actual.')) {
+      return;
+    }
+
+    try {
+      setProcesando(true);
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        toast.error('Sesión expirada');
+        router.push('/iniciar-sesion');
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('gestionar-suscripcion', {
+        body: { accion: 'cancelar' },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
+
+      if (error) throw error;
+
+      toast.success('Suscripción cancelada. Mantendrás acceso hasta ' +
+        new Date(suscripcionActiva.fecha_fin).toLocaleDateString('es-CO'));
+
+      // Recargar suscripción
+      await cargarSuscripcion();
+    } catch (error: any) {
+      console.error('Error al cancelar suscripción:', error);
+      toast.error(error.message || 'No se pudo cancelar la suscripción');
+    } finally {
+      setProcesando(false);
+    }
+  };
+
+  const reactivarSuscripcion = async () => {
+    if (!suscripcionActiva) return;
+
+    try {
+      setProcesando(true);
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        toast.error('Sesión expirada');
+        router.push('/iniciar-sesion');
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('gestionar-suscripcion', {
+        body: { accion: 'reactivar' },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
+
+      if (error) throw error;
+
+      toast.success('¡Suscripción reactivada exitosamente!');
+
+      // Recargar suscripción
+      await cargarSuscripcion();
+    } catch (error: any) {
+      console.error('Error al reactivar suscripción:', error);
+      toast.error(error.message || 'No se pudo reactivar la suscripción');
+    } finally {
+      setProcesando(false);
     }
   };
 
@@ -134,53 +175,28 @@ export default function PaginaSuscripcion() {
     }).format(precio);
   };
 
-  if (suscripcionActiva) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
-        <div className="container mx-auto px-4 py-8">
-          <Link href="/dashboard">
-            <Boton variante="fantasma" className="mb-4">
-              <FaArrowLeft className="h-4 w-4 mr-2" />
-              Volver al dashboard
-            </Boton>
-          </Link>
+  const obtenerNombrePlan = (plan: string) => {
+    const nombres: { [key: string]: string } = {
+      'basico': 'Plan Básico',
+      'premium': 'Plan Premium',
+      'profesional': 'Plan Profesional'
+    };
+    return nombres[plan.toLowerCase()] || plan;
+  };
 
-          <div className="max-w-2xl mx-auto">
-            <Card>
-              <CardHeader>
-                <CardTitle>Suscripción Activa</CardTitle>
-                <CardDescription>
-                  Ya tienes una suscripción activa
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Plan actual</p>
-                    <p className="text-lg font-semibold">{suscripcionActiva.planNombre}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Válida hasta</p>
-                    <p className="text-lg font-semibold">
-                      {new Date(suscripcionActiva.fechaFin).toLocaleDateString('es-CO')}
-                    </p>
-                  </div>
-                  <div className="pt-4">
-                    <Boton variante="contorno" className="w-full">
-                      Gestionar suscripción
-                    </Boton>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+  if (cargando) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <FaSpinner className="h-12 w-12 text-blue-500 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Cargando suscripción...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
       <div className="container mx-auto px-4 py-8">
         <Link href="/dashboard">
           <Boton variante="fantasma" className="mb-4">
@@ -189,144 +205,217 @@ export default function PaginaSuscripcion() {
           </Boton>
         </Link>
 
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-4">Elige tu plan</h1>
-          <p className="text-xl text-muted-foreground">
-            Invierte en tu bienestar emocional
-          </p>
-        </div>
-
-        {/* Selector de moneda */}
-        <div className="flex justify-center mb-8">
-          <RadioGroup
-            value={moneda}
-            onValueChange={(value) => setMoneda(value as 'COP' | 'USD')}
-            className="flex gap-4"
+        <div className="max-w-3xl mx-auto">
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-8"
           >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="COP" id="cop" />
-              <Label htmlFor="cop">COP (Pesos)</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="USD" id="usd" />
-              <Label htmlFor="usd">USD (Dólares)</Label>
-            </div>
-          </RadioGroup>
-        </div>
+            <FaCrown className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
+            <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Mi Suscripción
+            </h1>
+            <p className="text-xl text-gray-600">
+              Gestiona tu plan y facturación
+            </p>
+          </motion.div>
 
-        {/* Planes */}
-        <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto mb-8">
-          {planes.map((plan) => (
-            <Card
-              key={plan.id}
-              className={`relative cursor-pointer transition-all ${
-                planSeleccionado === plan.id
-                  ? 'ring-2 ring-primary shadow-lg scale-105'
-                  : 'hover:shadow-md'
-              }`}
-              onClick={() => setPlanSeleccionado(plan.id)}
+          {suscripcionActiva && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
             >
-              {plan.id === 'profesional' && (
-                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-primary text-white text-sm px-3 py-1 rounded-full">
-                    Más popular
-                  </span>
-                </div>
-              )}
-              
-              <CardHeader>
-                <CardTitle>{plan.nombre}</CardTitle>
-                <div className="mt-4">
-                  <span className="text-3xl font-bold">
-                    {formatearPrecio(plan.precio[moneda], moneda)}
-                  </span>
-                  <span className="text-muted-foreground">/mes</span>
-                </div>
-              </CardHeader>
-              
-              <CardContent>
-                <ul className="space-y-3">
-                  {plan.caracteristicas.map((caracteristica, index) => (
-                    <li key={index} className="flex items-start gap-2">
-                      <FaCheck className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm">{caracteristica}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-              
-              <CardFooter>
-                <Boton
-                  variante={planSeleccionado === plan.id ? 'predeterminado' : 'contorno'}
-                  className="w-full"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setPlanSeleccionado(plan.id);
-                  }}
-                >
-                  {planSeleccionado === plan.id ? 'Seleccionado' : 'Seleccionar'}
-                </Boton>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+              {/* Estado de la suscripción */}
+              <Card className="mb-6">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      {suscripcionActiva.estado === 'activa' ? (
+                        <>
+                          <FaCheckCircle className="text-green-500" />
+                          Suscripción Activa
+                        </>
+                      ) : (
+                        <>
+                          <FaExclamationCircle className="text-orange-500" />
+                          Suscripción Cancelada
+                        </>
+                      )}
+                    </CardTitle>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      suscripcionActiva.estado === 'activa'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-orange-100 text-orange-700'
+                    }`}>
+                      {suscripcionActiva.estado === 'activa' ? 'Activa' : 'Cancelada'}
+                    </span>
+                  </div>
+                  {suscripcionActiva.cancelar_al_final && (
+                    <CardDescription className="mt-2 text-orange-600">
+                      Se cancelará al final del período actual
+                    </CardDescription>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Plan actual</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {obtenerNombrePlan(suscripcionActiva.plan)}
+                      </p>
+                    </div>
 
-        {/* Método de pago */}
-        <Card className="max-w-2xl mx-auto">
-          <CardHeader>
-            <CardTitle>Método de pago</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <RadioGroup
-              value={proveedor}
-              onValueChange={(value) => setProveedor(value as 'stripe' | 'paypal')}
-              className="space-y-3"
-            >
-              <div className="flex items-center space-x-3 p-3 border rounded-lg">
-                <RadioGroupItem value="stripe" id="stripe" />
-                <Label htmlFor="stripe" className="flex items-center gap-2 cursor-pointer">
-                  <FaCreditCard className="h-5 w-5" />
-                  Tarjeta de crédito/débito
-                </Label>
-              </div>
-              <div className="flex items-center space-x-3 p-3 border rounded-lg">
-                <RadioGroupItem value="paypal" id="paypal" />
-                <Label htmlFor="paypal" className="flex items-center gap-2 cursor-pointer">
-                  <div className="text-blue-600 font-bold">PayPal</div>
-                </Label>
-              </div>
-            </RadioGroup>
-          </CardContent>
-          <CardFooter>
-            <Boton
-              onClick={iniciarPago}
-              disabled={!planSeleccionado || cargando}
-              className="w-full"
-              tamano="lg"
-            >
-              {cargando ? (
-                <>
-                  <FaSpinner className="h-4 w-4 mr-2 animate-spin" />
-                  Procesando...
-                </>
-              ) : (
-                <>
-                  Continuar al pago
-                  <FaCreditCard className="h-4 w-4 ml-2" />
-                </>
-              )}
-            </Boton>
-          </CardFooter>
-        </Card>
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Precio</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {formatearPrecio(suscripcionActiva.precio, suscripcionActiva.moneda)}
+                        <span className="text-base font-normal text-gray-600">
+                          /{suscripcionActiva.periodo === 'mensual' ? 'mes' : 'año'}
+                        </span>
+                      </p>
+                    </div>
 
-        {/* Información de seguridad */}
-        <div className="max-w-2xl mx-auto mt-8 text-center text-sm text-muted-foreground">
-          <p>🔒 Todos los pagos son procesados de forma segura</p>
-          <p className="mt-2">
-            Puedes cancelar tu suscripción en cualquier momento desde tu perfil
-          </p>
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Fecha de inicio</p>
+                      <p className="text-lg font-semibold text-gray-700">
+                        {new Date(suscripcionActiva.fecha_inicio).toLocaleDateString('es-CO', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">
+                        {suscripcionActiva.cancelar_al_final ? 'Válida hasta' : 'Próxima renovación'}
+                      </p>
+                      <p className="text-lg font-semibold text-gray-700">
+                        {new Date(suscripcionActiva.fecha_fin).toLocaleDateString('es-CO', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Acciones */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Gestionar Suscripción</CardTitle>
+                  <CardDescription>
+                    Controla tu suscripción y facturación
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {suscripcionActiva.estado === 'activa' && !suscripcionActiva.cancelar_al_final && (
+                      <div className="flex items-start gap-4 p-4 bg-blue-50 rounded-lg">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 mb-1">
+                            Cambiar de plan
+                          </h3>
+                          <p className="text-sm text-gray-600">
+                            Actualiza o reduce tu plan según tus necesidades
+                          </p>
+                        </div>
+                        <Link href="/precios">
+                          <Boton variante="contorno">
+                            Ver planes
+                          </Boton>
+                        </Link>
+                      </div>
+                    )}
+
+                    {suscripcionActiva.estado === 'activa' && !suscripcionActiva.cancelar_al_final && (
+                      <div className="flex items-start gap-4 p-4 bg-red-50 rounded-lg">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 mb-1">
+                            Cancelar suscripción
+                          </h3>
+                          <p className="text-sm text-gray-600">
+                            Mantendrás acceso hasta el final del período actual
+                          </p>
+                        </div>
+                        <Boton
+                          variante="destructivo"
+                          onClick={cancelarSuscripcion}
+                          disabled={procesando}
+                        >
+                          {procesando ? (
+                            <>
+                              <FaSpinner className="h-4 w-4 mr-2 animate-spin" />
+                              Cancelando...
+                            </>
+                          ) : (
+                            'Cancelar'
+                          )}
+                        </Boton>
+                      </div>
+                    )}
+
+                    {suscripcionActiva.cancelar_al_final && (
+                      <div className="flex items-start gap-4 p-4 bg-green-50 rounded-lg">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 mb-1">
+                            Reactivar suscripción
+                          </h3>
+                          <p className="text-sm text-gray-600">
+                            Continúa disfrutando de todos los beneficios de tu plan
+                          </p>
+                        </div>
+                        <Boton
+                          onClick={reactivarSuscripcion}
+                          disabled={procesando}
+                        >
+                          {procesando ? (
+                            <>
+                              <FaSpinner className="h-4 w-4 mr-2 animate-spin" />
+                              Reactivando...
+                            </>
+                          ) : (
+                            'Reactivar'
+                          )}
+                        </Boton>
+                      </div>
+                    )}
+
+                    <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900 mb-1">
+                          Historial de pagos
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          Consulta tus facturas y pagos anteriores
+                        </p>
+                      </div>
+                      <Link href="/perfil">
+                        <Boton variante="contorno">
+                          Ver historial
+                        </Boton>
+                      </Link>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* Información de seguridad */}
+          <div className="mt-8 text-center text-sm text-gray-500">
+            <p>🔒 Todos los pagos son procesados de forma segura por Stripe</p>
+            <p className="mt-2">
+              ¿Necesitas ayuda? <Link href="/contacto" className="text-blue-500 hover:underline">Contáctanos</Link>
+            </p>
+          </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

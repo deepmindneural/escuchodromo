@@ -23,6 +23,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '../../../lib/componentes/ui/card';
 import { Search, ChevronLeft, ChevronRight, User, Shield, ShieldCheck } from 'lucide-react';
 import { Skeleton } from '../../../lib/componentes/ui/skeleton';
+import { obtenerClienteNavegador } from '../../../lib/supabase/cliente';
+import { toast, Toaster } from 'react-hot-toast';
 
 interface Usuario {
   id: string;
@@ -61,31 +63,90 @@ export default function AdminUsuarios() {
   const cargarUsuarios = async () => {
     setCargando(true);
     try {
-      const params = new URLSearchParams({
-        pagina: paginaActual.toString(),
-        limite: '10',
-      });
+      const supabase = obtenerClienteNavegador();
+      const limite = 10;
+      const offset = (paginaActual - 1) * limite;
 
-      if (busqueda) params.append('busqueda', busqueda);
-      if (filtroRol) params.append('rol', filtroRol);
-      if (filtroEstado) params.append('estado', filtroEstado);
+      // Construir query base
+      let query = supabase
+        .from('Usuario')
+        .select('id, email, nombre, rol, esta_activo, creado_en', { count: 'exact' });
 
-      const response = await fetch(
-        `http://localhost:3333/api/admin/usuarios?${params}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
+      // Aplicar filtros
+      if (busqueda) {
+        query = query.or(`email.ilike.%${busqueda}%,nombre.ilike.%${busqueda}%`);
+      }
+
+      if (filtroRol) {
+        query = query.eq('rol', filtroRol);
+      }
+
+      if (filtroEstado) {
+        const estaActivo = filtroEstado === 'activo';
+        query = query.eq('esta_activo', estaActivo);
+      }
+
+      // Aplicar paginación y ordenamiento
+      const { data: usuariosData, error, count } = await query
+        .order('creado_en', { ascending: false })
+        .range(offset, offset + limite - 1);
+
+      if (error) {
+        console.error('Error al cargar usuarios:', error);
+        toast.error('Error al cargar usuarios');
+        return;
+      }
+
+      // Obtener estadísticas para cada usuario
+      const usuariosConEstadisticas = await Promise.all(
+        (usuariosData || []).map(async (usuario) => {
+          // Contar conversaciones
+          const { count: conversaciones } = await supabase
+            .from('Conversacion')
+            .select('*', { count: 'exact', head: true })
+            .eq('usuario_id', usuario.id);
+
+          // Contar evaluaciones
+          const { count: evaluaciones } = await supabase
+            .from('Evaluacion')
+            .select('*', { count: 'exact', head: true })
+            .eq('usuario_id', usuario.id);
+
+          // Contar pagos
+          const { count: pagos } = await supabase
+            .from('Pago')
+            .select('*', { count: 'exact', head: true })
+            .eq('usuario_id', usuario.id);
+
+          return {
+            id: usuario.id,
+            email: usuario.email,
+            nombre: usuario.nombre,
+            rol: usuario.rol,
+            estaActivo: usuario.esta_activo,
+            fechaRegistro: usuario.creado_en,
+            estadisticas: {
+              conversaciones: conversaciones || 0,
+              evaluaciones: evaluaciones || 0,
+              pagos: pagos || 0,
+            },
+          };
+        })
       );
 
-      if (response.ok) {
-        const data = await response.json();
-        setUsuarios(data.usuarios);
-        setPaginacion(data.paginacion);
-      }
+      setUsuarios(usuariosConEstadisticas);
+
+      // Configurar paginación
+      const totalPaginas = Math.ceil((count || 0) / limite);
+      setPaginacion({
+        pagina: paginaActual,
+        limite,
+        total: count || 0,
+        totalPaginas,
+      });
     } catch (error) {
       console.error('Error al cargar usuarios:', error);
+      toast.error('Error al cargar usuarios');
     } finally {
       setCargando(false);
     }
@@ -93,43 +154,64 @@ export default function AdminUsuarios() {
 
   const cambiarRol = async (usuarioId: string, nuevoRol: string) => {
     try {
-      const response = await fetch(
-        `http://localhost:3333/api/admin/usuarios/${usuarioId}/rol`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-          body: JSON.stringify({ rol: nuevoRol }),
-        }
-      );
+      const supabase = obtenerClienteNavegador();
 
-      if (response.ok) {
-        cargarUsuarios();
+      const { error } = await supabase
+        .from('Usuario')
+        .update({ rol: nuevoRol })
+        .eq('id', usuarioId);
+
+      if (error) {
+        console.error('Error al cambiar rol:', error);
+        toast.error('Error al cambiar rol');
+        return;
       }
+
+      toast.success('Rol actualizado correctamente');
+      cargarUsuarios();
     } catch (error) {
       console.error('Error al cambiar rol:', error);
+      toast.error('Error al cambiar rol');
     }
   };
 
   const toggleEstado = async (usuarioId: string) => {
     try {
-      const response = await fetch(
-        `http://localhost:3333/api/admin/usuarios/${usuarioId}/toggle-estado`,
-        {
-          method: 'PUT',
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
+      const supabase = obtenerClienteNavegador();
 
-      if (response.ok) {
-        cargarUsuarios();
+      // Obtener estado actual
+      const { data: usuario } = await supabase
+        .from('Usuario')
+        .select('esta_activo')
+        .eq('id', usuarioId)
+        .single();
+
+      if (!usuario) {
+        toast.error('Usuario no encontrado');
+        return;
       }
+
+      // Cambiar estado
+      const { error } = await supabase
+        .from('Usuario')
+        .update({ esta_activo: !usuario.esta_activo })
+        .eq('id', usuarioId);
+
+      if (error) {
+        console.error('Error al cambiar estado:', error);
+        toast.error('Error al cambiar estado');
+        return;
+      }
+
+      toast.success(
+        usuario.esta_activo
+          ? 'Usuario desactivado correctamente'
+          : 'Usuario activado correctamente'
+      );
+      cargarUsuarios();
     } catch (error) {
       console.error('Error al cambiar estado:', error);
+      toast.error('Error al cambiar estado');
     }
   };
 
@@ -146,6 +228,7 @@ export default function AdminUsuarios() {
 
   return (
     <div className="min-h-screen">
+      <Toaster position="top-center" />
       <Navegacion />
       <div className="space-y-6 pt-20 px-4">
       <div>
