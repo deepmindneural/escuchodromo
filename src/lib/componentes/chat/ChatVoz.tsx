@@ -109,11 +109,11 @@ export function ChatVoz({ conversacionId, onMensajeEnviado }: ChatVozProps) {
   return (
     <div className="space-y-4">
       {/* Indicador de conexión */}
-      <div className="flex items-center gap-2 text-sm">
+      <div className="flex items-center gap-2 text-sm" role="status" aria-live="polite">
         <div className={cn(
           "w-2 h-2 rounded-full",
           estaConectado ? "bg-green-500" : "bg-red-500"
-        )} />
+        )} aria-hidden="true" />
         <span className="text-muted-foreground">
           {estaConectado ? 'Conectado' : 'Desconectado'}
         </span>
@@ -132,34 +132,44 @@ export function ChatVoz({ conversacionId, onMensajeEnviado }: ChatVozProps) {
                 estaGrabando && "animate-pulse"
               )}
               onClick={manejarGrabacion}
+              aria-label={estaGrabando ? "Detener grabación de voz" : "Iniciar grabación de voz"}
+              aria-pressed={estaGrabando}
             >
               {estaGrabando ? (
-                <FaMicrophoneSlash className="h-8 w-8" />
+                <FaMicrophoneSlash className="h-8 w-8" aria-hidden="true" />
               ) : (
-                <FaMicrophone className="h-8 w-8" />
+                <FaMicrophone className="h-8 w-8" aria-hidden="true" />
               )}
             </Boton>
 
             {/* Indicador de volumen */}
             {estaGrabando && (
-              <div className="w-full max-w-xs space-y-2">
+              <div className="w-full max-w-xs space-y-2" role="status" aria-live="polite">
                 <div className="flex items-center justify-between text-sm">
-                  <FaVolumeUp className="h-4 w-4" />
+                  <FaVolumeUp className="h-4 w-4" aria-hidden="true" />
                   <span className="text-muted-foreground">Nivel de audio</span>
                 </div>
-                <Progress value={volumen} max={100} className="h-2" />
+                <Progress
+                  value={volumen}
+                  max={100}
+                  className="h-2"
+                  aria-label={`Nivel de audio: ${Math.round(volumen)}%`}
+                  aria-valuenow={volumen}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                />
               </div>
             )}
 
             {/* Transcripción en tiempo real */}
             {transcripcion && (
-              <div className="w-full max-w-md">
+              <div className="w-full max-w-md" role="status" aria-live="polite" aria-atomic="true">
                 <p className="text-center text-sm text-muted-foreground mb-2">
                   Transcripción:
                 </p>
                 <Card className="bg-muted/50">
                   <CardContent className="p-4">
-                    <p className="text-sm">{transcripcion}</p>
+                    <p className="text-sm" aria-label={`Transcripción actual: ${transcripcion}`}>{transcripcion}</p>
                   </CardContent>
                 </Card>
               </div>
@@ -167,11 +177,11 @@ export function ChatVoz({ conversacionId, onMensajeEnviado }: ChatVozProps) {
 
             {/* Estado emocional detectado */}
             {estadoAnimo && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2" role="status" aria-live="polite">
                 <div className={cn(
                   "h-3 w-3 rounded-full",
                   obtenerColorEmocion(estadoAnimo)
-                )} />
+                )} aria-hidden="true" />
                 <span className="text-sm text-muted-foreground">
                   Estado emocional: {estadoAnimo}
                 </span>
@@ -179,7 +189,7 @@ export function ChatVoz({ conversacionId, onMensajeEnviado }: ChatVozProps) {
             )}
 
             {/* Instrucciones */}
-            <p className="text-sm text-muted-foreground text-center max-w-md">
+            <p className="text-sm text-muted-foreground text-center max-w-md" role="status" aria-live="polite">
               {estaGrabando
                 ? 'Habla claramente. Toca el botón para detener.'
                 : 'Toca el micrófono para empezar a hablar'}
@@ -197,18 +207,23 @@ export function ChatVoz({ conversacionId, onMensajeEnviado }: ChatVozProps) {
 
       {/* Análisis emocional detallado */}
       {emocionesDetectadas && (
-        <Card>
+        <Card role="region" aria-label="Análisis emocional detallado">
           <CardContent className="p-4">
             <h4 className="text-sm font-medium mb-3">Análisis emocional</h4>
-            <div className="space-y-2">
+            <div className="space-y-2" role="list">
               {Object.entries(emocionesDetectadas.emociones).map(([emocion, valor]) => (
-                <div key={emocion} className="flex items-center gap-2">
+                <div key={emocion} className="flex items-center gap-2" role="listitem">
                   <span className="text-sm capitalize w-20">{emocion}:</span>
-                  <Progress 
-                    value={(valor as number) * 100} 
+                  <Progress
+                    value={(valor as number) * 100}
                     className="flex-1 h-2"
+                    aria-label={`${emocion}: ${((valor as number) * 100).toFixed(0)}%`}
+                    aria-valuenow={(valor as number) * 100}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    role="progressbar"
                   />
-                  <span className="text-sm text-muted-foreground w-12 text-right">
+                  <span className="text-sm text-muted-foreground w-12 text-right" aria-hidden="true">
                     {((valor as number) * 100).toFixed(0)}%
                   </span>
                 </div>

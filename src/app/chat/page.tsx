@@ -304,7 +304,7 @@ export default function PaginaChat() {
       <ConnectionStatus />
       <Navegacion />
 
-      <div className="pt-20 pb-8 px-4">
+      <main id="main-content" className="pt-20 pb-8 px-4">
         <div className="max-w-5xl mx-auto">
           {/* Header del Chat */}
           <div className="bg-white rounded-t-3xl shadow-xl p-8 border-b border-teal-100">
@@ -349,6 +349,7 @@ export default function PaginaChat() {
                     whileTap={{ scale: 0.9 }}
                     className="text-4xl hover:bg-teal-50 p-4 rounded-full transition-all duration-200 hover:shadow-lg border-2 border-transparent hover:border-teal-200"
                     onClick={() => setInputMensaje(prev => prev + ' ' + emocion)}
+                    aria-label={`Agregar emoción ${emocion} al mensaje`}
                   >
                     {emocion}
                   </motion.button>
@@ -363,8 +364,9 @@ export default function PaginaChat() {
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setInputMensaje(sugerencia)}
                     className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-teal-100 to-cyan-100 text-teal-800 rounded-2xl text-sm font-medium hover:from-teal-200 hover:to-cyan-200 transition-all duration-200 shadow-md hover:shadow-lg border border-teal-200"
+                    aria-label={`Usar sugerencia: ${sugerencia}`}
                   >
-                    <FaLightbulb />
+                    <FaLightbulb aria-hidden="true" />
                     {sugerencia.length > 40 ? sugerencia.substring(0, 40) + '...' : sugerencia}
                   </motion.button>
                 ))}
@@ -373,7 +375,13 @@ export default function PaginaChat() {
           </div>
 
           {/* Área de mensajes */}
-          <div className="bg-gradient-to-b from-teal-50 to-cyan-50 min-h-[600px] max-h-[600px] overflow-y-auto p-8 shadow-inner">
+          <div
+            className="bg-gradient-to-b from-teal-50 to-cyan-50 min-h-[600px] max-h-[600px] overflow-y-auto p-8 shadow-inner"
+            role="log"
+            aria-label="Historial de conversación"
+            aria-live="polite"
+            aria-atomic="false"
+          >
             <AnimatePresence>
               {mensajes.map((mensaje) => (
                 <motion.div
@@ -423,6 +431,9 @@ export default function PaginaChat() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="flex items-center gap-3 text-gray-600 mb-4"
+                role="status"
+                aria-live="polite"
+                aria-label="Escuchodromo está escribiendo"
               >
                 <div className="w-14 h-14 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-full flex items-center justify-center">
                   <FaHeart className="text-white text-xl" />
@@ -457,7 +468,7 @@ export default function PaginaChat() {
               </motion.div>
             )}
 
-            <form onSubmit={handleEnviarMensaje} className="flex gap-4">
+            <form onSubmit={handleEnviarMensaje} className="flex gap-4" role="form" aria-label="Formulario de chat">
               <input
                 type="text"
                 value={inputMensaje}
@@ -465,7 +476,13 @@ export default function PaginaChat() {
                 placeholder="Comparte lo que sientes... Estoy aquí para escucharte 💝"
                 className="flex-1 px-8 py-5 border-2 border-teal-200 rounded-3xl focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400 text-gray-700 placeholder-gray-500 text-lg shadow-inner bg-teal-50"
                 disabled={mensajesRestantes <= 0 && !usuario}
+                aria-label="Escribe tu mensaje aquí"
+                aria-describedby="mensaje-ayuda"
+                id="input-mensaje"
               />
+              <span id="mensaje-ayuda" className="sr-only">
+                Escribe tu mensaje y presiona Enter o haz clic en el botón de enviar. También puedes usar el botón de voz para grabar un mensaje de audio.
+              </span>
 
               <motion.button
                 type="button"
@@ -479,6 +496,15 @@ export default function PaginaChat() {
                     ? 'bg-purple-500 text-white'
                     : 'bg-gradient-to-r from-teal-400 to-teal-500 text-white hover:shadow-teal-200'
                 }`}
+                aria-label={
+                  estaGrabando
+                    ? 'Detener grabación de voz'
+                    : estaHablando
+                    ? 'IA está hablando, espera'
+                    : 'Iniciar grabación de voz'
+                }
+                aria-pressed={estaGrabando}
+                disabled={estaHablando}
                 title={
                   estaGrabando
                     ? 'Grabando... Haz clic para detener'
@@ -488,11 +514,11 @@ export default function PaginaChat() {
                 }
               >
                 {estaGrabando ? (
-                  <FaMicrophoneSlash size={24} />
+                  <FaMicrophoneSlash size={24} aria-hidden="true" />
                 ) : estaHablando ? (
-                  <FaHeart size={24} className="animate-pulse" />
+                  <FaHeart size={24} className="animate-pulse" aria-hidden="true" />
                 ) : (
-                  <FaMicrophone size={24} />
+                  <FaMicrophone size={24} aria-hidden="true" />
                 )}
               </motion.button>
 
@@ -502,8 +528,10 @@ export default function PaginaChat() {
                 whileTap={{ scale: 0.95 }}
                 disabled={!inputMensaje.trim() || (mensajesRestantes <= 0 && !usuario)}
                 className="px-10 py-5 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-bold rounded-3xl hover:shadow-2xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed text-lg"
+                aria-label="Enviar mensaje"
+                aria-disabled={!inputMensaje.trim() || (mensajesRestantes <= 0 && !usuario)}
               >
-                <FaPaperPlane size={22} />
+                <FaPaperPlane size={22} aria-hidden="true" />
               </motion.button>
             </form>
           </div>
@@ -590,6 +618,7 @@ export default function PaginaChat() {
           </motion.div>
         )}
       </AnimatePresence>
+      </main>
       <Footer />
     </div>
   );

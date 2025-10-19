@@ -65,5 +65,17 @@ export async function actualizarSesion(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  return { response, user }
+  // Obtener rol del usuario si está autenticado
+  let rol: string | null = null
+  if (user) {
+    const { data: usuario } = await supabase
+      .from('Usuario')
+      .select('rol')
+      .eq('auth_id', user.id)
+      .single()
+
+    rol = usuario?.rol || null
+  }
+
+  return { response, user, rol }
 }

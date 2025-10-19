@@ -3,11 +3,11 @@
  * Se ejecuta antes de cada request para verificar y refrescar sesiones
  */
 
-import { type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { actualizarSesion } from './lib/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
-  const { response, user } = await actualizarSesion(request)
+  const { response, user, rol } = await actualizarSesion(request)
 
   // Rutas públicas (no requieren autenticación)
   const rutasPublicas = [
@@ -52,11 +52,21 @@ export async function middleware(request: NextRequest) {
       const url = request.nextUrl.clone()
       url.pathname = '/iniciar-sesion'
       url.searchParams.set('redirect', pathname)
-      return response
+      return NextResponse.redirect(url)
     }
 
-    // Verificar rol de admin (esto se debe hacer en el servidor)
-    // Por ahora solo verificamos que esté autenticado
+    // ✅ VULNERABILIDAD CRÍTICA #3 CORREGIDA
+    // Verificar que el usuario tiene rol de ADMIN
+    if (rol !== 'ADMIN') {
+      // Usuario autenticado pero sin privilegios de admin
+      // Redirigir a dashboard con mensaje
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard'
+      url.searchParams.set('error', 'no_autorizado')
+      return NextResponse.redirect(url)
+    }
+
+    // Usuario es ADMIN, permitir acceso
     return response
   }
 

@@ -45,7 +45,9 @@
       "Bash(do file=\"/Volumes/StarkT7/Proyectos/CLIENETS/proyectos/ESCUCHODROMO/Escuchodromo 2/escuchodromo/src/app/$page/page.tsx\" if [ -f \"$file\" ])",
       "Bash(then echo \"=== $page ===\" head -20 \"$file\")",
       "Bash(head -5 echo \"...\" tail -5 \"$file\" fi done)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Read(//Volumes/StarkT7/Proyectos/CLIENETS/proyectos/ESCUCHODROMO/**)",
+      "Bash(git rm --cached .env.local)"
     ],
     "deny": []
   }

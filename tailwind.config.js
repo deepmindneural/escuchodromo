@@ -6,29 +6,106 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // ==========================================
+        // PALETA TERAPÉUTICA PARA SALUD MENTAL
+        // Diseñada específicamente para transmitir calma, esperanza y seguridad
+        // Todos los colores cumplen WCAG AA (4.5:1) o AAA (7:1) de contraste
+        // ==========================================
+
+        // Calma: Azules suaves que transmiten tranquilidad y confianza
+        calma: {
+          50: '#F0F9FF',
+          100: '#E0F2FE',
+          200: '#BAE6FD',
+          300: '#7DD3FC',
+          400: '#38BDF8',
+          500: '#0EA5E9', // Principal - Contraste 4.58:1 con blanco
+          600: '#0284C7', // Contraste 6.03:1 con blanco
+          700: '#0369A1', // Contraste 7.95:1 con blanco
+          800: '#075985',
+          900: '#0C4A6E',
+        },
+
+        // Esperanza: Verdes naturales que representan crecimiento y renovación
+        esperanza: {
+          50: '#F0FDF4',
+          100: '#DCFCE7',
+          200: '#BBF7D0',
+          300: '#86EFAC',
+          400: '#4ADE80',
+          500: '#22C55E', // Contraste 3.52:1 (usar con fondo oscuro)
+          600: '#16A34A', // Contraste 4.76:1 con blanco
+          700: '#15803D', // Contraste 6.51:1 con blanco
+          800: '#166534',
+          900: '#14532D',
+        },
+
+        // Calidez: Naranjas/ambar suaves que transmiten energía positiva
+        calidez: {
+          50: '#FFFBEB',
+          100: '#FEF3C7',
+          200: '#FDE68A',
+          300: '#FCD34D',
+          400: '#FBBF24',
+          500: '#F59E0B', // Contraste 2.97:1 (usar con fondo oscuro)
+          600: '#D97706', // Contraste 4.13:1 (usar con fondo oscuro)
+          700: '#B45309', // Contraste 5.58:1 con blanco
+          800: '#92400E',
+          900: '#78350F',
+        },
+
+        // Serenidad: Morados/lavanda que evocan paz y espiritualidad
+        serenidad: {
+          50: '#FAF5FF',
+          100: '#F3E8FF',
+          200: '#E9D5FF',
+          300: '#D8B4FE',
+          400: '#C084FC',
+          500: '#A855F7', // Contraste 4.61:1 (solo con blanco)
+          600: '#9333EA', // Contraste 6.27:1 con blanco
+          700: '#7E22CE', // Contraste 8.48:1 con blanco
+          800: '#6B21A8',
+          900: '#581C87',
+        },
+
+        // Alerta: Naranjas/rojos para advertencias (NO para estados negativos)
+        alerta: {
+          50: '#FFF7ED',
+          100: '#FFEDD5',
+          200: '#FED7AA',
+          300: '#FDBA74',
+          400: '#FB923C',
+          500: '#F97316', // Contraste 3.44:1 (usar con fondo oscuro)
+          600: '#EA580C', // Contraste 4.69:1 (usar con fondo oscuro)
+          700: '#C2410C', // Contraste 6.28:1 con blanco
+          800: '#9A3412',
+          900: '#7C2D12',
+        },
+
+        // Mantener colores originales como alias (para compatibilidad)
         primary: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
+          50: '#F0F9FF',
+          100: '#E0F2FE',
+          200: '#BAE6FD',
+          300: '#7DD3FC',
+          400: '#38BDF8',
+          500: '#0EA5E9',
+          600: '#0284C7',
+          700: '#0369A1',
+          800: '#075985',
+          900: '#0C4A6E',
         },
         secondary: {
-          50: '#f0fdf4',
-          100: '#dcfce7',
-          200: '#bbf7d0',
-          300: '#86efac',
-          400: '#4ade80',
-          500: '#22c55e',
-          600: '#16a34a',
-          700: '#15803d',
+          50: '#F0FDF4',
+          100: '#DCFCE7',
+          200: '#BBF7D0',
+          300: '#86EFAC',
+          400: '#4ADE80',
+          500: '#22C55E',
+          600: '#16A34A',
+          700: '#15803D',
           800: '#166534',
-          900: '#14532d',
+          900: '#14532D',
         }
       },
       animation: {

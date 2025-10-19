@@ -176,8 +176,8 @@ export default function PaginaVoz() {
                 </CardHeader>
                 <CardContent>
                   {cargando ? (
-                    <div className="flex flex-col items-center justify-center py-16">
-                      <div className="animate-spin rounded-full h-12 w-12 border-4 border-teal-200 border-t-teal-500 mb-4"></div>
+                    <div className="flex flex-col items-center justify-center py-16" role="status" aria-live="polite">
+                      <div className="animate-spin rounded-full h-12 w-12 border-4 border-teal-200 border-t-teal-500 mb-4" aria-hidden="true"></div>
                       <p className="text-teal-600">Preparando tu sesión de voz...</p>
                     </div>
                   ) : conversacionId ? (

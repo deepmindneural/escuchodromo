@@ -52,7 +52,16 @@ export default function Navegacion() {
       ];
 
   return (
-    <nav className="fixed w-full z-50 bg-white shadow-md">
+    <>
+      {/* Skip Link para accesibilidad de teclado */}
+      <a
+        href="#main-content"
+        className="skip-link sr-only focus:not-sr-only"
+      >
+        Saltar al contenido principal
+      </a>
+
+      <nav className="fixed w-full z-50 bg-white shadow-md" role="navigation" aria-label="Navegación principal">
       <div className="container mx-auto px-4 py-4">
         <div className="flex justify-between items-center">
           {/* Logo */}
@@ -246,5 +255,6 @@ export default function Navegacion() {
         )}
       </AnimatePresence>
     </nav>
+    </>
   );
 }
