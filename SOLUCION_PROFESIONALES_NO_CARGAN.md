@@ -30,8 +30,9 @@ Los profesionales no se muestran en el frontend porque hay una **inconsistencia 
 
 2. **Copiar y pegar** el contenido del archivo:
    ```
-   CREAR_PROFESIONAL_FALTANTE.sql
+   CREAR_PROFESIONAL_SIMPLE.sql
    ```
+   (Usa este en lugar de CREAR_PROFESIONAL_FALTANTE.sql - es más compatible)
 
 3. **Ejecutar** (click en "Run" o Ctrl+Enter)
 
@@ -51,7 +52,7 @@ psql -h aws-0-us-west-1.pooler.supabase.com \
      -p 6543 \
      -U postgres.cvezncgcdsjntzrzztrj \
      -d postgres \
-     -f CREAR_PROFESIONAL_FALTANTE.sql
+     -f CREAR_PROFESIONAL_SIMPLE.sql
 ```
 
 ---
