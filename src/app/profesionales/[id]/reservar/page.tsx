@@ -8,7 +8,7 @@ import { SlotsDisponibles, type SlotHorario } from '@/lib/componentes/SlotsDispo
 import { SelectorDuracion } from '@/lib/componentes/SelectorDuracion';
 import { SelectorModalidad, type Modalidad } from '@/lib/componentes/SelectorModalidad';
 import { ModalConfirmacion } from '@/lib/componentes/ModalConfirmacion';
-import { createClient } from '@/lib/supabase/cliente';
+import { obtenerClienteNavegador } from '@/lib/supabase/cliente';
 import { formatearParaAPI, formatearFechaHora, formatearFechaCorta } from '@/lib/utils/fechas';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
@@ -39,7 +39,7 @@ interface DatosProfesional {
 export default function PaginaReservarCita() {
   const params = useParams();
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = obtenerClienteNavegador();
 
   const profesionalId = params.id as string;
 

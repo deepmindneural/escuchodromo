@@ -13,7 +13,7 @@ import {
   VideoCameraIcon,
   BuildingOfficeIcon,
 } from '@heroicons/react/24/outline';
-import { createClient } from '@/lib/supabase/cliente';
+import { obtenerClienteNavegador } from '@/lib/supabase/cliente';
 import toast from 'react-hot-toast';
 
 interface DatosProfesional {
@@ -43,7 +43,7 @@ interface DatosProfesional {
 export default function PaginaDetalleProfesional() {
   const params = useParams();
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = obtenerClienteNavegador();
 
   const profesionalId = params.id as string;
 

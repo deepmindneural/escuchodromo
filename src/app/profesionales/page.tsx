@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, SlidersHorizontal, X, ChevronLeft, ChevronRight } from 'lucide-react';
-import { createClient } from '@/lib/supabase/cliente';
+import { obtenerClienteNavegador } from '@/lib/supabase/cliente';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 import { CardProfesional, CardProfesionalSkeleton, type DatosProfesional } from '@/lib/componentes/CardProfesional';
@@ -67,7 +67,7 @@ const ORDEN_OPTIONS = [
 export default function PaginaProfesionales() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = createClient();
+  const supabase = obtenerClienteNavegador();
 
   // Estado
   const [profesionales, setProfesionales] = useState<DatosProfesional[]>([]);

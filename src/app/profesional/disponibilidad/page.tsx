@@ -11,7 +11,7 @@ import {
   CalendarDaysIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
-import { createClient } from '@/lib/supabase/cliente';
+import { obtenerClienteNavegador } from '@/lib/supabase/cliente';
 import toast from 'react-hot-toast';
 import { SelectorHorarios } from '@/lib/componentes/SelectorHorarios';
 import { BloqueHorario, type Horario } from '@/lib/componentes/BloqueHorario';
@@ -43,7 +43,7 @@ const DIAS_SEMANA = [
  */
 export default function DisponibilidadProfesional() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = obtenerClienteNavegador();
 
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);

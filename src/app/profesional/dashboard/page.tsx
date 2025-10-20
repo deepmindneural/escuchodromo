@@ -11,7 +11,7 @@ import {
 import { GridMetricas, type Metrica } from '@/lib/componentes/GridMetricas';
 import { TablaPacientes, type Paciente } from '@/lib/componentes/TablaPacientes';
 import { ProximasCitas, type Cita } from '@/lib/componentes/ProximasCitas';
-import { createClient } from '@/lib/supabase/cliente';
+import { obtenerClienteNavegador } from '@/lib/supabase/cliente';
 import toast from 'react-hot-toast';
 
 /**
@@ -24,7 +24,7 @@ import toast from 'react-hot-toast';
  */
 export default function DashboardProfesional() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = obtenerClienteNavegador();
 
   const [cargando, setCargando] = useState(true);
   const [profesionalId, setProfesionalId] = useState<string | null>(null);

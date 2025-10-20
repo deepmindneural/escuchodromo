@@ -11,7 +11,7 @@ import {
   VideoCameraIcon,
   BuildingOfficeIcon,
 } from '@heroicons/react/24/outline';
-import { createClient } from '@/lib/supabase/cliente';
+import { obtenerClienteNavegador } from '@/lib/supabase/cliente';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 
@@ -41,7 +41,7 @@ const MESES = [
  */
 export default function PaginaCalendarioProfesional() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = obtenerClienteNavegador();
 
   const [fechaActual, setFechaActual] = useState(new Date());
   const [citas, setCitas] = useState<Cita[]>([]);
