@@ -7,6 +7,7 @@ import { obtenerClienteNavegador } from '@/lib/supabase/cliente';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 import { CardProfesional, CardProfesionalSkeleton, type DatosProfesional } from '@/lib/componentes/CardProfesional';
+import Navegacion from '@/lib/componentes/layout/Navegacion';
 
 const ESPECIALIDADES = [
   'Todas',
@@ -187,9 +188,11 @@ export default function PaginaProfesionales() {
   ].filter(Boolean).length;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-calma-600 to-esperanza-600 text-white">
+    <>
+      <Navegacion />
+      <div className="min-h-screen bg-gray-50 pt-20">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-calma-600 to-esperanza-600 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <h1 className="text-4xl font-bold mb-4">
             Encuentra tu terapeuta ideal
@@ -495,5 +498,6 @@ export default function PaginaProfesionales() {
         )}
       </div>
     </div>
+    </>
   );
 }
