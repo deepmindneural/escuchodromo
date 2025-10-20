@@ -34,16 +34,27 @@ export default function Navegacion() {
     }
   };
 
-  // Enlaces diferentes según autenticación
+  // Enlaces diferentes según autenticación y rol
+  const esProfesional = perfil?.rol === 'TERAPEUTA' || perfil?.rol === 'ADMIN';
+
   const enlacesNavegacion = usuario
-    ? [
-        { href: '/dashboard', label: 'Dashboard' },
-        { href: '/chat', label: 'Chat' },
-        { href: '/evaluaciones', label: 'Evaluaciones' },
-        { href: '/animo', label: 'Ánimo' },
-      ]
+    ? esProfesional
+      ? [
+          { href: '/profesional/dashboard', label: 'Mi Dashboard' },
+          { href: '/profesional/calendario', label: 'Calendario' },
+          { href: '/profesional/disponibilidad', label: 'Disponibilidad' },
+          { href: '/chat', label: 'Chat' },
+        ]
+      : [
+          { href: '/dashboard', label: 'Dashboard' },
+          { href: '/profesionales', label: 'Profesionales' },
+          { href: '/chat', label: 'Chat' },
+          { href: '/evaluaciones', label: 'Evaluaciones' },
+          { href: '/animo', label: 'Ánimo' },
+        ]
     : [
         { href: '/', label: 'Inicio' },
+        { href: '/profesionales', label: 'Profesionales' },
         { href: '/chat', label: 'Hablar con Escuchodromo' },
         { href: '/como-funciona', label: 'Cómo Funciona' },
         { href: '/servicios', label: 'Servicios' },
@@ -136,6 +147,12 @@ export default function Navegacion() {
             ) : (
               <>
                 <Link
+                  href="/registrar-profesional"
+                  className="px-2 xl:px-3 py-2 rounded-xl font-medium text-xs xl:text-sm transition-all duration-200 text-purple-600 hover:bg-purple-50 hover:text-purple-700 border border-purple-300"
+                >
+                  Soy Profesional
+                </Link>
+                <Link
                   href="/contacto"
                   className="px-2 xl:px-4 py-2 rounded-xl font-medium text-xs xl:text-sm transition-all duration-200 text-gray-700 hover:bg-teal-50 hover:text-teal-600"
                 >
@@ -225,6 +242,13 @@ export default function Navegacion() {
                     </>
                   ) : (
                     <>
+                      <Link
+                        href="/registrar-profesional"
+                        onClick={() => setMenuMovilAbierto(false)}
+                        className="block text-center px-6 py-4 bg-purple-50 text-purple-700 font-bold rounded-xl border-2 border-purple-300 hover:bg-purple-100 transition-colors"
+                      >
+                        Soy Profesional
+                      </Link>
                       <Link
                         href="/contacto"
                         onClick={() => setMenuMovilAbierto(false)}
