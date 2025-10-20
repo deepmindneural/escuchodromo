@@ -40,9 +40,9 @@ export default function Navegacion() {
   const enlacesNavegacion = usuario
     ? esProfesional
       ? [
-          { href: '/profesional/dashboard', label: 'Mi Dashboard' },
+          { href: '/profesional/dashboard', label: 'Dashboard' },
           { href: '/profesional/calendario', label: 'Calendario' },
-          { href: '/profesional/disponibilidad', label: 'Disponibilidad' },
+          { href: '/profesional/disponibilidad', label: 'Horarios' },
           { href: '/chat', label: 'Chat' },
         ]
       : [
@@ -50,15 +50,12 @@ export default function Navegacion() {
           { href: '/profesionales', label: 'Profesionales' },
           { href: '/chat', label: 'Chat' },
           { href: '/evaluaciones', label: 'Evaluaciones' },
-          { href: '/animo', label: 'Ánimo' },
         ]
     : [
         { href: '/', label: 'Inicio' },
         { href: '/profesionales', label: 'Profesionales' },
-        { href: '/chat', label: 'Hablar con Escuchodromo' },
-        { href: '/como-funciona', label: 'Cómo Funciona' },
+        { href: '/chat', label: 'Chat IA' },
         { href: '/servicios', label: 'Servicios' },
-        { href: '/evaluaciones', label: 'Evaluaciones' },
         { href: '/precios', label: 'Precios' },
       ];
 
@@ -98,12 +95,12 @@ export default function Navegacion() {
           </Link>
 
           {/* Navegación Desktop */}
-          <div className="hidden lg:flex items-center space-x-1 xl:space-x-2">
+          <div className="hidden lg:flex items-center space-x-2">
             {enlacesNavegacion.map((enlace) => (
               <Link
                 key={enlace.href}
                 href={enlace.href}
-                className={`px-2 xl:px-4 py-2 rounded-xl transition-all duration-200 font-medium text-xs xl:text-sm whitespace-nowrap ${
+                className={`px-3 py-2 rounded-xl transition-all duration-200 font-medium text-sm whitespace-nowrap ${
                   pathname === enlace.href
                     ? 'bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-lg'
                     : 'text-gray-700 hover:text-teal-600 hover:bg-teal-50'
@@ -148,19 +145,13 @@ export default function Navegacion() {
               <>
                 <Link
                   href="/registrar-profesional"
-                  className="px-2 xl:px-3 py-2 rounded-xl font-medium text-xs xl:text-sm transition-all duration-200 text-purple-600 hover:bg-purple-50 hover:text-purple-700 border border-purple-300"
+                  className="px-3 py-2 rounded-xl font-medium text-sm transition-all duration-200 text-purple-600 hover:bg-purple-50 hover:text-purple-700 border border-purple-300 whitespace-nowrap"
                 >
                   Soy Profesional
                 </Link>
                 <Link
-                  href="/contacto"
-                  className="px-2 xl:px-4 py-2 rounded-xl font-medium text-xs xl:text-sm transition-all duration-200 text-gray-700 hover:bg-teal-50 hover:text-teal-600"
-                >
-                  Contacto
-                </Link>
-                <Link
                   href="/iniciar-sesion"
-                  className="px-2 xl:px-4 py-2 rounded-xl font-medium text-xs xl:text-sm transition-all duration-200 text-gray-700 hover:bg-teal-50 hover:text-teal-600"
+                  className="px-4 py-2 rounded-xl font-medium text-sm transition-all duration-200 text-gray-700 hover:bg-teal-50 hover:text-teal-600"
                 >
                   Acceder
                 </Link>
@@ -168,7 +159,7 @@ export default function Navegacion() {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className="px-3 xl:px-6 py-2 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-bold text-xs xl:text-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                    className="px-5 py-2 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-bold text-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
                   >
                     Registrarse
                   </motion.button>
