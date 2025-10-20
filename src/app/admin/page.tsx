@@ -4,10 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { Boton } from '../../lib/componentes/ui/boton';
 import { motion } from 'framer-motion';
 import CountUp from 'react-countup';
-import Navegacion from '../../lib/componentes/layout/Navegacion';
 import {
   FaUsers, FaComments, FaChartLine, FaMoneyBillWave,
   FaCog, FaBell, FaClipboardCheck, FaChartBar,
@@ -251,7 +249,7 @@ export default function PaginaAdmin() {
         role="status"
         aria-live="polite"
         aria-label="Cargando panel de administración"
-        className="min-h-screen bg-gray-900 flex items-center justify-center"
+        className="min-h-screen bg-gray-50 flex items-center justify-center"
       >
         <motion.div
           className="text-center"
@@ -259,68 +257,35 @@ export default function PaginaAdmin() {
           animate={{ opacity: 1 }}
         >
           <div
-            className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mx-auto"
+            className="w-16 h-16 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto"
             aria-hidden="true"
           ></div>
-          <p className="mt-4 text-gray-200 text-lg">Cargando panel de administración...</p>
+          <p className="mt-4 text-gray-600 text-lg">Cargando panel de administración...</p>
         </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100">
-      <Navegacion />
+    <>
       <Toaster position="top-right" />
-      
-      {/* Header con glassmorphism */}
-      <nav className="bg-gray-800/50 backdrop-blur-lg border-b border-gray-700 mt-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent">
-                Escuchodromo Admin
-              </h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link href="/dashboard">
-                <Boton 
-                  variante="fantasma" 
-                  tamano="sm"
-                  className="text-gray-300 hover:text-white hover:bg-gray-700"
-                >
-                  Dashboard
-                </Boton>
-              </Link>
-              <Boton
-                variante="fantasma"
-                tamano="sm"
-                onClick={cerrarSesion}
-                className="text-gray-300 hover:text-white hover:bg-gray-700"
-              >
-                Cerrar sesión
-              </Boton>
+
+      {/* Header de la página */}
+      <div className="bg-white border-b border-gray-200 mb-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Panel de Control</h1>
+              <p className="text-gray-600 mt-1">
+                Bienvenido de vuelta, {usuario?.nombre || 'Administrador'}
+              </p>
             </div>
           </div>
         </div>
-      </nav>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Título animado */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <h2 className="text-3xl font-bold text-gray-50 mb-2">
-            Panel de Control
-          </h2>
-          <p className="text-gray-200">
-            Bienvenido de vuelta, {usuario?.nombre || 'Administrador'}
-          </p>
-        </motion.div>
-
-        {/* Tarjetas de estadísticas con animaciones */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+        {/* Tarjetas de estadísticas */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {tarjetasEstadisticas.map((tarjeta, index) => (
             <motion.div
@@ -328,34 +293,37 @@ export default function PaginaAdmin() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              whileHover={{ scale: 1.05 }}
-              className="relative overflow-hidden"
+              className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
             >
-              <div className={`bg-gradient-to-br ${tarjeta.color} p-6 rounded-2xl shadow-xl`}>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-white text-sm font-medium">
-                      {tarjeta.titulo}
-                    </p>
-                    <p className="text-3xl font-bold text-white mt-2">
-                      <CountUp
-                        end={tarjeta.valor}
-                        duration={2}
-                        suffix={tarjeta.sufijo}
-                      />
-                    </p>
-                    <div className="flex items-center mt-2">
-                      {tarjeta.tendencia === 'up' ? (
-                        <FaArrowUp className="text-white mr-1" />
-                      ) : (
-                        <FaArrowDown className="text-white mr-1" />
-                      )}
-                      <span className="text-white text-sm">
-                        {Math.abs(tarjeta.cambio)} hoy
-                      </span>
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className={`p-3 rounded-lg bg-gradient-to-br ${tarjeta.color}`}>
+                      <tarjeta.icono className="text-2xl text-white" aria-hidden="true" />
                     </div>
                   </div>
-                  <tarjeta.icono className="text-4xl text-white/40" aria-hidden="true" />
+                  <p className="text-sm font-medium text-gray-600 mb-1">
+                    {tarjeta.titulo}
+                  </p>
+                  <p className="text-3xl font-bold text-gray-900">
+                    <CountUp
+                      end={tarjeta.valor}
+                      duration={2}
+                      suffix={tarjeta.sufijo}
+                    />
+                  </p>
+                  <div className="flex items-center mt-2">
+                    {tarjeta.tendencia === 'up' ? (
+                      <FaArrowUp className="text-green-500 mr-1 text-xs" />
+                    ) : (
+                      <FaArrowDown className="text-red-500 mr-1 text-xs" />
+                    )}
+                    <span className={`text-sm font-medium ${
+                      tarjeta.tendencia === 'up' ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {Math.abs(tarjeta.cambio)} hoy
+                    </span>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -363,19 +331,27 @@ export default function PaginaAdmin() {
         </div>
 
         {/* Gráficos principales */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Gráfico de actividad en tiempo real */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-gray-800 rounded-2xl p-6 shadow-xl"
+            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
           >
-            <h3 className="text-xl font-semibold text-gray-50 mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Actividad en Tiempo Real
             </h3>
             <div className="h-64">
               <ApexChart
-                options={opcionesApexChart}
+                options={{
+                  ...opcionesApexChart,
+                  chart: {
+                    ...opcionesApexChart.chart,
+                    background: 'transparent'
+                  },
+                  colors: ['#14B8A6', '#06B6D4'],
+                  tooltip: { theme: 'light' }
+                }}
                 series={seriesApexChart}
                 type="area"
                 height="100%"
@@ -387,50 +363,52 @@ export default function PaginaAdmin() {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-gray-800 rounded-2xl p-6 shadow-xl"
+            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
           >
-            <h3 className="text-xl font-semibold text-gray-50 mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Crecimiento de Usuarios
             </h3>
             <ResponsiveContainer width="100%" height={250}>
               <AreaChart data={datosUsuariosPorMes}>
                 <defs>
                   <linearGradient id="colorUsuarios" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#14B8A6" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#14B8A6" stopOpacity={0.1}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="mes" stroke="#9CA3AF" />
-                <YAxis stroke="#9CA3AF" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#1F2937', 
-                    border: 'none',
-                    borderRadius: '8px'
-                  }} 
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                <XAxis dataKey="mes" stroke="#6B7280" style={{ fontSize: '12px' }} />
+                <YAxis stroke="#6B7280" style={{ fontSize: '12px' }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  }}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="usuarios" 
-                  stroke="#3B82F6" 
-                  fillOpacity={1} 
-                  fill="url(#colorUsuarios)" 
+                <Area
+                  type="monotone"
+                  dataKey="usuarios"
+                  stroke="#14B8A6"
+                  strokeWidth={2}
+                  fillOpacity={1}
+                  fill="url(#colorUsuarios)"
                 />
               </AreaChart>
             </ResponsiveContainer>
           </motion.div>
         </div>
 
-        {/* Gráfico circular y tabla */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        {/* Gráfico circular y acciones rápidas */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Distribución de evaluaciones */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-gray-800 rounded-2xl p-6 shadow-xl"
+            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
           >
-            <h3 className="text-xl font-semibold text-gray-50 mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Evaluaciones por Tipo
             </h3>
             <ResponsiveContainer width="100%" height={250}>
@@ -449,24 +427,25 @@ export default function PaginaAdmin() {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#1F2937', 
-                    border: 'none',
-                    borderRadius: '8px'
-                  }} 
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  }}
                 />
               </PieChart>
             </ResponsiveContainer>
           </motion.div>
 
-          {/* Accesos rápidos mejorados */}
+          {/* Accesos rápidos */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="lg:col-span-2 bg-gray-800 rounded-2xl p-6 shadow-xl"
+            className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6"
           >
-            <h3 className="text-xl font-semibold text-gray-50 mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">
               Acciones Rápidas
             </h3>
             <div className="grid grid-cols-2 gap-4">
@@ -474,36 +453,36 @@ export default function PaginaAdmin() {
                 {
                   titulo: 'Historiales de Usuarios',
                   icono: FaHistory,
-                  color: 'from-teal-500 to-cyan-700',
+                  color: 'from-teal-500 to-cyan-500',
                   href: '/admin/historiales'
                 },
                 {
                   titulo: 'Gestión de Usuarios',
                   icono: FaUsers,
-                  color: 'from-blue-500 to-blue-700',
+                  color: 'from-blue-500 to-blue-600',
                   href: '/admin/usuarios'
                 },
                 {
-                  titulo: 'Métricas Avanzadas',
-                  icono: FaChartBar,
-                  color: 'from-green-500 to-green-700',
-                  href: '/admin/metricas'
+                  titulo: 'Profesionales',
+                  icono: FaUserPlus,
+                  color: 'from-green-500 to-green-600',
+                  href: '/admin/profesionales'
                 },
                 {
                   titulo: 'Configuración',
                   icono: FaCog,
-                  color: 'from-purple-500 to-purple-700',
+                  color: 'from-purple-500 to-purple-600',
                   href: '/admin/configuracion'
                 }
               ].map((accion, index) => (
                 <Link key={index} href={accion.href}>
                   <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className={`bg-gradient-to-br ${accion.color} p-6 rounded-xl cursor-pointer`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={`bg-gradient-to-br ${accion.color} p-6 rounded-lg cursor-pointer shadow-sm hover:shadow-md transition-shadow`}
                   >
                     <accion.icono className="text-3xl text-white mb-3" />
-                    <p className="text-white font-medium">{accion.titulo}</p>
+                    <p className="text-white font-medium text-sm">{accion.titulo}</p>
                   </motion.div>
                 </Link>
               ))}
@@ -511,15 +490,15 @@ export default function PaginaAdmin() {
           </motion.div>
         </div>
 
-        {/* Actividad reciente mejorada */}
+        {/* Actividad reciente */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/50 rounded-2xl p-6"
+          className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
         >
-          <h3 className="text-xl font-semibold text-gray-50 mb-4 flex items-center">
-            <FaBell className="mr-2" aria-hidden="true" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <FaBell className="mr-2 text-teal-500" aria-hidden="true" />
             Actividad Reciente
           </h3>
           <div className="space-y-3">
@@ -534,7 +513,7 @@ export default function PaginaAdmin() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1 * index }}
-                className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg"
+                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
               >
                 <div className="flex items-center">
                   <div className={`w-2 h-2 rounded-full mr-3 ${
@@ -542,7 +521,7 @@ export default function PaginaAdmin() {
                     actividad.tipo === 'evaluacion' ? 'bg-green-500' :
                     actividad.tipo === 'sistema' ? 'bg-purple-500' : 'bg-orange-500'
                   }`} />
-                  <span className="text-gray-300">{actividad.mensaje}</span>
+                  <span className="text-gray-700 font-medium">{actividad.mensaje}</span>
                 </div>
                 <span className="text-gray-500 text-sm">{actividad.tiempo}</span>
               </motion.div>
@@ -550,6 +529,6 @@ export default function PaginaAdmin() {
           </div>
         </motion.div>
       </main>
-    </div>
+    </>
   );
 }

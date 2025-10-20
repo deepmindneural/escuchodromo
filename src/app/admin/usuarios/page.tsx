@@ -11,7 +11,6 @@ import {
 } from '../../../lib/componentes/ui/table';
 import { Input } from '../../../lib/componentes/ui/input';
 import { Button } from '../../../lib/componentes/ui/button';
-import Navegacion from '../../../lib/componentes/layout/Navegacion';
 import { Badge } from '../../../lib/componentes/ui/badge';
 import {
   Select,

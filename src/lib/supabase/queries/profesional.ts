@@ -85,7 +85,7 @@ export async function obtenerPacientesProfesional(
         paciente_id,
         estado,
         fecha_hora,
-        Usuario!paciente_id(
+        Usuario:paciente_id(
           id,
           nombre,
           apellido,
@@ -426,7 +426,7 @@ export async function obtenerProximasCitas(
         estado,
         motivo_consulta,
         link_videollamada,
-        Usuario!paciente_id(
+        Usuario:paciente_id(
           id,
           nombre,
           apellido,

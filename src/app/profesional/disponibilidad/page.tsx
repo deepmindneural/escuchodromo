@@ -134,20 +134,25 @@ export default function DisponibilidadProfesional() {
 
   const cargarHorarios = async (perfilId: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('obtener-disponibilidad', {
-        method: 'GET',
-      });
+      // Cargar horarios directamente desde la tabla HorarioProfesional
+      const { data, error } = await supabase
+        .from('HorarioProfesional')
+        .select('id, dia_semana, hora_inicio, hora_fin, duracion_sesion, activo')
+        .eq('perfil_profesional_id', perfilId)
+        .order('dia_semana', { ascending: true })
+        .order('hora_inicio', { ascending: true });
 
       if (error) {
         console.error('Error cargando horarios:', error);
+        toast.error('Error al cargar la disponibilidad');
         return;
       }
 
-      if (data?.success && data?.horarios) {
+      if (data && data.length > 0) {
         // Agrupar horarios por día
         const horariosAgrupados: HorariosPorDia = {};
 
-        data.horarios.forEach((horario: any) => {
+        data.forEach((horario: any) => {
           if (!horariosAgrupados[horario.dia_semana]) {
             horariosAgrupados[horario.dia_semana] = [];
           }
@@ -158,14 +163,18 @@ export default function DisponibilidadProfesional() {
             hora_inicio: horario.hora_inicio,
             hora_fin: horario.hora_fin,
             duracion_sesion: horario.duracion_sesion || 60,
-            activo: horario.activo,
+            activo: horario.activo ?? true,
           });
         });
 
         setHorariosPorDia(horariosAgrupados);
+      } else {
+        // No hay horarios configurados
+        setHorariosPorDia({});
       }
     } catch (error) {
       console.error('Error en cargarHorarios:', error);
+      toast.error('Error inesperado al cargar horarios');
     }
   };
 
@@ -383,10 +392,23 @@ export default function DisponibilidadProfesional() {
     try {
       setGuardando(true);
 
-      // Preparar array de horarios para enviar
+      // Primero: eliminar TODOS los horarios existentes del profesional
+      const { error: errorEliminar } = await supabase
+        .from('HorarioProfesional')
+        .delete()
+        .eq('perfil_profesional_id', perfilProfesionalId);
+
+      if (errorEliminar) {
+        console.error('Error eliminando horarios anteriores:', errorEliminar);
+        toast.error('Error al limpiar horarios anteriores');
+        return;
+      }
+
+      // Segundo: insertar los nuevos horarios (filtrar los que tienen ID temporal)
       const horariosParaGuardar = Object.values(horariosPorDia)
         .flat()
         .map((h) => ({
+          perfil_profesional_id: perfilProfesionalId,
           dia_semana: h.dia_semana,
           hora_inicio: h.hora_inicio,
           hora_fin: h.hora_fin,
@@ -394,24 +416,22 @@ export default function DisponibilidadProfesional() {
           activo: h.activo,
         }));
 
-      const { data, error } = await supabase.functions.invoke('configurar-disponibilidad', {
-        method: 'POST',
-        body: { horarios: horariosParaGuardar },
-      });
+      if (horariosParaGuardar.length > 0) {
+        const { error: errorInsertar } = await supabase
+          .from('HorarioProfesional')
+          .insert(horariosParaGuardar);
 
-      if (error) {
-        console.error('Error guardando:', error);
-        toast.error('Error al guardar la disponibilidad');
-        return;
+        if (errorInsertar) {
+          console.error('Error insertando nuevos horarios:', errorInsertar);
+          toast.error('Error al guardar los horarios');
+          return;
+        }
       }
 
-      if (data?.success) {
-        toast.success(data.mensaje || 'Disponibilidad actualizada correctamente');
-        // Recargar horarios desde el servidor
-        await cargarHorarios(perfilProfesionalId);
-      } else {
-        toast.error(data?.error || 'Error desconocido');
-      }
+      toast.success('Disponibilidad actualizada correctamente');
+
+      // Recargar horarios desde el servidor para obtener los IDs reales
+      await cargarHorarios(perfilProfesionalId);
     } catch (error) {
       console.error('Error en guardarCambios:', error);
       toast.error('Error al guardar los cambios');

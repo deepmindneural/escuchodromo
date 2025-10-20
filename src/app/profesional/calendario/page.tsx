@@ -73,7 +73,7 @@ export default function PaginaCalendarioProfesional() {
       const { data: userData, error } = await supabase
         .from('Usuario')
         .select('id, rol')
-        .eq('id', user.id)
+        .eq('auth_id', user.id)
         .single();
 
       if (error || !userData || userData.rol !== 'TERAPEUTA') {
@@ -108,8 +108,8 @@ export default function PaginaCalendarioProfesional() {
           duracion,
           modalidad,
           estado,
-          usuario_id,
-          Usuario!Cita_usuario_id_fkey (
+          paciente_id,
+          Usuario:paciente_id (
             nombre,
             apellido
           )

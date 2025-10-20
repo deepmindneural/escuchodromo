@@ -60,7 +60,21 @@ export default function PaginaDetalleProfesional() {
 
       const { data, error } = await supabase
         .from('Usuario')
-        .select('id, nombre, apellido, PerfilUsuario(*)')
+        .select(`
+          id,
+          nombre,
+          apellido,
+          PerfilUsuario!PerfilUsuario_usuario_id_fkey (
+            especialidad,
+            experiencia_anos,
+            foto_perfil,
+            biografia,
+            direccion,
+            tarifa_30min,
+            tarifa_60min,
+            disponible
+          )
+        `)
         .eq('id', profesionalId)
         .eq('rol', 'TERAPEUTA')
         .eq('esta_activo', true)
