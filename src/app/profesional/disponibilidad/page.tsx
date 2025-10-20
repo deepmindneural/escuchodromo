@@ -15,6 +15,7 @@ import { obtenerClienteNavegador } from '@/lib/supabase/cliente';
 import toast from 'react-hot-toast';
 import { SelectorHorarios } from '@/lib/componentes/SelectorHorarios';
 import { BloqueHorario, type Horario } from '@/lib/componentes/BloqueHorario';
+import { ModalConfirmacion } from '@/lib/componentes/ui/modal-confirmacion';
 
 interface HorarioCompleto extends Horario {
   dia_semana: number;
@@ -69,6 +70,10 @@ export default function DisponibilidadProfesional() {
   const [editarHorarioInicio, setEditarHorarioInicio] = useState('');
   const [editarHorarioFin, setEditarHorarioFin] = useState('');
   const [errorEditarHorario, setErrorEditarHorario] = useState('');
+
+  // Estados para modales de confirmación
+  const [horarioAEliminar, setHorarioAEliminar] = useState<{ dia: number; id: string } | null>(null);
+  const [confirmandoPlantilla, setConfirmandoPlantilla] = useState<'laboral' | 'tarde' | 'completo' | null>(null);
 
   useEffect(() => {
     cargarDatosIniciales();
@@ -310,16 +315,19 @@ export default function DisponibilidadProfesional() {
   };
 
   const eliminarHorario = (diaSemana: number, horarioId: string) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar este horario?')) {
-      return;
-    }
+    setHorarioAEliminar({ dia: diaSemana, id: horarioId });
+  };
+
+  const confirmarEliminacion = () => {
+    if (!horarioAEliminar) return;
 
     setHorariosPorDia((prev) => ({
       ...prev,
-      [diaSemana]: prev[diaSemana].filter((h) => h.id !== horarioId),
+      [horarioAEliminar.dia]: prev[horarioAEliminar.dia].filter((h) => h.id !== horarioAEliminar.id),
     }));
 
     toast.success('Horario eliminado. Recuerda guardar los cambios.');
+    setHorarioAEliminar(null);
   };
 
   const toggleActivoHorario = (diaSemana: number, horarioId: string) => {
@@ -332,13 +340,11 @@ export default function DisponibilidadProfesional() {
   };
 
   const aplicarPlantilla = (plantilla: 'laboral' | 'tarde' | 'completo') => {
-    if (
-      !confirm(
-        'Esto reemplazará todos tus horarios actuales. ¿Deseas continuar?'
-      )
-    ) {
-      return;
-    }
+    setConfirmandoPlantilla(plantilla);
+  };
+
+  const confirmarPlantilla = () => {
+    if (!confirmandoPlantilla) return;
 
     const nuevosHorarios: HorariosPorDia = {};
 
@@ -348,7 +354,7 @@ export default function DisponibilidadProfesional() {
       completo: { dias: [1, 2, 3, 4, 5, 6], inicio: '08:00', fin: '20:00' },
     };
 
-    const config = plantillas[plantilla];
+    const config = plantillas[confirmandoPlantilla];
 
     config.dias.forEach((dia) => {
       nuevosHorarios[dia] = [
@@ -365,6 +371,7 @@ export default function DisponibilidadProfesional() {
 
     setHorariosPorDia(nuevosHorarios);
     toast.success('Plantilla aplicada. Recuerda guardar los cambios.');
+    setConfirmandoPlantilla(null);
   };
 
   const guardarCambios = async () => {
@@ -438,9 +445,17 @@ export default function DisponibilidadProfesional() {
 
   if (cargando) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div
+        role="status"
+        aria-live="polite"
+        aria-label="Cargando configuración de disponibilidad"
+        className="min-h-screen bg-gray-50 flex items-center justify-center"
+      >
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-calma-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div
+            className="w-16 h-16 border-4 border-calma-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"
+            aria-hidden="true"
+          />
           <p className="text-gray-600">Cargando disponibilidad...</p>
         </div>
       </div>
@@ -449,6 +464,30 @@ export default function DisponibilidadProfesional() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
+      {/* Modal de confirmación para eliminar horario */}
+      <ModalConfirmacion
+        abierto={!!horarioAEliminar}
+        onCerrar={() => setHorarioAEliminar(null)}
+        onConfirmar={confirmarEliminacion}
+        titulo="Eliminar horario"
+        descripcion="¿Estás seguro de que deseas eliminar este bloque horario? Los cambios no se guardarán hasta que presiones 'Guardar cambios'."
+        textoConfirmar="Sí, eliminar"
+        textoCancelar="Cancelar"
+        peligroso={true}
+      />
+
+      {/* Modal de confirmación para aplicar plantilla */}
+      <ModalConfirmacion
+        abierto={!!confirmandoPlantilla}
+        onCerrar={() => setConfirmandoPlantilla(null)}
+        onConfirmar={confirmarPlantilla}
+        titulo="Aplicar plantilla de horarios"
+        descripcion="Esto reemplazará todos tus horarios actuales por la plantilla seleccionada. Los cambios no se guardarán hasta que presiones 'Guardar cambios'. ¿Deseas continuar?"
+        textoConfirmar="Sí, aplicar plantilla"
+        textoCancelar="Cancelar"
+        peligroso={false}
+      />
+
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

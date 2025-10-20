@@ -11,7 +11,13 @@ import {
 import { GridMetricas, type Metrica } from '@/lib/componentes/GridMetricas';
 import { TablaPacientes, type Paciente } from '@/lib/componentes/TablaPacientes';
 import { ProximasCitas, type Cita } from '@/lib/componentes/ProximasCitas';
+import { ModalConfirmacion } from '@/lib/componentes/ui/modal-confirmacion';
 import { obtenerClienteNavegador } from '@/lib/supabase/cliente';
+import {
+  obtenerPacientesProfesional,
+  obtenerMetricasProfesional,
+  obtenerProximasCitas,
+} from '@/lib/supabase/queries/profesional';
 import toast from 'react-hot-toast';
 
 /**
@@ -33,6 +39,10 @@ export default function DashboardProfesional() {
   const [metricas, setMetricas] = useState<Metrica[]>([]);
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [citasProximas, setCitasProximas] = useState<Cita[]>([]);
+
+  // Estado para modal de confirmación
+  const [citaACancelar, setCitaACancelar] = useState<string | null>(null);
+  const [cancelando, setCancelando] = useState(false);
 
   useEffect(() => {
     cargarDatosDashboard();
@@ -72,144 +82,176 @@ export default function DashboardProfesional() {
 
       setProfesionalId(usuario.id);
 
-      // Cargar citas del profesional
-      const { data: citas, error: errorCitas } = await supabase
-        .from('Cita')
-        .select(
-          `
-          id,
-          fecha_hora,
-          duracion,
-          estado,
-          modalidad,
-          paciente:Usuario!Cita_paciente_id_fkey(
-            id,
-            nombre,
-            apellido,
-            PerfilUsuario(foto_perfil)
-          )
-        `
-        )
-        .eq('profesional_id', usuario.id)
-        .gte('fecha_hora', new Date().toISOString())
-        .order('fecha_hora', { ascending: true })
-        .limit(10);
+      // Cargar próximas citas del profesional
+      const { data: citasData, error: errorCitas } = await obtenerProximasCitas(usuario.id, 10);
 
-      if (!errorCitas && citas) {
-        const citasFormateadas: Cita[] = citas.map((cita: any) => ({
+      if (errorCitas) {
+        console.error('Error obteniendo próximas citas:', errorCitas);
+        toast.error('Error al cargar las próximas citas');
+      } else if (citasData) {
+        const citasFormateadas: Cita[] = citasData.map((cita) => ({
           id: cita.id,
           paciente: {
-            nombre: cita.paciente?.nombre || '',
-            apellido: cita.paciente?.apellido || '',
-            foto: cita.paciente?.PerfilUsuario?.foto_perfil,
+            nombre: cita.paciente.nombre,
+            apellido: cita.paciente.apellido || '',
+            foto: cita.paciente.foto_perfil,
           },
-          fecha: new Date(cita.fecha_hora),
-          duracion: cita.duracion || 60,
-          modalidad: cita.modalidad || 'VIRTUAL',
-          estado: cita.estado || 'PENDIENTE',
+          fecha: cita.fecha_hora,
+          duracion: cita.duracion,
+          modalidad: cita.modalidad.toUpperCase() as 'VIRTUAL' | 'PRESENCIAL',
+          estado: cita.estado.toUpperCase() as
+            | 'PENDIENTE'
+            | 'CONFIRMADA'
+            | 'COMPLETADA'
+            | 'CANCELADA'
+            | 'NO_ASISTIO',
         }));
         setCitasProximas(citasFormateadas);
       }
 
-      // Cargar pacientes (simulado - aquí deberías hacer queries reales)
-      const pacientesMock: Paciente[] = [
-        {
-          id: '1',
-          nombre: 'María',
-          apellido: 'González',
-          ultimoContacto: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-          estadoEmocional: 'ESTABLE',
-          progreso: 75,
-          sesionesCompletadas: 8,
-          sesionesProgramadas: 12,
-        },
-        {
-          id: '2',
-          nombre: 'Juan',
-          apellido: 'Pérez',
-          ultimoContacto: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-          estadoEmocional: 'ALERTA',
-          progreso: 45,
-          sesionesCompletadas: 4,
-          sesionesProgramadas: 10,
-        },
-        {
-          id: '3',
-          nombre: 'Ana',
-          apellido: 'Martínez',
-          ultimoContacto: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-          estadoEmocional: 'CRITICO',
-          progreso: 30,
-          sesionesCompletadas: 2,
-          sesionesProgramadas: 8,
-        },
-      ];
-      setPacientes(pacientesMock);
+      // Cargar pacientes del profesional
+      const { data: pacientesData, error: errorPacientes } = await obtenerPacientesProfesional(
+        usuario.id
+      );
 
-      // Cargar métricas
-      const metricasMock: Metrica[] = [
-        {
-          id: 'pacientes',
-          titulo: 'Pacientes activos',
-          valor: 24,
-          cambio: {
-            valor: 3,
-            porcentaje: 14,
-            tipo: 'positivo',
+      if (errorPacientes) {
+        console.error('Error obteniendo pacientes:', errorPacientes);
+        toast.error('Error al cargar los pacientes');
+      } else if (pacientesData) {
+        const pacientesFormateados: Paciente[] = pacientesData.map((paciente) => ({
+          id: paciente.id,
+          nombre: paciente.nombre,
+          apellido: paciente.apellido || '',
+          ultimoContacto: paciente.ultima_cita || new Date(),
+          estadoEmocional: paciente.estado_emocional || 'ESTABLE',
+          progreso: paciente.progreso || 0,
+          sesionesCompletadas: paciente.citas_completadas,
+          sesionesProgramadas: paciente.total_citas,
+        }));
+        setPacientes(pacientesFormateados);
+      }
+
+      // Cargar métricas del profesional
+      const { data: metricasData, error: errorMetricas } = await obtenerMetricasProfesional(
+        usuario.id
+      );
+
+      if (errorMetricas) {
+        console.error('Error obteniendo métricas:', errorMetricas);
+        toast.error('Error al cargar las métricas');
+      } else if (metricasData) {
+        // Calcular cambios basados en tendencias
+        const calcularCambio = (tendencia: number[]) => {
+          if (tendencia.length < 2) return { valor: 0, porcentaje: 0, tipo: 'neutro' as const };
+          const valorActual = tendencia[tendencia.length - 1];
+          const valorAnterior = tendencia[tendencia.length - 2];
+          const cambioValor = valorActual - valorAnterior;
+          const cambioPorcentaje =
+            valorAnterior > 0 ? Math.round((cambioValor / valorAnterior) * 100) : 0;
+          return {
+            valor: cambioValor,
+            porcentaje: Math.abs(cambioPorcentaje),
+            tipo: (cambioValor >= 0 ? 'positivo' : 'negativo') as 'positivo' | 'negativo',
+          };
+        };
+
+        // Formatear ingresos en pesos colombianos
+        const formatearMoneda = (valor: number) => {
+          return new Intl.NumberFormat('es-CO', {
+            style: 'currency',
+            currency: 'COP',
+            minimumFractionDigits: 0,
+          }).format(valor);
+        };
+
+        const cambioPacientes = calcularCambio(metricasData.tendenciaPacientes);
+        const cambioCitas = calcularCambio(metricasData.tendenciaCitas);
+        const cambioAdherencia = calcularCambio(metricasData.tendenciaAdherencia);
+        const cambioIngresos = {
+          valor: metricasData.ingresosMes - metricasData.ingresosMesAnterior,
+          porcentaje:
+            metricasData.ingresosMesAnterior > 0
+              ? Math.round(
+                  ((metricasData.ingresosMes - metricasData.ingresosMesAnterior) /
+                    metricasData.ingresosMesAnterior) *
+                    100
+                )
+              : 0,
+          tipo:
+            metricasData.ingresosMes >= metricasData.ingresosMesAnterior
+              ? ('positivo' as const)
+              : ('negativo' as const),
+        };
+
+        const metricasFormateadas: Metrica[] = [
+          {
+            id: 'pacientes',
+            titulo: 'Pacientes activos',
+            valor: metricasData.pacientesActivos,
+            cambio: cambioPacientes,
+            icono: <UserGroupIcon className="w-6 h-6" />,
+            datosGrafica: metricasData.tendenciaPacientes,
+            tendencia:
+              cambioPacientes.tipo === 'positivo'
+                ? 'positiva'
+                : cambioPacientes.tipo === 'negativo'
+                  ? 'negativa'
+                  : 'neutra',
+            descripcionGrafica: 'Evolución de pacientes activos en las últimas 4 semanas',
+            colorGrafica: '#0EA5E9',
           },
-          icono: <UserGroupIcon className="w-6 h-6" />,
-          datosGrafica: [18, 20, 21, 24],
-          tendencia: 'positiva',
-          descripcionGrafica: 'Evolución de pacientes activos en las últimas 4 semanas',
-          colorGrafica: '#0EA5E9',
-        },
-        {
-          id: 'citas',
-          titulo: 'Citas esta semana',
-          valor: 12,
-          cambio: {
-            valor: -2,
-            porcentaje: -14,
-            tipo: 'negativo',
+          {
+            id: 'citas',
+            titulo: 'Citas esta semana',
+            valor: metricasData.citasEstaSemana,
+            cambio: cambioCitas,
+            icono: <CalendarDaysIcon className="w-6 h-6" />,
+            datosGrafica: metricasData.tendenciaCitas,
+            tendencia:
+              cambioCitas.tipo === 'positivo'
+                ? 'positiva'
+                : cambioCitas.tipo === 'negativo'
+                  ? 'negativa'
+                  : 'neutra',
+            descripcionGrafica: 'Citas programadas en las últimas 4 semanas',
+            colorGrafica: '#F59E0B',
           },
-          icono: <CalendarDaysIcon className="w-6 h-6" />,
-          datosGrafica: [15, 14, 16, 12],
-          tendencia: 'negativa',
-          descripcionGrafica: 'Citas programadas en las últimas 4 semanas',
-          colorGrafica: '#F59E0B',
-        },
-        {
-          id: 'adherencia',
-          titulo: 'Tasa de adherencia',
-          valor: '85%',
-          cambio: {
-            valor: 5,
-            porcentaje: 6,
-            tipo: 'positivo',
+          {
+            id: 'adherencia',
+            titulo: 'Tasa de adherencia',
+            valor: `${metricasData.tasaAdherencia}%`,
+            cambio: cambioAdherencia,
+            icono: <ChartBarIcon className="w-6 h-6" />,
+            datosGrafica: metricasData.tendenciaAdherencia,
+            tendencia:
+              cambioAdherencia.tipo === 'positivo'
+                ? 'positiva'
+                : cambioAdherencia.tipo === 'negativo'
+                  ? 'negativa'
+                  : 'neutra',
+            descripcionGrafica: 'Porcentaje de adherencia en las últimas 4 semanas',
+            colorGrafica: '#22C55E',
           },
-          icono: <ChartBarIcon className="w-6 h-6" />,
-          datosGrafica: [78, 82, 83, 85],
-          tendencia: 'positiva',
-          descripcionGrafica: 'Porcentaje de adherencia en las últimas 4 semanas',
-          colorGrafica: '#22C55E',
-        },
-        {
-          id: 'ingresos',
-          titulo: 'Ingresos del mes',
-          valor: '$3,450,000',
-          cambio: {
-            valor: 450000,
-            porcentaje: 15,
-            tipo: 'positivo',
+          {
+            id: 'ingresos',
+            titulo: 'Ingresos del mes',
+            valor: formatearMoneda(metricasData.ingresosMes),
+            cambio: cambioIngresos,
+            icono: <BanknotesIcon className="w-6 h-6" />,
+            datosGrafica: metricasData.tendenciaIngresos,
+            tendencia:
+              cambioIngresos.tipo === 'positivo'
+                ? 'positiva'
+                : cambioIngresos.tipo === 'negativo'
+                  ? 'negativa'
+                  : 'neutra',
+            descripcionGrafica: 'Ingresos mensuales en las últimas 4 semanas',
+            colorGrafica: '#A855F7',
           },
-          icono: <BanknotesIcon className="w-6 h-6" />,
-          datosGrafica: [2800000, 3000000, 3200000, 3450000],
-          tendencia: 'positiva',
-          descripcionGrafica: 'Ingresos mensuales en las últimas 4 semanas',
-          colorGrafica: '#A855F7',
-        },
-      ];
-      setMetricas(metricasMock);
+        ];
+
+        setMetricas(metricasFormateadas);
+      }
     } catch (error) {
       console.error('Error cargando dashboard:', error);
       toast.error('Error al cargar los datos del dashboard');
@@ -222,24 +264,30 @@ export default function DashboardProfesional() {
     router.push(`/pacientes/${paciente.id}/progreso`);
   };
 
-  const manejarCancelarCita = async (citaId: string) => {
-    if (!confirm('¿Estás seguro de que deseas cancelar esta cita?')) {
-      return;
-    }
+  const manejarCancelarCita = (citaId: string) => {
+    setCitaACancelar(citaId);
+  };
+
+  const confirmarCancelacion = async () => {
+    if (!citaACancelar) return;
 
     try {
+      setCancelando(true);
       const { error } = await supabase
         .from('Cita')
         .update({ estado: 'CANCELADA' })
-        .eq('id', citaId);
+        .eq('id', citaACancelar);
 
       if (error) throw error;
 
       toast.success('Cita cancelada exitosamente');
+      setCitaACancelar(null);
       cargarDatosDashboard();
     } catch (error) {
       console.error('Error cancelando cita:', error);
       toast.error('No se pudo cancelar la cita');
+    } finally {
+      setCancelando(false);
     }
   };
 
@@ -255,9 +303,17 @@ export default function DashboardProfesional() {
 
   if (cargando) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div
+        role="status"
+        aria-live="polite"
+        aria-label="Cargando dashboard profesional"
+        className="min-h-screen bg-gray-50 flex items-center justify-center"
+      >
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-calma-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div
+            className="w-16 h-16 border-4 border-calma-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"
+            aria-hidden="true"
+          />
           <p className="text-gray-600">Cargando dashboard...</p>
         </div>
       </div>
@@ -266,6 +322,19 @@ export default function DashboardProfesional() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Modal de confirmación de cancelación */}
+      <ModalConfirmacion
+        abierto={!!citaACancelar}
+        onCerrar={() => setCitaACancelar(null)}
+        onConfirmar={confirmarCancelacion}
+        titulo="Cancelar cita"
+        descripcion="¿Estás seguro de que deseas cancelar esta cita? Esta acción no se puede deshacer y el paciente será notificado."
+        textoConfirmar="Sí, cancelar cita"
+        textoCancelar="No, mantener cita"
+        peligroso={true}
+        cargando={cancelando}
+      />
+
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

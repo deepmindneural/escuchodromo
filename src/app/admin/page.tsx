@@ -247,14 +247,22 @@ export default function PaginaAdmin() {
 
   if (cargando) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <motion.div 
+      <div
+        role="status"
+        aria-live="polite"
+        aria-label="Cargando panel de administración"
+        className="min-h-screen bg-gray-900 flex items-center justify-center"
+      >
+        <motion.div
           className="text-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >
-          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-300 text-lg">Cargando panel de administración...</p>
+          <div
+            className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mx-auto"
+            aria-hidden="true"
+          ></div>
+          <p className="mt-4 text-gray-200 text-lg">Cargando panel de administración...</p>
         </motion.div>
       </div>
     );
@@ -304,10 +312,10 @@ export default function PaginaAdmin() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h2 className="text-3xl font-bold text-white mb-2">
+          <h2 className="text-3xl font-bold text-gray-50 mb-2">
             Panel de Control
           </h2>
-          <p className="text-gray-400">
+          <p className="text-gray-200">
             Bienvenido de vuelta, {usuario?.nombre || 'Administrador'}
           </p>
         </motion.div>
@@ -326,28 +334,28 @@ export default function PaginaAdmin() {
               <div className={`bg-gradient-to-br ${tarjeta.color} p-6 rounded-2xl shadow-xl`}>
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-white/80 text-sm font-medium">
+                    <p className="text-white text-sm font-medium">
                       {tarjeta.titulo}
                     </p>
                     <p className="text-3xl font-bold text-white mt-2">
-                      <CountUp 
-                        end={tarjeta.valor} 
-                        duration={2} 
-                        suffix={tarjeta.sufijo} 
+                      <CountUp
+                        end={tarjeta.valor}
+                        duration={2}
+                        suffix={tarjeta.sufijo}
                       />
                     </p>
                     <div className="flex items-center mt-2">
                       {tarjeta.tendencia === 'up' ? (
-                        <FaArrowUp className="text-green-300 mr-1" />
+                        <FaArrowUp className="text-white mr-1" />
                       ) : (
-                        <FaArrowDown className="text-red-300 mr-1" />
+                        <FaArrowDown className="text-white mr-1" />
                       )}
-                      <span className="text-white/80 text-sm">
+                      <span className="text-white text-sm">
                         {Math.abs(tarjeta.cambio)} hoy
                       </span>
                     </div>
                   </div>
-                  <tarjeta.icono className="text-4xl text-white/30" />
+                  <tarjeta.icono className="text-4xl text-white/40" aria-hidden="true" />
                 </div>
               </div>
             </motion.div>
@@ -362,7 +370,7 @@ export default function PaginaAdmin() {
             animate={{ opacity: 1, x: 0 }}
             className="bg-gray-800 rounded-2xl p-6 shadow-xl"
           >
-            <h3 className="text-xl font-semibold text-white mb-4">
+            <h3 className="text-xl font-semibold text-gray-50 mb-4">
               Actividad en Tiempo Real
             </h3>
             <div className="h-64">
@@ -381,7 +389,7 @@ export default function PaginaAdmin() {
             animate={{ opacity: 1, x: 0 }}
             className="bg-gray-800 rounded-2xl p-6 shadow-xl"
           >
-            <h3 className="text-xl font-semibold text-white mb-4">
+            <h3 className="text-xl font-semibold text-gray-50 mb-4">
               Crecimiento de Usuarios
             </h3>
             <ResponsiveContainer width="100%" height={250}>
@@ -422,7 +430,7 @@ export default function PaginaAdmin() {
             animate={{ opacity: 1, scale: 1 }}
             className="bg-gray-800 rounded-2xl p-6 shadow-xl"
           >
-            <h3 className="text-xl font-semibold text-white mb-4">
+            <h3 className="text-xl font-semibold text-gray-50 mb-4">
               Evaluaciones por Tipo
             </h3>
             <ResponsiveContainer width="100%" height={250}>
@@ -458,7 +466,7 @@ export default function PaginaAdmin() {
             animate={{ opacity: 1, y: 0 }}
             className="lg:col-span-2 bg-gray-800 rounded-2xl p-6 shadow-xl"
           >
-            <h3 className="text-xl font-semibold text-white mb-6">
+            <h3 className="text-xl font-semibold text-gray-50 mb-6">
               Acciones Rápidas
             </h3>
             <div className="grid grid-cols-2 gap-4">
@@ -510,8 +518,8 @@ export default function PaginaAdmin() {
           transition={{ delay: 0.5 }}
           className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/50 rounded-2xl p-6"
         >
-          <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
-            <FaBell className="mr-2" />
+          <h3 className="text-xl font-semibold text-gray-50 mb-4 flex items-center">
+            <FaBell className="mr-2" aria-hidden="true" />
             Actividad Reciente
           </h3>
           <div className="space-y-3">

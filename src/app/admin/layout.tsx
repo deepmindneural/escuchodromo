@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   FileText,
+  UserCheck,
 } from 'lucide-react';
 import { Button } from '../../lib/componentes/ui/button';
 import { cn } from '../../lib/utilidades';
@@ -31,6 +32,7 @@ const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/admin' },
   { icon: FileText, label: 'Historiales', href: '/admin/historiales' },
   { icon: Users, label: 'Usuarios', href: '/admin/usuarios' },
+  { icon: UserCheck, label: 'Profesionales', href: '/admin/profesionales' },
   { icon: CreditCard, label: 'Suscripciones', href: '/admin/suscripciones' },
 ];
 
