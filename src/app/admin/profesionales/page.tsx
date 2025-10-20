@@ -257,9 +257,9 @@ export default function PaginaProfesionales() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
+      <div className="bg-white border-b border-gray-200 -mx-6 -mt-6 px-6 py-6 mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Profesionales</h1>
-        <p className="text-gray-600 mt-2">
+        <p className="text-gray-600 mt-1">
           Gestiona las solicitudes de registro de profesionales
         </p>
       </div>

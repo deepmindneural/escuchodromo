@@ -226,13 +226,13 @@ export default function AdminUsuarios() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="space-y-6">
       <Toaster position="top-center" />
-      <Navegacion />
-      <div className="space-y-6 pt-20 px-4">
-      <div>
-        <h1 className="text-3xl font-bold">Gestión de Usuarios</h1>
-        <p className="text-muted-foreground">
+
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 -mx-6 -mt-6 px-6 py-6 mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Gestión de Usuarios</h1>
+        <p className="text-gray-600 mt-1">
           Administra los usuarios de la plataforma
         </p>
       </div>
@@ -434,7 +434,6 @@ export default function AdminUsuarios() {
           </div>
         </div>
       )}
-      </div>
     </div>
   );
 }
