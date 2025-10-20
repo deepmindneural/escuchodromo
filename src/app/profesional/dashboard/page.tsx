@@ -11,7 +11,7 @@ import {
 import { GridMetricas, type Metrica } from '@/lib/componentes/GridMetricas';
 import { TablaPacientes, type Paciente } from '@/lib/componentes/TablaPacientes';
 import { ProximasCitas, type Cita } from '@/lib/componentes/ProximasCitas';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/cliente';
 import toast from 'react-hot-toast';
 
 /**

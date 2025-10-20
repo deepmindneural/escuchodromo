@@ -200,15 +200,16 @@ export default function PaginaInicio() {
                     Hablar con Escuchodromo - Gratis
                   </motion.button>
                 </Link>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setVideoAbierto(true)}
-                  className="px-8 py-4 bg-white text-gray-700 font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-3"
-                >
-                  <FaPlay className="text-teal-500" />
-                  Ver Cómo Funciona
-                </motion.button>
+                <Link href="/profesionales">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="px-8 py-4 bg-white text-teal-600 font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-3"
+                  >
+                    <FaUsers className="text-xl" />
+                    Ver Profesionales
+                  </motion.button>
+                </Link>
               </div>
 
               <div className="flex items-center gap-8">
@@ -523,13 +524,13 @@ export default function PaginaInicio() {
                 Comenzar Mi Viaje Gratis
               </motion.button>
             </Link>
-            <Link href="/contacto">
+            <Link href="/profesionales">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className="px-8 py-4 bg-transparent border-2 border-white text-white font-bold rounded-xl hover:bg-white hover:text-blue-600 transition-all duration-300"
               >
-                Hablar con un Experto
+                Agendar con un Profesional
               </motion.button>
             </Link>
           </div>

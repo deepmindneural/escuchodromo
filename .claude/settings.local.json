@@ -47,7 +47,10 @@
       "Bash(head -5 echo \"...\" tail -5 \"$file\" fi done)",
       "Bash(git log:*)",
       "Read(//Volumes/StarkT7/Proyectos/CLIENETS/proyectos/ESCUCHODROMO/**)",
-      "Bash(git rm --cached .env.local)"
+      "Bash(git rm --cached .env.local)",
+      "Bash(supabase db push)",
+      "Bash(./test-chat-ia.sh)",
+      "Bash(test -f /Volumes/StarkT7/Proyectos/CLIENETS/proyectos/ESCUCHODROMO/Escuchodromo 2/escuchodromo/src/app/profesionales/page.tsx)"
     ],
     "deny": []
   }

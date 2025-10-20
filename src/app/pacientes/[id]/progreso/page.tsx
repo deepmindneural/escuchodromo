@@ -8,7 +8,7 @@ import { TimelineHitos, type Hito } from '@/lib/componentes/TimelineHitos';
 import { VistaComparativa, type DatosComparativos } from '@/lib/componentes/VistaComparativa';
 import { ListaAlertas } from '@/lib/componentes/AlertaCritica';
 import { IndicadorEmocional, type EstadoEmocional } from '@/lib/componentes/IndicadorEmocional';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/cliente';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 

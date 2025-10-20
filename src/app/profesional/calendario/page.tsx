@@ -11,7 +11,7 @@ import {
   VideoCameraIcon,
   BuildingOfficeIcon,
 } from '@heroicons/react/24/outline';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/cliente';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 

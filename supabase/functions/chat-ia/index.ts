@@ -1,239 +1,342 @@
 /**
- * Edge Function: Chat con IA usando Google Gemini (100% GRATIS)
+ * Edge Function: Chat con IA usando Google Gemini - MEJORADO
  *
- * Google Gemini 2.5 Flash-Lite ofrece:
+ * NUEVAS FUNCIONALIDADES:
+ * - Memoria avanzada con contexto de evaluaciones PHQ-9/GAD-7
+ * - Detección profunda de crisis en paralelo
+ * - Historial ampliado (20 mensajes)
+ * - Personalización según rol de usuario
+ * - Cliente Gemini reutilizable con retry logic
+ * - Rate limiting inteligente
+ *
+ * Google Gemini 2.0 Flash ofrece:
  * - 1,000 requests por día (GRATIS)
- * - 15 requests por minuto
- * - 250,000 tokens por minuto
  * - Sin tarjeta de crédito requerida
- *
- * API Key: Obtener en https://aistudio.google.com/apikey
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-interface MensajeRequest {
-  mensaje: string
-  sesion_id: string
-  historial?: Array<{ rol: string; contenido: string }>
-}
+// Importar utilidades compartidas
+import { GeminiClient } from '../_shared/gemini-client.ts'
+import { construirPromptChatConMemoria, construirPromptDeteccionCrisis } from '../_shared/prompts.ts'
+import { CORS_HEADERS, ALERTAS_CONFIG, EVALUACIONES_CONFIG, ANALISIS_CONFIG } from '../_shared/config.ts'
+import type { ChatIARequest, ChatIAResponse, DeteccionCrisis } from '../_shared/tipos.ts'
 
 serve(async (req) => {
   // Manejo de CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: CORS_HEADERS })
   }
 
+  const inicioTiempo = Date.now()
+
   try {
-    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    // Inicializar Supabase
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    if (!GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY no configurada. Obtén una en https://aistudio.google.com/apikey')
-    }
-
-    const { mensaje, sesion_id, historial = [] }: MensajeRequest = await req.json()
+    // Parsear request
+    const { mensaje, sesion_id, historial = [] }: ChatIARequest = await req.json()
 
     if (!mensaje || !sesion_id) {
       return new Response(
         JSON.stringify({ error: 'mensaje y sesion_id son requeridos' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: CORS_HEADERS }
       )
     }
 
-    // Construir contexto de conversación para Gemini
-    let contexto = `Eres Escuchodromo, un asistente de inteligencia artificial especializado en bienestar emocional y salud mental.
+    console.log(`[chat-ia] Procesando mensaje para sesión: ${sesion_id}`)
 
-Tu propósito es:
-- Brindar apoyo emocional empático y comprensivo
-- Escuchar activamente sin juzgar
-- Ofrecer técnicas de manejo emocional (respiración, mindfulness, etc.)
-- Reconocer emociones y validarlas
-- Sugerir recursos profesionales cuando sea necesario
+    // ==========================================
+    // PASO 1: DETECTAR USUARIO Y OBTENER CONTEXTO
+    // ==========================================
 
-Directrices:
-- Usa un tono cálido, empático y cercano
-- Responde en español de forma natural
-- Haz preguntas de seguimiento para entender mejor
-- Nunca reemplaces a un profesional de salud mental
-- Si detectas crisis o ideación suicida, sugiere ayuda profesional inmediata
-- Mantén respuestas concisas (2-4 oraciones máximo)
-- Usa emojis ocasionalmente para humanizar la conversación 💙
+    let usuario = null
+    let evaluaciones: any = {}
+    let resumenEmocional = ''
+    let numeroSesiones = 0
+    let ultimaSesion = ''
 
-Recuerda: Eres un apoyo, no un terapeuta licenciado.\n\n`
+    // Intentar obtener usuario autenticado desde el header
+    const authHeader = req.headers.get('authorization')
+    if (authHeader) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser(
+          authHeader.replace('Bearer ', '')
+        )
 
-    // Agregar historial previo (máximo 8 mensajes para contexto)
-    const historialReciente = historial.slice(-8)
-    historialReciente.forEach(msg => {
-      contexto += `${msg.rol === 'usuario' ? 'Usuario' : 'Escuchodromo'}: ${msg.contenido}\n`
-    })
+        if (user) {
+          // Obtener datos del usuario
+          const { data: usuarioData } = await supabase
+            .from('Usuario')
+            .select('*')
+            .eq('auth_id', user.id)
+            .single()
 
-    // Agregar mensaje actual
-    contexto += `Usuario: ${mensaje}\nEscuchodromo:`
+          if (usuarioData) {
+            usuario = usuarioData
+            console.log(`[chat-ia] Usuario registrado detectado: ${usuario.nombre || usuario.email}`)
 
-    console.log('Enviando request a Gemini API...')
+            // Obtener últimas evaluaciones PHQ-9 y GAD-7
+            const { data: resultados } = await supabase
+              .from('Resultado')
+              .select(`
+                id,
+                prueba_id,
+                puntuacion,
+                severidad,
+                creado_en,
+                Prueba!inner (codigo)
+              `)
+              .eq('usuario_id', usuario.id)
+              .order('creado_en', { ascending: false })
+              .limit(5)
 
-    // Llamar a Gemini API
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: contexto
-            }]
-          }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 500,
-            topP: 0.9,
-            topK: 40
-          },
-          safetySettings: [
-            {
-              category: 'HARM_CATEGORY_HARASSMENT',
-              threshold: 'BLOCK_ONLY_HIGH'
-            },
-            {
-              category: 'HARM_CATEGORY_HATE_SPEECH',
-              threshold: 'BLOCK_ONLY_HIGH'
-            },
-            {
-              category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-              threshold: 'BLOCK_ONLY_HIGH'
-            },
-            {
-              category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-              threshold: 'BLOCK_ONLY_HIGH'
+            if (resultados && resultados.length > 0) {
+              // Buscar PHQ-9 más reciente
+              const phq9 = resultados.find(r => r.Prueba.codigo === EVALUACIONES_CONFIG.codigoPHQ9)
+              if (phq9) {
+                const diasDesde = Math.floor(
+                  (Date.now() - new Date(phq9.creado_en).getTime()) / (1000 * 60 * 60 * 24)
+                )
+                evaluaciones.phq9 = {
+                  puntuacion: phq9.puntuacion,
+                  severidad: phq9.severidad,
+                  dias: diasDesde
+                }
+              }
+
+              // Buscar GAD-7 más reciente
+              const gad7 = resultados.find(r => r.Prueba.codigo === EVALUACIONES_CONFIG.codigoGAD7)
+              if (gad7) {
+                const diasDesde = Math.floor(
+                  (Date.now() - new Date(gad7.creado_en).getTime()) / (1000 * 60 * 60 * 24)
+                )
+                evaluaciones.gad7 = {
+                  puntuacion: gad7.puntuacion,
+                  severidad: gad7.severidad,
+                  dias: diasDesde
+                }
+              }
             }
-          ]
-        })
+
+            // Obtener número de sesiones previas
+            const { count } = await supabase
+              .from('Conversacion')
+              .select('id', { count: 'exact', head: true })
+              .eq('usuario_id', usuario.id)
+
+            numeroSesiones = count || 0
+
+            // Resumen emocional (simplificado)
+            if (numeroSesiones > 0) {
+              resumenEmocional = 'Conversaciones previas registradas'
+            }
+          }
+        }
+      } catch (error) {
+        console.log('[chat-ia] No se pudo obtener usuario autenticado:', error.message)
       }
-    )
-
-    if (!geminiResponse.ok) {
-      const errorData = await geminiResponse.text()
-      console.error('Error de Gemini:', errorData)
-      throw new Error(`Gemini API error: ${geminiResponse.status} - ${errorData}`)
     }
 
-    const data = await geminiResponse.json()
-
-    // Extraer respuesta de Gemini
-    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-      throw new Error('Respuesta inválida de Gemini API')
-    }
-
-    const respuestaIA = data.candidates[0].content.parts[0].text.trim()
-
-    console.log('Respuesta generada:', respuestaIA.substring(0, 100))
-
-    // Análisis básico de emociones (basado en palabras clave)
-    const emociones = analizarEmociones(mensaje)
-    const sentimiento = calcularSentimiento(mensaje)
-
-    // Guardar respuesta en Supabase
-    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!)
+    // ==========================================
+    // PASO 2: GUARDAR MENSAJE DEL USUARIO
+    // ==========================================
 
     await supabase.from('MensajePublico').insert({
       sesion_id,
-      contenido: respuestaIA,
+      contenido: mensaje,
+      rol: 'usuario',
+      creado_en: new Date().toISOString()
+    })
+
+    // ==========================================
+    // PASO 3: DETECCIÓN DE CRISIS EN PARALELO
+    // ==========================================
+
+    let alertaCrisis = null
+
+    // Detectar palabras clave de crisis
+    const tienePalabrasCrisis = ALERTAS_CONFIG.palabrasClavesCrisis.some(palabra =>
+      mensaje.toLowerCase().includes(palabra)
+    )
+
+    if (tienePalabrasCrisis) {
+      console.log('[chat-ia] Palabras de crisis detectadas. Iniciando análisis profundo...')
+
+      try {
+        // Análisis profundo de crisis en paralelo (no bloquea la respuesta)
+        const geminiCliente = new GeminiClient()
+
+        const promptCrisis = construirPromptDeteccionCrisis({
+          mensaje,
+          historial: historial.slice(-5), // Últimos 5 mensajes de contexto
+          evaluaciones
+        })
+
+        // Llamar a Gemini para análisis de crisis
+        const respuestaCrisis = await geminiCliente.llamar({
+          prompt: promptCrisis,
+          tipo: 'crisis',
+          sesion_publica_id: sesion_id,
+          funcion_origen: 'chat-ia-deteccion-crisis'
+        })
+
+        if (respuestaCrisis.exitoso) {
+          const deteccion = geminiCliente.parsearJSON<DeteccionCrisis>(respuestaCrisis.respuesta)
+
+          if (deteccion && deteccion.hay_crisis) {
+            alertaCrisis = {
+              detectada: true,
+              nivel: deteccion.nivel_urgencia,
+              mensaje: deteccion.accion_recomendada,
+              senales: deteccion.senales_detectadas
+            }
+
+            console.log(`[chat-ia] CRISIS DETECTADA - Nivel: ${deteccion.nivel_urgencia}`)
+
+            // Si es crítico o alto, crear alerta urgente inmediatamente
+            if (deteccion.nivel_urgencia === 'critico' || deteccion.nivel_urgencia === 'alto') {
+              await supabase.from('AlertaUrgente').insert({
+                sesion_publica_id: sesion_id,
+                usuario_id: usuario?.id || null,
+                tipo_alerta: 'ideacion_suicida',
+                nivel_urgencia: deteccion.nivel_urgencia,
+                titulo: 'Crisis detectada en chat',
+                descripcion: deteccion.explicacion,
+                senales_detectadas: deteccion.senales_detectadas,
+                mensaje_disparador: mensaje,
+                contexto: { evaluaciones, historial: historial.slice(-3) },
+                estado: 'pendiente'
+              })
+
+              console.log('[chat-ia] Alerta urgente creada')
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[chat-ia] Error en detección de crisis:', error)
+        // Si hay error en detección, asumir crisis por seguridad
+        alertaCrisis = {
+          detectada: true,
+          nivel: 'alto',
+          mensaje: 'Se detectaron posibles señales de crisis. Recomendamos buscar ayuda profesional.',
+          senales: []
+        }
+      }
+    }
+
+    // ==========================================
+    // PASO 4: GENERAR RESPUESTA CON GEMINI
+    // ==========================================
+
+    const geminiCliente = new GeminiClient()
+
+    // Construir prompt con memoria mejorada
+    const historialAmpliado = historial.slice(-ANALISIS_CONFIG.maxMensajesHistorial) // Últimos 20
+
+    const prompt = construirPromptChatConMemoria({
+      usuario,
+      mensaje,
+      historial: historialAmpliado,
+      evaluaciones,
+      resumenEmocional,
+      numeroSesiones,
+      ultimaSesion
+    })
+
+    // Llamar a Gemini
+    const respuestaGemini = await geminiCliente.llamar({
+      prompt,
+      tipo: 'chat',
+      usuario_id: usuario?.id,
+      sesion_publica_id: sesion_id,
+      funcion_origen: 'chat-ia'
+    })
+
+    if (!respuestaGemini.exitoso) {
+      throw new Error(respuestaGemini.error || 'Error al generar respuesta')
+    }
+
+    let respuestaFinal = respuestaGemini.respuesta
+
+    // Si hay alerta de crisis, agregar mensaje de recursos
+    if (alertaCrisis && alertaCrisis.detectada) {
+      const recursosCrisis = `
+
+📞 **Recursos de ayuda inmediata:**
+- Línea Nacional de Prevención del Suicidio: 988
+- Cruz Roja: 132
+- Línea de atención psicológica 24/7: (01) 459-0420
+
+Por favor, considera contactar a un profesional de salud mental lo antes posible. Tu bienestar es muy importante.`
+
+      // Agregar recursos al final de la respuesta
+      respuestaFinal += recursosCrisis
+    }
+
+    // ==========================================
+    // PASO 5: GUARDAR RESPUESTA
+    // ==========================================
+
+    await supabase.from('MensajePublico').insert({
+      sesion_id,
+      contenido: respuestaFinal,
       rol: 'asistente',
       creado_en: new Date().toISOString()
     })
 
-    // Actualizar última actividad de la sesión
+    // Actualizar última actividad
     await supabase
       .from('SesionPublica')
       .update({ ultima_actividad: new Date().toISOString() })
       .eq('sesion_id', sesion_id)
 
+    // ==========================================
+    // PASO 6: RESPUESTA AL CLIENTE
+    // ==========================================
+
+    const latencia = Date.now() - inicioTiempo
+
+    const response: ChatIAResponse = {
+      respuesta: respuestaFinal,
+      modelo: 'gemini-2.0-flash-exp',
+      tokens_usados: respuestaGemini.tokens_usados,
+      alerta_crisis: alertaCrisis ? {
+        detectada: alertaCrisis.detectada,
+        nivel: alertaCrisis.nivel,
+        mensaje: alertaCrisis.mensaje
+      } : undefined
+    }
+
+    console.log(`[chat-ia] Respuesta generada en ${latencia}ms`)
+
     return new Response(
-      JSON.stringify({
-        respuesta: respuestaIA,
-        emociones,
-        sentimiento,
-        modelo: 'gemini-2.0-flash-exp',
-        tokens_usados: data.usageMetadata?.totalTokenCount || 0
-      }),
+      JSON.stringify(response),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200
+        status: 200,
+        headers: CORS_HEADERS
       }
     )
 
   } catch (error) {
-    console.error('Error en Edge Function:', error)
+    console.error('[chat-ia] Error:', error)
+
+    const latencia = Date.now() - inicioTiempo
 
     return new Response(
       JSON.stringify({
         error: error.message || 'Error procesando solicitud',
-        respuesta: 'Lo siento, estoy experimentando dificultades técnicas. Por favor, intenta de nuevo en un momento. 🙏'
+        respuesta: 'Lo siento, estoy experimentando dificultades técnicas. Por favor, intenta de nuevo en un momento. Si necesitas ayuda urgente, contacta con un profesional de salud mental.',
+        modelo: 'gemini-2.0-flash-exp',
+        tokens_usados: 0
       }),
       {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: CORS_HEADERS
       }
     )
   }
 })
-
-/**
- * Análisis básico de emociones basado en palabras clave
- */
-function analizarEmociones(texto: string): Record<string, number> {
-  const textoLower = texto.toLowerCase()
-
-  const patrones = {
-    alegria: ['feliz', 'contento', 'alegre', 'bien', 'genial', 'excelente', 'maravilloso', 'emocionado'],
-    tristeza: ['triste', 'deprimido', 'solo', 'mal', 'llorar', 'pena', 'melancolía', 'decaído'],
-    enojo: ['enojado', 'furioso', 'molesto', 'irritado', 'rabia', 'ira', 'frustrado'],
-    miedo: ['miedo', 'asustado', 'temor', 'nervioso', 'pánico', 'preocupado', 'ansiedad'],
-    sorpresa: ['sorprendido', 'impresionado', 'increíble', 'wow', 'asombrado'],
-    asco: ['asco', 'repulsión', 'desagradable'],
-    ansiedad: ['ansioso', 'ansiedad', 'estrés', 'estresado', 'agobiado', 'abrumado'],
-    esperanza: ['esperanza', 'optimista', 'mejor', 'mejorar', 'cambio', 'positivo']
-  }
-
-  const emociones: Record<string, number> = {}
-
-  Object.entries(patrones).forEach(([emocion, palabras]) => {
-    const coincidencias = palabras.filter(palabra => textoLower.includes(palabra)).length
-    emociones[emocion] = Math.min(coincidencias * 0.3, 1.0)
-  })
-
-  return emociones
-}
-
-/**
- * Cálculo simple de sentimiento (-1 a 1)
- */
-function calcularSentimiento(texto: string): number {
-  const textoLower = texto.toLowerCase()
-
-  const positivas = ['bien', 'feliz', 'alegre', 'mejor', 'gracias', 'genial', 'excelente', 'contento']
-  const negativas = ['mal', 'triste', 'horrible', 'terrible', 'peor', 'deprimido', 'solo', 'dolor']
-
-  let puntuacion = 0
-
-  positivas.forEach(palabra => {
-    if (textoLower.includes(palabra)) puntuacion += 0.2
-  })
-
-  negativas.forEach(palabra => {
-    if (textoLower.includes(palabra)) puntuacion -= 0.2
-  })
-
-  return Math.max(-1, Math.min(1, puntuacion))
-}

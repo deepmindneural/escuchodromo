@@ -11,7 +11,7 @@ import {
   CalendarDaysIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/cliente';
 import toast from 'react-hot-toast';
 import { SelectorHorarios } from '@/lib/componentes/SelectorHorarios';
 import { BloqueHorario, type Horario } from '@/lib/componentes/BloqueHorario';
