@@ -63,7 +63,7 @@ export default function PaginaDetalleProfesional() {
         .select('id, nombre, apellido, PerfilUsuario(*)')
         .eq('id', profesionalId)
         .eq('rol', 'TERAPEUTA')
-        .eq('estado', 'ACTIVO')
+        .eq('esta_activo', true)
         .single();
 
       if (error) throw error;
