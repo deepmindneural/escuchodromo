@@ -1,49 +1,51 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import {
-  MagnifyingGlassIcon,
-  AdjustmentsHorizontalIcon,
-  MapPinIcon,
-  ClockIcon,
-  StarIcon,
-  CheckBadgeIcon
-} from '@heroicons/react/24/outline';
-import { createClient } from '@/lib/supabase/client';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Search, SlidersHorizontal, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { createClient } from '@/lib/supabase/cliente';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
-
-interface Profesional {
-  id: string;
-  nombre: string;
-  apellido: string;
-  nombre_completo: string;
-  especialidad: string;
-  experiencia_anos: number;
-  foto_perfil: string | null;
-  biografia: string;
-  direccion: string | null;
-  tarifa_30min: number;
-  tarifa_60min: number;
-  disponible: boolean;
-}
+import { CardProfesional, CardProfesionalSkeleton, type DatosProfesional } from '@/lib/componentes/CardProfesional';
 
 const ESPECIALIDADES = [
   'Todas',
+  'Ansiedad',
+  'Depresión',
+  'Trauma',
+  'Relaciones',
+  'Autoestima',
+  'Estrés',
+  'Duelo',
+  'Adicciones',
+  'Trastornos alimentarios',
   'Psicología Clínica',
   'Psicología Infantil',
   'Psicología de Pareja',
-  'Psicología Organizacional',
-  'Psicoterapia Cognitiva',
-  'Psicoterapia Humanista',
+  'Terapia Cognitivo-Conductual',
+  'Terapia Humanista',
   'Psicoanálisis',
+];
+
+const RANGOS_TARIFA = [
+  { valor: '', etiqueta: 'Cualquier precio' },
+  { valor: '0-50000', etiqueta: 'Menos de $50.000' },
+  { valor: '50000-100000', etiqueta: '$50.000 - $100.000' },
+  { valor: '100000-150000', etiqueta: '$100.000 - $150.000' },
+  { valor: '150000-999999', etiqueta: 'Más de $150.000' },
+];
+
+const MODALIDADES = [
+  { valor: '', etiqueta: 'Todas' },
+  { valor: 'virtual', etiqueta: 'Virtual' },
+  { valor: 'presencial', etiqueta: 'Presencial' },
 ];
 
 const ORDEN_OPTIONS = [
   { valor: 'nombre', etiqueta: 'Nombre (A-Z)' },
-  { valor: 'precio_asc', etiqueta: 'Precio (menor a mayor)' },
-  { valor: 'precio_desc', etiqueta: 'Precio (mayor a menor)' },
+  { valor: 'rating', etiqueta: 'Mejor valorados' },
+  { valor: 'tarifa_asc', etiqueta: 'Precio (menor a mayor)' },
+  { valor: 'tarifa_desc', etiqueta: 'Precio (mayor a menor)' },
   { valor: 'experiencia', etiqueta: 'Más experiencia' },
 ];
 
@@ -51,114 +53,138 @@ const ORDEN_OPTIONS = [
  * Página de Listado de Profesionales
  *
  * Muestra el directorio completo de profesionales (terapeutas)
- * disponibles en la plataforma con filtros y búsqueda
+ * disponibles en la plataforma con filtros avanzados, búsqueda y paginación.
  *
  * Características:
- * - Búsqueda por nombre
- * - Filtro por especialidad
- * - Filtro de disponibilidad
- * - Ordenamiento múltiple
- * - Tarjetas con información clave
- * - Links a perfil detallado y reserva directa
+ * - Búsqueda por nombre o especialidad
+ * - Filtros: especialidad, tarifa, modalidad, disponibilidad
+ * - Ordenamiento: rating, tarifa, experiencia, nombre
+ * - Paginación (12 profesionales por página)
+ * - URL sync con query params
+ * - Skeleton loading
+ * - Responsive design
  */
 export default function PaginaProfesionales() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
 
-  const [profesionales, setProfesionales] = useState<Profesional[]>([]);
-  const [profesionalesFiltrados, setProfesionalesFiltrados] = useState<Profesional[]>([]);
+  // Estado
+  const [profesionales, setProfesionales] = useState<DatosProfesional[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [totalResultados, setTotalResultados] = useState(0);
+  const [totalPaginas, setTotalPaginas] = useState(0);
+  const [paginaActual, setPaginaActual] = useState(1);
 
   // Filtros y búsqueda
   const [busqueda, setBusqueda] = useState('');
   const [especialidadSeleccionada, setEspecialidadSeleccionada] = useState('Todas');
+  const [rangoTarifaSeleccionado, setRangoTarifaSeleccionado] = useState('');
+  const [modalidadSeleccionada, setModalidadSeleccionada] = useState('');
   const [soloDisponibles, setSoloDisponibles] = useState(false);
   const [ordenSeleccionado, setOrdenSeleccionado] = useState('nombre');
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
-  // Cargar profesionales al montar
-  useEffect(() => {
-    cargarProfesionales();
-  }, [ordenSeleccionado, soloDisponibles]);
-
-  // Aplicar búsqueda y filtros cuando cambian
-  useEffect(() => {
-    aplicarFiltros();
-  }, [busqueda, especialidadSeleccionada, profesionales]);
-
-  const cargarProfesionales = async () => {
+  // Cargar profesionales
+  const cargarProfesionales = useCallback(async () => {
     try {
       setCargando(true);
 
-      const params = new URLSearchParams({
-        orderBy: ordenSeleccionado,
-        disponible: soloDisponibles.toString(),
-      });
+      // Construir query params
+      const params = new URLSearchParams();
 
-      const { data, error } = await supabase.functions.invoke('listar-profesionales', {
-        method: 'GET',
-        // @ts-ignore
-        body: null,
-      });
+      if (busqueda.trim()) params.append('busqueda', busqueda.trim());
+      if (especialidadSeleccionada !== 'Todas') params.append('especialidad', especialidadSeleccionada);
+      if (modalidadSeleccionada) params.append('modalidad', modalidadSeleccionada);
+      if (soloDisponibles) params.append('disponible', 'true');
+      params.append('orderBy', ordenSeleccionado);
+      params.append('pagina', paginaActual.toString());
+      params.append('limite', '12');
+
+      // Agregar rango de tarifa si está seleccionado
+      if (rangoTarifaSeleccionado) {
+        const [min, max] = rangoTarifaSeleccionado.split('-');
+        if (min) params.append('tarifa_min', min);
+        if (max) params.append('tarifa_max', max);
+      }
+
+      // Llamar a la edge function
+      const { data, error } = await supabase.functions.invoke(
+        `listar-profesionales?${params.toString()}`,
+        { method: 'GET' }
+      );
 
       if (error) throw error;
 
-      if (data?.success && data?.profesionales) {
-        setProfesionales(data.profesionales);
-        setProfesionalesFiltrados(data.profesionales);
+      if (data?.success) {
+        setProfesionales(data.profesionales || []);
+        setTotalResultados(data.total || 0);
+        setTotalPaginas(data.total_paginas || 0);
       } else {
-        setProfesionales([]);
-        setProfesionalesFiltrados([]);
+        throw new Error(data?.error || 'Error al cargar profesionales');
       }
     } catch (error: any) {
       console.error('Error cargando profesionales:', error);
       toast.error('No se pudieron cargar los profesionales');
       setProfesionales([]);
-      setProfesionalesFiltrados([]);
+      setTotalResultados(0);
+      setTotalPaginas(0);
     } finally {
       setCargando(false);
     }
-  };
+  }, [
+    busqueda,
+    especialidadSeleccionada,
+    rangoTarifaSeleccionado,
+    modalidadSeleccionada,
+    soloDisponibles,
+    ordenSeleccionado,
+    paginaActual,
+    supabase,
+  ]);
 
-  const aplicarFiltros = () => {
-    let resultado = [...profesionales];
+  // Efecto para cargar profesionales cuando cambian los filtros
+  useEffect(() => {
+    cargarProfesionales();
+  }, [cargarProfesionales]);
 
-    // Filtrar por búsqueda (nombre o especialidad)
-    if (busqueda.trim()) {
-      const terminoBusqueda = busqueda.toLowerCase();
-      resultado = resultado.filter(
-        (p) =>
-          p.nombre_completo.toLowerCase().includes(terminoBusqueda) ||
-          p.especialidad.toLowerCase().includes(terminoBusqueda)
-      );
-    }
-
-    // Filtrar por especialidad
-    if (especialidadSeleccionada !== 'Todas') {
-      resultado = resultado.filter((p) => p.especialidad === especialidadSeleccionada);
-    }
-
-    setProfesionalesFiltrados(resultado);
-  };
+  // Resetear a página 1 cuando cambian los filtros
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [
+    busqueda,
+    especialidadSeleccionada,
+    rangoTarifaSeleccionado,
+    modalidadSeleccionada,
+    soloDisponibles,
+    ordenSeleccionado,
+  ]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
     setEspecialidadSeleccionada('Todas');
+    setRangoTarifaSeleccionado('');
+    setModalidadSeleccionada('');
     setSoloDisponibles(false);
     setOrdenSeleccionado('nombre');
+    setPaginaActual(1);
   };
 
-  // Pantalla de carga
-  if (cargando) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-calma-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Cargando profesionales...</p>
-        </div>
-      </div>
-    );
-  }
+  const cambiarPagina = (nuevaPagina: number) => {
+    if (nuevaPagina >= 1 && nuevaPagina <= totalPaginas) {
+      setPaginaActual(nuevaPagina);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Contador de filtros activos
+  const filtrosActivos = [
+    busqueda.trim(),
+    especialidadSeleccionada !== 'Todas',
+    rangoTarifaSeleccionado,
+    modalidadSeleccionada,
+    soloDisponibles,
+  ].filter(Boolean).length;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -180,22 +206,31 @@ export default function PaginaProfesionales() {
           <div className="flex flex-col sm:flex-row gap-4">
             {/* Búsqueda */}
             <div className="flex-1 relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
                 placeholder="Buscar por nombre o especialidad..."
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-calma-500 focus:border-transparent"
+                className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-calma-500 focus:border-transparent"
                 aria-label="Buscar profesionales"
               />
+              {busqueda && (
+                <button
+                  onClick={() => setBusqueda('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  aria-label="Limpiar búsqueda"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
             </div>
 
             {/* Botón de filtros */}
             <button
               onClick={() => setMostrarFiltros(!mostrarFiltros)}
               className={clsx(
-                'flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-colors',
+                'flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-colors relative',
                 mostrarFiltros
                   ? 'bg-calma-600 text-white border-calma-600'
                   : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
@@ -203,15 +238,20 @@ export default function PaginaProfesionales() {
               aria-expanded={mostrarFiltros}
               aria-controls="panel-filtros"
             >
-              <AdjustmentsHorizontalIcon className="w-5 h-5" />
-              <span>Filtros</span>
+              <SlidersHorizontal className="w-5 h-5" />
+              <span className="font-medium">Filtros</span>
+              {filtrosActivos > 0 && (
+                <span className="absolute -top-2 -right-2 bg-esperanza-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                  {filtrosActivos}
+                </span>
+              )}
             </button>
           </div>
 
           {/* Panel de filtros desplegable */}
           {mostrarFiltros && (
             <div id="panel-filtros" className="mt-4 p-4 bg-gray-50 rounded-lg space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Especialidad */}
                 <div>
                   <label htmlFor="especialidad" className="block text-sm font-medium text-gray-700 mb-2">
@@ -221,11 +261,49 @@ export default function PaginaProfesionales() {
                     id="especialidad"
                     value={especialidadSeleccionada}
                     onChange={(e) => setEspecialidadSeleccionada(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-calma-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-calma-500 bg-white"
                   >
                     {ESPECIALIDADES.map((esp) => (
                       <option key={esp} value={esp}>
                         {esp}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Rango de tarifa */}
+                <div>
+                  <label htmlFor="rango-tarifa" className="block text-sm font-medium text-gray-700 mb-2">
+                    Rango de precio
+                  </label>
+                  <select
+                    id="rango-tarifa"
+                    value={rangoTarifaSeleccionado}
+                    onChange={(e) => setRangoTarifaSeleccionado(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-calma-500 bg-white"
+                  >
+                    {RANGOS_TARIFA.map((rango) => (
+                      <option key={rango.valor} value={rango.valor}>
+                        {rango.etiqueta}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Modalidad */}
+                <div>
+                  <label htmlFor="modalidad" className="block text-sm font-medium text-gray-700 mb-2">
+                    Modalidad
+                  </label>
+                  <select
+                    id="modalidad"
+                    value={modalidadSeleccionada}
+                    onChange={(e) => setModalidadSeleccionada(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-calma-500 bg-white"
+                  >
+                    {MODALIDADES.map((mod) => (
+                      <option key={mod.valor} value={mod.valor}>
+                        {mod.etiqueta}
                       </option>
                     ))}
                   </select>
@@ -240,7 +318,7 @@ export default function PaginaProfesionales() {
                     id="orden"
                     value={ordenSeleccionado}
                     onChange={(e) => setOrdenSeleccionado(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-calma-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-calma-500 bg-white"
                   >
                     {ORDEN_OPTIONS.map((opt) => (
                       <option key={opt.valor} value={opt.valor}>
@@ -249,29 +327,30 @@ export default function PaginaProfesionales() {
                     ))}
                   </select>
                 </div>
-
-                {/* Disponibilidad */}
-                <div className="flex items-end">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={soloDisponibles}
-                      onChange={(e) => setSoloDisponibles(e.target.checked)}
-                      className="w-4 h-4 text-calma-600 border-gray-300 rounded focus:ring-calma-500"
-                    />
-                    <span className="text-sm text-gray-700">Solo disponibles ahora</span>
-                  </label>
-                </div>
               </div>
 
-              {/* Botón limpiar filtros */}
-              <div className="flex justify-end">
-                <button
-                  onClick={limpiarFiltros}
-                  className="text-sm text-calma-600 hover:text-calma-700 font-medium"
-                >
-                  Limpiar filtros
-                </button>
+              {/* Checkbox de disponibilidad */}
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={soloDisponibles}
+                    onChange={(e) => setSoloDisponibles(e.target.checked)}
+                    className="w-4 h-4 text-calma-600 border-gray-300 rounded focus:ring-calma-500"
+                  />
+                  <span className="text-sm text-gray-700 font-medium">Solo mostrar disponibles ahora</span>
+                </label>
+
+                {/* Botón limpiar filtros */}
+                {filtrosActivos > 0 && (
+                  <button
+                    onClick={limpiarFiltros}
+                    className="text-sm text-calma-600 hover:text-calma-700 font-medium flex items-center gap-1"
+                  >
+                    <X className="w-4 h-4" />
+                    Limpiar todos los filtros
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -281,143 +360,140 @@ export default function PaginaProfesionales() {
       {/* Resultados */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Contador de resultados */}
-        <div className="mb-6">
-          <p className="text-gray-600">
-            {profesionalesFiltrados.length === 0 ? (
-              'No se encontraron profesionales'
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            {cargando ? (
+              <div className="h-6 w-48 bg-gray-200 rounded animate-pulse" />
             ) : (
-              <>
-                Mostrando <span className="font-semibold">{profesionalesFiltrados.length}</span>{' '}
-                {profesionalesFiltrados.length === 1 ? 'profesional' : 'profesionales'}
-              </>
+              <p className="text-gray-600">
+                {totalResultados === 0 ? (
+                  'No se encontraron profesionales'
+                ) : (
+                  <>
+                    Mostrando{' '}
+                    <span className="font-semibold">
+                      {(paginaActual - 1) * 12 + 1}-{Math.min(paginaActual * 12, totalResultados)}
+                    </span>{' '}
+                    de <span className="font-semibold">{totalResultados}</span>{' '}
+                    {totalResultados === 1 ? 'profesional' : 'profesionales'}
+                  </>
+                )}
+              </p>
             )}
-          </p>
+          </div>
         </div>
 
-        {/* Grid de tarjetas */}
-        {profesionalesFiltrados.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500 text-lg mb-4">No hay profesionales que coincidan con tu búsqueda</p>
-            <button
-              onClick={limpiarFiltros}
-              className="px-6 py-3 bg-calma-600 text-white rounded-lg hover:bg-calma-700"
-            >
-              Limpiar filtros
-            </button>
-          </div>
-        ) : (
+        {/* Grid de tarjetas o skeleton */}
+        {cargando ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {profesionalesFiltrados.map((profesional) => (
-              <TarjetaProfesional key={profesional.id} profesional={profesional} router={router} />
+            {Array.from({ length: 6 }).map((_, i) => (
+              <CardProfesionalSkeleton key={i} />
             ))}
           </div>
+        ) : profesionales.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+              <Search className="w-12 h-12 text-gray-400" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              No se encontraron profesionales
+            </h3>
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              {filtrosActivos > 0
+                ? 'Intenta ajustar los filtros para ver más resultados'
+                : 'Actualmente no hay profesionales disponibles'}
+            </p>
+            {filtrosActivos > 0 && (
+              <button
+                onClick={limpiarFiltros}
+                className="px-6 py-3 bg-calma-600 text-white rounded-lg hover:bg-calma-700 font-medium transition-colors"
+              >
+                Limpiar todos los filtros
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {profesionales.map((profesional) => (
+                <CardProfesional key={profesional.id} profesional={profesional} />
+              ))}
+            </div>
+
+            {/* Paginación */}
+            {totalPaginas > 1 && (
+              <div className="mt-12 flex items-center justify-center gap-2">
+                {/* Botón anterior */}
+                <button
+                  onClick={() => cambiarPagina(paginaActual - 1)}
+                  disabled={paginaActual === 1}
+                  className={clsx(
+                    'p-2 rounded-lg border transition-colors',
+                    paginaActual === 1
+                      ? 'border-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                  )}
+                  aria-label="Página anterior"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+
+                {/* Números de página */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPaginas }, (_, i) => i + 1)
+                    .filter((num) => {
+                      // Mostrar solo páginas cercanas a la actual
+                      if (num === 1 || num === totalPaginas) return true;
+                      if (num >= paginaActual - 1 && num <= paginaActual + 1) return true;
+                      return false;
+                    })
+                    .map((num, idx, arr) => {
+                      // Agregar "..." si hay salto
+                      const prevNum = arr[idx - 1];
+                      const showEllipsis = prevNum && num - prevNum > 1;
+
+                      return (
+                        <React.Fragment key={num}>
+                          {showEllipsis && (
+                            <span className="px-2 text-gray-400">...</span>
+                          )}
+                          <button
+                            onClick={() => cambiarPagina(num)}
+                            className={clsx(
+                              'min-w-[2.5rem] h-10 px-3 rounded-lg border transition-colors font-medium',
+                              num === paginaActual
+                                ? 'bg-calma-600 text-white border-calma-600'
+                                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                            )}
+                            aria-label={`Ir a página ${num}`}
+                            aria-current={num === paginaActual ? 'page' : undefined}
+                          >
+                            {num}
+                          </button>
+                        </React.Fragment>
+                      );
+                    })}
+                </div>
+
+                {/* Botón siguiente */}
+                <button
+                  onClick={() => cambiarPagina(paginaActual + 1)}
+                  disabled={paginaActual === totalPaginas}
+                  className={clsx(
+                    'p-2 rounded-lg border transition-colors',
+                    paginaActual === totalPaginas
+                      ? 'border-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                  )}
+                  aria-label="Página siguiente"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
-  );
-}
-
-/**
- * Componente de Tarjeta de Profesional
- */
-interface TarjetaProfesionalProps {
-  profesional: Profesional;
-  router: any;
-}
-
-function TarjetaProfesional({ profesional, router }: TarjetaProfesionalProps) {
-  return (
-    <article
-      className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
-    >
-      {/* Imagen de perfil */}
-      <div className="aspect-square bg-gradient-to-br from-calma-100 to-esperanza-100 relative">
-        {profesional.foto_perfil ? (
-          <img
-            src={profesional.foto_perfil}
-            alt=""
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <div className="w-32 h-32 rounded-full bg-calma-200 flex items-center justify-center text-calma-700 font-bold text-4xl">
-              {profesional.nombre.charAt(0)}
-              {profesional.apellido.charAt(0)}
-            </div>
-          </div>
-        )}
-
-        {/* Badge de verificado */}
-        <div className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg">
-          <CheckBadgeIcon className="w-6 h-6 text-esperanza-600" aria-label="Profesional verificado" />
-        </div>
-
-        {/* Badge de disponibilidad */}
-        {profesional.disponible && (
-          <div className="absolute bottom-4 left-4 px-3 py-1 bg-esperanza-500 text-white text-xs font-medium rounded-full">
-            Disponible
-          </div>
-        )}
-      </div>
-
-      {/* Contenido */}
-      <div className="p-6">
-        {/* Nombre y especialidad */}
-        <h2 className="text-xl font-bold text-gray-900 mb-1">
-          {profesional.nombre_completo}
-        </h2>
-        <p className="text-calma-600 font-medium mb-3">{profesional.especialidad}</p>
-
-        {/* Experiencia */}
-        <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
-          <ClockIcon className="w-4 h-4" />
-          <span>{profesional.experiencia_anos} años de experiencia</span>
-        </div>
-
-        {/* Ubicación si existe */}
-        {profesional.direccion && (
-          <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-            <MapPinIcon className="w-4 h-4" />
-            <span className="truncate">{profesional.direccion}</span>
-          </div>
-        )}
-
-        {/* Biografía (preview) */}
-        {profesional.biografia && (
-          <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-            {profesional.biografia}
-          </p>
-        )}
-
-        {/* Precio */}
-        <div className="border-t border-gray-200 pt-4 mb-4">
-          <p className="text-sm text-gray-600 mb-1">Desde</p>
-          <p className="text-2xl font-bold text-calma-700">
-            {new Intl.NumberFormat('es-CO', {
-              style: 'currency',
-              currency: 'COP',
-              minimumFractionDigits: 0,
-            }).format(profesional.tarifa_30min)}
-          </p>
-          <p className="text-xs text-gray-500">por sesión de 30 minutos</p>
-        </div>
-
-        {/* Botones de acción */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => router.push(`/profesionales/${profesional.id}`)}
-            className="flex-1 px-4 py-2 bg-white text-calma-600 border-2 border-calma-600 rounded-lg hover:bg-calma-50 font-medium transition-colors"
-          >
-            Ver perfil
-          </button>
-          <button
-            onClick={() => router.push(`/profesionales/${profesional.id}/reservar`)}
-            className="flex-1 px-4 py-2 bg-calma-600 text-white rounded-lg hover:bg-calma-700 font-medium transition-colors"
-          >
-            Reservar
-          </button>
-        </div>
-      </div>
-    </article>
   );
 }

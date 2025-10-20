@@ -194,19 +194,90 @@ export default function PaginaRegistrarProfesional() {
     setCargando(true);
 
     try {
-      // TODO: Implementar registro completo con Supabase
-      // 1. Crear usuario con rol TERAPEUTA
-      // 2. Subir documentos a Supabase Storage
-      // 3. Crear registro en PerfilProfesional
-      // 4. Crear registros en DocumentoProfesional
+      // ==========================================
+      // PASO 1: SUBIR DOCUMENTOS A STORAGE
+      // ==========================================
+      toast('Subiendo documentos de validación...', { icon: '📄' });
 
-      toast.success('¡Registro enviado! Tu perfil será revisado por nuestro equipo en 24-48 horas.');
+      const documentosParaSubir = formData.documentos
+        .filter((doc) => doc.archivo !== null)
+        .map((doc) => ({
+          archivo: doc.archivo!,
+          tipo: doc.tipo as 'licencia' | 'titulo' | 'cedula' | 'certificado',
+        }));
+
+      const { subirDocumentosProfesionales, registrarProfesional } = await import(
+        '@/lib/utils/registro-profesional'
+      );
+
+      const documentosSubidos = await subirDocumentosProfesionales(
+        documentosParaSubir,
+        formData.email,
+        (actual, total) => {
+          toast(`Subiendo documento ${actual} de ${total}...`, { icon: '⏳' });
+        }
+      );
+
+      toast.success('Documentos subidos exitosamente');
+
+      // ==========================================
+      // PASO 2: REGISTRAR PROFESIONAL
+      // ==========================================
+      toast('Creando tu cuenta profesional...', { icon: '👨‍⚕️' });
+
+      const apellido = formData.nombre.split(' ').slice(1).join(' ') || '';
+      const nombreSolo = formData.nombre.split(' ')[0];
+
+      const datosRegistro = {
+        // Datos personales
+        email: formData.email,
+        password: formData.contrasena,
+        nombre: nombreSolo,
+        apellido: apellido,
+        telefono: '',
+
+        // Datos profesionales
+        titulo_profesional: formData.tituloProfesional,
+        numero_licencia: formData.numeroLicencia,
+        universidad: formData.universidad,
+        anos_experiencia: formData.anosExperiencia,
+        especialidades: formData.especialidades,
+        idiomas: formData.idiomas,
+        tarifa_por_sesion: formData.tarifaPorSesion,
+        moneda: formData.moneda as 'COP' | 'USD',
+        biografia: formData.biografia,
+
+        // Documentos
+        documentos: documentosSubidos,
+
+        // Consentimiento
+        acepta_terminos: formData.aceptaTerminos,
+      };
+
+      const resultado = await registrarProfesional(datosRegistro);
+
+      if (!resultado.success) {
+        throw new Error(resultado.error || 'Error al registrar profesional');
+      }
+
+      // ==========================================
+      // PASO 3: MOSTRAR ÉXITO Y REDIRIGIR
+      // ==========================================
+      toast.success(
+        resultado.mensaje ||
+          '¡Registro completado! Tu perfil está en revisión. Te notificaremos cuando sea aprobado.',
+        { duration: 5000 }
+      );
 
       setTimeout(() => {
-        router.push('/dashboard');
+        router.push('/iniciar-sesion?mensaje=registro_profesional_exitoso');
       }, 2000);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Error al registrar profesional');
+      console.error('Error en registro profesional:', error);
+      toast.error(
+        error instanceof Error ? error.message : 'Error al registrar profesional. Intenta nuevamente.',
+        { duration: 5000 }
+      );
     } finally {
       setCargando(false);
     }
