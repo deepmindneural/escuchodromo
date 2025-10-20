@@ -564,7 +564,6 @@ export default function PaginaChat() {
             </div>
           </motion.div>
         )}
-      </div>
 
       {/* Modal de límite alcanzado */}
       <AnimatePresence>
@@ -619,6 +618,7 @@ export default function PaginaChat() {
         )}
       </AnimatePresence>
       </main>
+
       <Footer />
     </div>
   );
