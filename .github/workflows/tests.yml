@@ -1,0 +1,235 @@
+name: Tests CI/CD
+
+on:
+  # Ejecutar en pull requests a main
+  pull_request:
+    branches: [main]
+  # Ejecutar en push a main
+  push:
+    branches: [main]
+  # Permitir ejecución manual
+  workflow_dispatch:
+
+# Permisos para publicar comentarios con cobertura
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  # ==========================================
+  # JOB: Tests Unitarios y de Integración
+  # ==========================================
+  unit-and-integration-tests:
+    name: Tests Unitarios e Integración
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Ejecutar tests unitarios
+        run: npm run test:unit
+        env:
+          CI: true
+
+      - name: Ejecutar tests de integración
+        run: npm run test:integration
+        env:
+          CI: true
+
+      - name: Generar reporte de cobertura
+        run: npm run test:coverage
+        env:
+          CI: true
+
+      - name: Subir cobertura a Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+      - name: Comentar cobertura en PR
+        if: github.event_name == 'pull_request'
+        uses: romeovs/lcov-reporter-action@v0.3.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          lcov-file: ./coverage/lcov.info
+          delete-old-comments: true
+
+      - name: Verificar umbrales de cobertura
+        run: npm run test:coverage:check
+        env:
+          CI: true
+
+      - name: Subir reporte HTML de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+  # ==========================================
+  # JOB: Tests E2E con Playwright
+  # ==========================================
+  e2e-tests:
+    name: Tests E2E (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Instalar navegadores de Playwright
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Compilar aplicación
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Ejecutar tests E2E
+        run: npm run test:e2e
+        env:
+          CI: true
+          PLAYWRIGHT_TEST_BASE_URL: http://localhost:3000
+
+      - name: Subir reporte de Playwright
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Subir videos de tests fallidos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-videos
+          path: test-results/
+          retention-days: 3
+
+  # ==========================================
+  # JOB: Tests de Accesibilidad
+  # ==========================================
+  accessibility-tests:
+    name: Tests de Accesibilidad (axe-core)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Ejecutar tests de accesibilidad
+        run: npm run test:a11y
+        env:
+          CI: true
+
+      - name: Subir reporte de accesibilidad
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-report
+          path: coverage/
+          retention-days: 7
+
+  # ==========================================
+  # JOB: Linting y Type Checking
+  # ==========================================
+  lint-and-typecheck:
+    name: Linting y Type Checking
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Ejecutar ESLint
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Ejecutar TypeScript type check
+        run: npm run type-check
+
+  # ==========================================
+  # JOB: Reporte Final
+  # ==========================================
+  test-summary:
+    name: Resumen de Tests
+    runs-on: ubuntu-latest
+    needs: [unit-and-integration-tests, e2e-tests, accessibility-tests, lint-and-typecheck]
+    if: always()
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Generar resumen de tests
+        run: |
+          echo "# Resumen de Tests 🧪" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Jobs Ejecutados" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Tests Unitarios e Integración: ${{ needs.unit-and-integration-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Tests E2E (Playwright): ${{ needs.e2e-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Tests de Accesibilidad: ${{ needs.accessibility-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Linting y Type Checking: ${{ needs.lint-and-typecheck.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Artefactos Disponibles" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- 📊 Reporte de Cobertura HTML" >> $GITHUB_STEP_SUMMARY
+          echo "- 🎭 Reporte de Playwright" >> $GITHUB_STEP_SUMMARY
+          echo "- ♿ Reporte de Accesibilidad" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Revisa los artefactos en la pestaña 'Summary' de este workflow.**" >> $GITHUB_STEP_SUMMARY
+
+      - name: Verificar éxito de todos los jobs
+        if: needs.unit-and-integration-tests.result != 'success' || needs.e2e-tests.result != 'success' || needs.accessibility-tests.result != 'success' || needs.lint-and-typecheck.result != 'success'
+        run: |
+          echo "❌ Algunos tests fallaron. Revisa los logs arriba." >&2
+          exit 1

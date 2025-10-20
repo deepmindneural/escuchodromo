@@ -66,7 +66,7 @@ export function CalendarioMensual({
     setMesActual(mesSiguiente(mesActual));
   };
 
-  const tieneDispo nibilidad = (fecha: Date): boolean => {
+  const tieneDisponibilidad = (fecha: Date): boolean => {
     return fechasConDisponibilidad.some((fechaDispo) =>
       esMismoDia(fechaDispo, fecha)
     );
@@ -160,7 +160,7 @@ export function CalendarioMensual({
         {diasDelMes.map((fecha) => {
           const esSeleccionado = fechaSeleccionada && esMismoDia(fecha, fechaSeleccionada);
           const esHoyDia = esHoy(fecha);
-          const tieneDisponibilidad = tieneDisponibilidad(fecha);
+          const tieneDispo = tieneDisponibilidad(fecha);
           const estaSeleccionable = esSeleccionable(fecha);
 
           return (
@@ -181,10 +181,10 @@ export function CalendarioMensual({
                   'bg-calma-50 text-calma-700 ring-2 ring-calma-500': esHoyDia && !esSeleccionado,
                   // Día con disponibilidad
                   'bg-esperanza-50 text-esperanza-700 hover:bg-esperanza-100':
-                    tieneDisponibilidad && !esSeleccionado && !esHoyDia && estaSeleccionable,
+                    tieneDispo && !esSeleccionado && !esHoyDia && estaSeleccionable,
                   // Día normal seleccionable
                   'bg-white text-gray-700 hover:bg-gray-50':
-                    !tieneDisponibilidad && !esSeleccionado && !esHoyDia && estaSeleccionable,
+                    !tieneDispo && !esSeleccionado && !esHoyDia && estaSeleccionable,
                   // Día no seleccionable
                   'bg-gray-50 text-gray-400 cursor-not-allowed': !estaSeleccionable,
                 },
@@ -193,7 +193,7 @@ export function CalendarioMensual({
               )}
               aria-label={`${formatearFechaCorta(fecha)}${
                 esHoyDia ? ', hoy' : ''
-              }${tieneDisponibilidad ? ', tiene disponibilidad' : ''}${
+              }${tieneDispo ? ', tiene disponibilidad' : ''}${
                 esSeleccionado ? ', seleccionado' : ''
               }${!estaSeleccionable ? ', no disponible' : ''}`}
               aria-pressed={esSeleccionado}
@@ -204,7 +204,7 @@ export function CalendarioMensual({
               <span>{fecha.getDate()}</span>
 
               {/* Indicador visual de disponibilidad */}
-              {tieneDisponibilidad && estaSeleccionable && (
+              {tieneDispo && estaSeleccionable && (
                 <CheckCircleIcon
                   className={clsx(
                     'w-3 h-3 absolute bottom-1',
@@ -215,7 +215,7 @@ export function CalendarioMensual({
               )}
 
               {/* Texto oculto para screen readers */}
-              {tieneDisponibilidad && (
+              {tieneDispo && (
                 <span className="sr-only">Disponible</span>
               )}
             </button>
