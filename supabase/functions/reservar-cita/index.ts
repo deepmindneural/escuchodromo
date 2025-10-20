@@ -28,7 +28,7 @@ interface ReservarCitaRequest {
   profesional_id: string
   fecha_hora: string // ISO 8601
   duracion: number // minutos (30 o 60)
-  modalidad: 'virtual' | 'presencial'
+  modalidad: 'VIRTUAL' | 'PRESENCIAL'
   motivo_consulta: string
 }
 
@@ -155,9 +155,9 @@ serve(async (req) => {
       )
     }
 
-    if (!['virtual', 'presencial'].includes(modalidad)) {
+    if (!['VIRTUAL', 'PRESENCIAL'].includes(modalidad)) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Modalidad debe ser virtual o presencial' }),
+        JSON.stringify({ success: false, error: 'Modalidad debe ser VIRTUAL o PRESENCIAL' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }

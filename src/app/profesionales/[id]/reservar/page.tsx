@@ -83,7 +83,21 @@ export default function PaginaReservarCita() {
 
       const { data, error } = await supabase
         .from('Usuario')
-        .select('id, nombre, apellido, PerfilUsuario(*)')
+        .select(`
+          id,
+          nombre,
+          apellido,
+          PerfilUsuario!PerfilUsuario_usuario_id_fkey (
+            especialidad,
+            experiencia_anos,
+            foto_perfil,
+            biografia,
+            direccion,
+            tarifa_30min,
+            tarifa_60min,
+            disponible
+          )
+        `)
         .eq('id', profesionalId)
         .single();
 
@@ -125,22 +139,30 @@ export default function PaginaReservarCita() {
         return;
       }
 
-      const response = await supabase.functions.invoke('disponibilidad-profesional', {
+      // Construir URL con query parameters para GET request
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const url = `${supabaseUrl}/functions/v1/disponibilidad-profesional?profesional_id=${profesional.id}&fecha=${fechaFormateada}`;
+
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        // @ts-ignore - Supabase types issue
-        body: {
-          profesional_id: profesional.id,
-          fecha: fechaFormateada,
+          'Authorization': `Bearer ${token}`,
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+          'Content-Type': 'application/json',
         },
       });
 
-      if (response.error) throw response.error;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+        throw new Error(errorData.error || `HTTP error ${response.status}`);
+      }
 
-      if (response.data?.success && response.data?.slots) {
-        setSlots(response.data.slots);
+      const data = await response.json();
+
+      if (data.success && data.slots) {
+        // Filtrar solo slots disponibles
+        const slotsDisponibles = data.slots.filter((slot: any) => slot.disponible);
+        setSlots(slotsDisponibles);
       } else {
         setSlots([]);
       }
