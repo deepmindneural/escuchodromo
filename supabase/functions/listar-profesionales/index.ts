@@ -113,7 +113,7 @@ serve(async (req) => {
           tarifa_60min,
           disponible
         ),
-        PerfilProfesional!inner (
+        PerfilProfesional!PerfilProfesional_usuario_id_fkey!inner (
           titulo_profesional,
           especialidades,
           tarifa_por_sesion,
@@ -125,7 +125,7 @@ serve(async (req) => {
         )
       `)
       .eq('rol', 'TERAPEUTA')
-      .eq('estado', 'ACTIVO')
+      .eq('esta_activo', true)
       .eq('PerfilProfesional.perfil_aprobado', true)
       .eq('PerfilProfesional.documentos_verificados', true);
 

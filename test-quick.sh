@@ -1,0 +1,4 @@
+#!/bin/bash
+export NEXT_PUBLIC_SUPABASE_URL=https://cvezncgcdsjntzrzztrj.supabase.co
+export NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2ZXpuY2djZHNqbnR6cnp6dHJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0NjY2NjcsImV4cCI6MjA3NjA0MjY2N30.CddHpq9maykqCT9AfBAGRzidelWwdcYcWQ7pKm_81Q4
+node test-listar-profesionales.js

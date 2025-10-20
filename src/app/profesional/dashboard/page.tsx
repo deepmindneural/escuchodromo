@@ -74,16 +74,19 @@ export default function DashboardProfesional() {
         return;
       }
 
-      if (usuario.rol !== 'TERAPEUTA' && usuario.rol !== 'ADMIN') {
+      // Type assertion para evitar tipo 'never' por falta de definiciones en Database
+      const usuarioData = usuario as { id: string; rol: 'USUARIO' | 'TERAPEUTA' | 'ADMIN' };
+
+      if (usuarioData.rol !== 'TERAPEUTA' && usuarioData.rol !== 'ADMIN') {
         toast.error('No tienes permisos para acceder a este dashboard');
         router.push('/dashboard');
         return;
       }
 
-      setProfesionalId(usuario.id);
+      setProfesionalId(usuarioData.id);
 
       // Cargar próximas citas del profesional
-      const { data: citasData, error: errorCitas } = await obtenerProximasCitas(usuario.id, 10);
+      const { data: citasData, error: errorCitas } = await obtenerProximasCitas(usuarioData.id, 10);
 
       if (errorCitas) {
         console.error('Error obteniendo próximas citas:', errorCitas);
@@ -111,7 +114,7 @@ export default function DashboardProfesional() {
 
       // Cargar pacientes del profesional
       const { data: pacientesData, error: errorPacientes } = await obtenerPacientesProfesional(
-        usuario.id
+        usuarioData.id
       );
 
       if (errorPacientes) {
@@ -133,7 +136,7 @@ export default function DashboardProfesional() {
 
       // Cargar métricas del profesional
       const { data: metricasData, error: errorMetricas } = await obtenerMetricasProfesional(
-        usuario.id
+        usuarioData.id
       );
 
       if (errorMetricas) {
@@ -275,7 +278,7 @@ export default function DashboardProfesional() {
       setCancelando(true);
       const { error } = await supabase
         .from('Cita')
-        .update({ estado: 'CANCELADA' })
+        .update({ estado: 'cancelada' } as any) // Type assertion por falta de definición de Cita en Database
         .eq('id', citaACancelar);
 
       if (error) throw error;

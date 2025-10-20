@@ -11,11 +11,11 @@ export interface Metrica {
   cambio?: {
     valor: number;
     porcentaje: number;
-    tipo: 'positivo' | 'negativo' | 'neutral';
+    tipo: 'positivo' | 'negativo' | 'neutro';
   };
   icono?: React.ReactNode;
   datosGrafica?: number[];
-  tendencia?: 'positiva' | 'negativa' | 'neutral';
+  tendencia?: 'positiva' | 'negativa' | 'neutra';
   descripcionGrafica?: string;
   colorGrafica?: string;
 }
@@ -74,7 +74,7 @@ export function GridMetricas({ metricas, columnas = 4 }: GridMetricasProps) {
                 className={clsx('flex items-center gap-1 text-sm font-medium rounded-full px-2 py-0.5', {
                   'bg-esperanza-100 text-esperanza-700': metrica.cambio.tipo === 'positivo',
                   'bg-alerta-100 text-alerta-700': metrica.cambio.tipo === 'negativo',
-                  'bg-gray-100 text-gray-700': metrica.cambio.tipo === 'neutral',
+                  'bg-gray-100 text-gray-700': metrica.cambio.tipo === 'neutro',
                 })}
               >
                 {/* Icono de flecha */}
@@ -110,7 +110,7 @@ export function GridMetricas({ metricas, columnas = 4 }: GridMetricasProps) {
                     />
                   </svg>
                 )}
-                {metrica.cambio.tipo === 'neutral' && (
+                {metrica.cambio.tipo === 'neutro' && (
                   <svg
                     className="w-4 h-4"
                     fill="none"

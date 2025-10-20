@@ -309,6 +309,7 @@ serve(async (req) => {
           auth_id: authUserId,
           email: body.email.toLowerCase(),
           nombre: body.nombre,
+          apellido: body.apellido || null,
           rol: 'TERAPEUTA',
           esta_activo: true,
         })

@@ -22,7 +22,7 @@ export interface Cita {
   fecha: Date;
   duracion: number; // minutos
   modalidad: 'VIRTUAL' | 'PRESENCIAL';
-  estado: 'CONFIRMADA' | 'PENDIENTE' | 'CANCELADA';
+  estado: 'PENDIENTE' | 'CONFIRMADA' | 'COMPLETADA' | 'CANCELADA' | 'NO_ASISTIO';
 }
 
 interface ProximasCitasProps {
@@ -157,12 +157,16 @@ export function ProximasCitas({
                               cita.estado === 'CONFIRMADA',
                             'bg-calidez-100 text-calidez-700': cita.estado === 'PENDIENTE',
                             'bg-gray-100 text-gray-700': cita.estado === 'CANCELADA',
+                            'bg-calma-100 text-calma-700': cita.estado === 'COMPLETADA',
+                            'bg-alerta-100 text-alerta-700': cita.estado === 'NO_ASISTIO',
                           }
                         )}
                       >
                         {cita.estado === 'CONFIRMADA' && 'Confirmada'}
                         {cita.estado === 'PENDIENTE' && 'Pendiente'}
                         {cita.estado === 'CANCELADA' && 'Cancelada'}
+                        {cita.estado === 'COMPLETADA' && 'Completada'}
+                        {cita.estado === 'NO_ASISTIO' && 'No asistió'}
                       </span>
                     </div>
 

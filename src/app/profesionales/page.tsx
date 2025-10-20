@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import clsx from 'clsx';
 import { CardProfesional, CardProfesionalSkeleton, type DatosProfesional } from '@/lib/componentes/CardProfesional';
 import Navegacion from '@/lib/componentes/layout/Navegacion';
+import Footer from '@/lib/componentes/layout/Footer';
 
 const ESPECIALIDADES = [
   'Todas',
@@ -498,6 +499,7 @@ export default function PaginaProfesionales() {
         )}
       </div>
     </div>
+    <Footer />
     </>
   );
 }
