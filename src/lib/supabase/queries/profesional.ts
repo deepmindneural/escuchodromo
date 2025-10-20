@@ -85,15 +85,15 @@ export async function obtenerPacientesProfesional(
         paciente_id,
         estado,
         fecha_hora,
-        paciente:Usuario!Cita_paciente_id_fkey(
+        Usuario!paciente_id(
           id,
           nombre,
           apellido,
           email,
+          imagen,
           PerfilUsuario(
             telefono,
-            genero,
-            foto_perfil
+            genero
           )
         )
       `
@@ -114,7 +114,7 @@ export async function obtenerPacientesProfesional(
     const pacientesMap = new Map<string, any>();
 
     for (const cita of citas) {
-      const pacienteData = (cita as any).paciente;
+      const pacienteData = (cita as any).Usuario;
       if (!pacienteData) continue;
 
       const pacienteId = pacienteData.id;
@@ -125,7 +125,7 @@ export async function obtenerPacientesProfesional(
           nombre: pacienteData.nombre || '',
           apellido: pacienteData.apellido || null,
           email: pacienteData.email || '',
-          foto_perfil: pacienteData.PerfilUsuario?.foto_perfil || null,
+          foto_perfil: pacienteData.imagen || null,
           telefono: pacienteData.PerfilUsuario?.telefono || null,
           genero: pacienteData.PerfilUsuario?.genero || null,
           total_citas: 0,
@@ -426,11 +426,11 @@ export async function obtenerProximasCitas(
         estado,
         motivo_consulta,
         link_videollamada,
-        paciente:Usuario!Cita_paciente_id_fkey(
+        Usuario!paciente_id(
           id,
           nombre,
           apellido,
-          PerfilUsuario(foto_perfil)
+          imagen
         )
       `
       )
@@ -452,10 +452,10 @@ export async function obtenerProximasCitas(
     const citasFormateadas: CitaProxima[] = citas.map((cita: any) => ({
       id: cita.id,
       paciente: {
-        id: cita.paciente?.id || '',
-        nombre: cita.paciente?.nombre || '',
-        apellido: cita.paciente?.apellido || null,
-        foto_perfil: cita.paciente?.PerfilUsuario?.foto_perfil || null,
+        id: cita.Usuario?.id || '',
+        nombre: cita.Usuario?.nombre || '',
+        apellido: cita.Usuario?.apellido || null,
+        foto_perfil: cita.Usuario?.imagen || null,
       },
       fecha_hora: new Date(cita.fecha_hora),
       duracion: cita.duracion || 60,
