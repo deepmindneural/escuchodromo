@@ -163,9 +163,9 @@ export default function PaginaAdmin() {
         .from('Conversacion')
         .select('*', { count: 'exact', head: true });
 
-      // Total de evaluaciones
+      // Total de evaluaciones (resultados de pruebas)
       const { count: evaluacionesRealizadas } = await supabase
-        .from('Evaluacion')
+        .from('Resultado')
         .select('*', { count: 'exact', head: true });
 
       // Suscripciones activas

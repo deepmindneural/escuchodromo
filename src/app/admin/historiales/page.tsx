@@ -16,8 +16,8 @@ interface Usuario {
   id: string;
   nombre: string;
   email: string;
-  fecha_registro: string;
-  ultima_actividad: string | null;
+  creado_en: string;
+  actualizado_en: string | null;
 }
 
 interface Evaluacion {
@@ -130,8 +130,8 @@ export default function PaginaHistoriales() {
     try {
       const { data, error } = await supabase
         .from('Usuario')
-        .select('id, nombre, email, fecha_registro, ultima_actividad')
-        .order('fecha_registro', { ascending: false })
+        .select('id, nombre, email, creado_en, actualizado_en')
+        .order('creado_en', { ascending: false })
         .limit(100);
 
       if (error) {
@@ -342,12 +342,12 @@ export default function PaginaHistoriales() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-teal-50 text-sm">Registro</p>
-                    <p className="font-semibold">{formatearFecha(historial.usuario.fecha_registro)}</p>
+                    <p className="font-semibold">{formatearFecha(historial.usuario.creado_en)}</p>
                   </div>
-                  {historial.usuario.ultima_actividad && (
+                  {historial.usuario.actualizado_en && (
                     <div>
-                      <p className="text-teal-50 text-sm">Última actividad</p>
-                      <p className="font-semibold">{formatearFecha(historial.usuario.ultima_actividad)}</p>
+                      <p className="text-teal-50 text-sm">Última actualización</p>
+                      <p className="font-semibold">{formatearFecha(historial.usuario.actualizado_en)}</p>
                     </div>
                   )}
                 </div>

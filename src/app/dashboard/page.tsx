@@ -400,7 +400,7 @@ export default function PaginaDashboard() {
         {/* Dashboard para TERAPEUTA */}
         {usuario?.rol === 'TERAPEUTA' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Link href="/terapeuta/pacientes">
+            <Link href="/profesional/pacientes">
               <motion.div
                 whileHover={{ scale: 1.02, y: -5 }}
                 whileTap={{ scale: 0.98 }}
@@ -418,7 +418,7 @@ export default function PaginaDashboard() {
               </motion.div>
             </Link>
 
-            <Link href="/terapeuta/reportes">
+            <Link href="/profesional/dashboard">
               <motion.div
                 whileHover={{ scale: 1.02, y: -5 }}
                 whileTap={{ scale: 0.98 }}
@@ -428,10 +428,10 @@ export default function PaginaDashboard() {
                   <FaFileAlt className="text-3xl text-blue-600" />
                 </div>
                 <h3 className="text-lg font-bold text-gray-900 mb-2">
-                  Reportes Clínicos
+                  Dashboard Profesional
                 </h3>
                 <p className="text-gray-600 text-sm">
-                  Revisa evaluaciones y progreso de pacientes
+                  Revisa métricas, evaluaciones y progreso de pacientes
                 </p>
               </motion.div>
             </Link>
@@ -472,7 +472,7 @@ export default function PaginaDashboard() {
               </motion.div>
             </Link>
 
-            <Link href="/terapeuta/calendario">
+            <Link href="/profesional/calendario">
               <motion.div
                 whileHover={{ scale: 1.02, y: -5 }}
                 whileTap={{ scale: 0.98 }}

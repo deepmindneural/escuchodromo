@@ -97,7 +97,7 @@ export default function DisponibilidadProfesional() {
       const { data: usuario, error: errorUsuario } = await supabase
         .from('Usuario')
         .select('id, rol')
-        .eq('id', session.user.id)
+        .eq('auth_id', session.user.id)
         .single();
 
       if (errorUsuario || !usuario || (usuario.rol !== 'TERAPEUTA' && usuario.rol !== 'ADMIN')) {

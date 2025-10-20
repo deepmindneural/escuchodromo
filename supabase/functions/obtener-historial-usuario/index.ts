@@ -106,7 +106,7 @@ serve(async (req) => {
     // 5. Verificar que el usuario existe
     const { data: usuarioObjetivo, error: usuarioObjetivoError } = await supabase
       .from('Usuario')
-      .select('id, nombre, email, fecha_registro, ultima_actividad')
+      .select('id, nombre, email, creado_en, actualizado_en')
       .eq('id', usuario_id)
       .single()
 
@@ -128,17 +128,18 @@ serve(async (req) => {
       usuario: usuarioObjetivo
     }
 
-    // Obtener evaluaciones
+    // Obtener evaluaciones (resultados de pruebas)
     if (tipo === 'evaluaciones' || tipo === 'completo') {
       const { data: evaluaciones, error: evaluacionesError } = await supabase
-        .from('Evaluacion')
+        .from('Resultado')
         .select(`
           id,
           puntuacion,
           severidad,
           interpretacion,
           creado_en,
-          Test (codigo, nombre, categoria)
+          prueba_id,
+          Prueba:prueba_id (codigo, nombre, categoria)
         `)
         .eq('usuario_id', usuario_id)
         .order('creado_en', { ascending: false })

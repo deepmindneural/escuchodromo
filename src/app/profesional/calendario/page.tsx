@@ -76,7 +76,7 @@ export default function PaginaCalendarioProfesional() {
         .eq('auth_id', user.id)
         .single();
 
-      if (error || !userData || userData.rol !== 'TERAPEUTA') {
+      if (error || !userData || (userData.rol !== 'TERAPEUTA' && userData.rol !== 'ADMIN')) {
         toast.error('No tienes permisos para acceder a esta página');
         router.push('/dashboard');
         return;
@@ -109,7 +109,7 @@ export default function PaginaCalendarioProfesional() {
           modalidad,
           estado,
           paciente_id,
-          Usuario:paciente_id (
+          paciente:paciente_id (
             nombre,
             apellido
           )
@@ -128,8 +128,8 @@ export default function PaginaCalendarioProfesional() {
         modalidad: cita.modalidad,
         estado: cita.estado,
         paciente: {
-          nombre: cita.Usuario?.nombre || 'Desconocido',
-          apellido: cita.Usuario?.apellido || '',
+          nombre: cita.paciente?.nombre || 'Desconocido',
+          apellido: cita.paciente?.apellido || '',
         },
       }));
 
