@@ -12,6 +12,8 @@ import { obtenerClienteNavegador } from '@/lib/supabase/cliente';
 import { formatearParaAPI, formatearFechaHora, formatearFechaCorta } from '@/lib/utils/fechas';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
+import Navegacion from '@/lib/componentes/layout/Navegacion';
+import Footer from '@/lib/componentes/layout/Footer';
 
 interface DatosProfesional {
   id: string;
@@ -260,39 +262,49 @@ export default function PaginaReservarCita() {
   // Pantalla de carga
   if (cargandoProfesional) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-calma-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Cargando información...</p>
+      <>
+        <Navegacion />
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center pt-20">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-calma-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-gray-600">Cargando información...</p>
+          </div>
         </div>
-      </div>
+        <Footer />
+      </>
     );
   }
 
   // Profesional no encontrado
   if (!profesional) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Profesional no encontrado</h1>
-          <p className="text-gray-600 mb-6">
-            No pudimos encontrar la información de este profesional
-          </p>
-          <button
-            onClick={() => router.push('/profesionales')}
-            className="px-6 py-3 bg-calma-600 text-white rounded-lg hover:bg-calma-700"
-          >
-            Ver todos los profesionales
-          </button>
+      <>
+        <Navegacion />
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 pt-20">
+          <div className="text-center max-w-md">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Profesional no encontrado</h1>
+            <p className="text-gray-600 mb-6">
+              No pudimos encontrar la información de este profesional
+            </p>
+            <button
+              onClick={() => router.push('/profesionales')}
+              className="px-6 py-3 bg-calma-600 text-white rounded-lg hover:bg-calma-700"
+            >
+              Ver todos los profesionales
+            </button>
+          </div>
         </div>
-      </div>
+        <Footer />
+      </>
     );
   }
 
   // Pantalla de éxito
   if (reservaExitosa && datosReserva) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-calma-50 to-esperanza-50 flex items-center justify-center p-4">
+      <>
+        <Navegacion />
+        <div className="min-h-screen bg-gradient-to-br from-calma-50 to-esperanza-50 flex items-center justify-center p-4 pt-20">
         <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8 md:p-12 text-center">
           <div className="w-20 h-20 bg-esperanza-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircleIcon className="w-12 h-12 text-esperanza-600" aria-hidden="true" />
@@ -352,12 +364,16 @@ export default function PaginaReservarCita() {
           </div>
         </div>
       </div>
+      <Footer />
+      </>
     );
   }
 
   // Formulario de reserva
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      <Navegacion />
+      <div className="min-h-screen bg-gray-50 pt-20">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -600,5 +616,7 @@ export default function PaginaReservarCita() {
         />
       )}
     </div>
+    <Footer />
+    </>
   );
 }

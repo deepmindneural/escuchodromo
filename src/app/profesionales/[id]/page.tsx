@@ -15,6 +15,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { obtenerClienteNavegador } from '@/lib/supabase/cliente';
 import toast from 'react-hot-toast';
+import Navegacion from '@/lib/componentes/layout/Navegacion';
+import Footer from '@/lib/componentes/layout/Footer';
 
 interface DatosProfesional {
   id: string;
@@ -108,37 +110,47 @@ export default function PaginaDetalleProfesional() {
   // Pantalla de carga
   if (cargando) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-calma-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Cargando información...</p>
+      <>
+        <Navegacion />
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center pt-20">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-calma-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-gray-600">Cargando información...</p>
+          </div>
         </div>
-      </div>
+        <Footer />
+      </>
     );
   }
 
   // Profesional no encontrado
   if (!profesional) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Profesional no encontrado</h1>
-          <p className="text-gray-600 mb-6">
-            No pudimos encontrar la información de este profesional
-          </p>
-          <button
-            onClick={() => router.push('/profesionales')}
-            className="px-6 py-3 bg-calma-600 text-white rounded-lg hover:bg-calma-700"
-          >
-            Ver todos los profesionales
-          </button>
+      <>
+        <Navegacion />
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 pt-20">
+          <div className="text-center max-w-md">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Profesional no encontrado</h1>
+            <p className="text-gray-600 mb-6">
+              No pudimos encontrar la información de este profesional
+            </p>
+            <button
+              onClick={() => router.push('/profesionales')}
+              className="px-6 py-3 bg-calma-600 text-white rounded-lg hover:bg-calma-700"
+            >
+              Ver todos los profesionales
+            </button>
+          </div>
         </div>
-      </div>
+        <Footer />
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      <Navegacion />
+      <div className="min-h-screen bg-gray-50 pt-20">
       {/* Header con foto de portada */}
       <div className="bg-gradient-to-r from-calma-600 to-esperanza-600 h-48 relative">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -372,5 +384,7 @@ export default function PaginaDetalleProfesional() {
         </div>
       </div>
     </div>
+    <Footer />
+    </>
   );
 }
