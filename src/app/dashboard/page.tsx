@@ -278,6 +278,24 @@ export default function PaginaDashboard() {
               </motion.div>
             </Link>
 
+            <Link href="/mis-citas">
+              <motion.div
+                whileHover={{ scale: 1.02, y: -5 }}
+                whileTap={{ scale: 0.98 }}
+                className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition-all cursor-pointer border-2 border-transparent hover:border-rose-200"
+              >
+                <div className="w-14 h-14 bg-gradient-to-br from-rose-100 to-pink-100 rounded-xl flex items-center justify-center mb-4">
+                  <FaCalendar className="text-3xl text-rose-600" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">
+                  Mis Citas
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  Gestiona tus citas con profesionales
+                </p>
+              </motion.div>
+            </Link>
+
             <Link href="/animo">
               <motion.div
                 whileHover={{ scale: 1.02, y: -5 }}
