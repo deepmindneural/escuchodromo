@@ -54,7 +54,7 @@ export async function registrarUsuario({ email, password, nombre }: Credenciales
 }
 
 /**
- * Iniciar sesión
+ * Iniciar sesión y obtener rol del usuario
  */
 export async function iniciarSesion({ email, password }: CredencialesLogin) {
   const supabase = obtenerClienteNavegador()
@@ -80,7 +80,19 @@ export async function iniciarSesion({ email, password }: CredencialesLogin) {
     throw new Error(`Error al iniciar sesión: ${error.message}`)
   }
 
-  return data
+  // Obtener rol del usuario desde la tabla Usuario
+  let rol: string | null = null
+  if (data.user) {
+    const { data: usuario } = await supabase
+      .from('Usuario')
+      .select('rol')
+      .eq('auth_id', data.user.id)
+      .single()
+
+    rol = usuario?.rol || null
+  }
+
+  return { ...data, rol }
 }
 
 /**

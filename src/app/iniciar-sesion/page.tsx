@@ -57,15 +57,22 @@ export default function PaginaIniciarSesion() {
     setCargando(true);
 
     try {
-      await iniciarSesion({
+      const resultado = await iniciarSesion({
         email: formData.email,
         password: formData.contrasena,
       });
 
       toast.success('¡Bienvenido de vuelta!');
 
+      // Redirigir según el rol del usuario
       setTimeout(() => {
-        router.push('/dashboard');
+        if (resultado.rol === 'ADMIN') {
+          router.push('/admin');
+        } else if (resultado.rol === 'TERAPEUTA') {
+          router.push('/profesional/dashboard');
+        } else {
+          router.push('/dashboard');
+        }
       }, 1000);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Error al iniciar sesión');
