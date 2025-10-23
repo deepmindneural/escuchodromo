@@ -185,10 +185,10 @@ export default function PaginaAdmin() {
         'Otras': 0
       };
 
-      evaluaciones?.forEach((eval: any) => {
-        if (eval.codigo === 'PHQ-9') {
+      evaluaciones?.forEach((evaluacion: any) => {
+        if (evaluacion.codigo === 'PHQ-9') {
           distribucionEvaluaciones['PHQ-9']++;
-        } else if (eval.codigo === 'GAD-7') {
+        } else if (evaluacion.codigo === 'GAD-7') {
           distribucionEvaluaciones['GAD-7']++;
         } else {
           distribucionEvaluaciones['Otras']++;
