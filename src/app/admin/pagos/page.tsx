@@ -52,6 +52,7 @@ import {
 import { Skeleton } from '../../../lib/componentes/ui/skeleton';
 import { obtenerClienteNavegador } from '../../../lib/supabase/cliente';
 import { toast, Toaster } from 'react-hot-toast';
+import { AdminHeader, AdminStatCard } from '../../../lib/componentes/admin';
 
 interface Pago {
   id: string;
@@ -355,18 +356,10 @@ export default function AdminPagos() {
       <Toaster position="top-center" />
 
       {/* Header de la página */}
-      <div className="bg-white border-b border-gray-200 mb-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Gestión de Pagos</h1>
-              <p className="text-gray-600 mt-1">
-                Vista completa de transacciones y estadísticas
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <AdminHeader
+        titulo="Gestión de Pagos 💰"
+        descripcion="Vista completa de transacciones, estadísticas financieras y análisis de ingresos"
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
 
@@ -380,9 +373,10 @@ export default function AdminPagos() {
               sufijo: '',
               cambio: 15,
               icono: TrendingUp,
-              color: 'from-green-400 to-green-600',
-              tendencia: 'up',
-              descripcion: `${estadisticas.total_pagos} transacciones`
+              color: 'from-teal-400 to-teal-600',
+              tendencia: 'up' as const,
+              descripcion: `${estadisticas.total_pagos} transacciones`,
+              formato: 'moneda' as const
             },
             {
               titulo: 'Tasa de Éxito',
@@ -390,9 +384,10 @@ export default function AdminPagos() {
               sufijo: '%',
               cambio: 3,
               icono: CheckCircle,
-              color: 'from-blue-400 to-blue-600',
-              tendencia: 'up',
-              descripcion: `${estadisticas.completados} completados`
+              color: 'from-cyan-400 to-cyan-600',
+              tendencia: 'up' as const,
+              descripcion: `${estadisticas.completados} completados`,
+              formato: 'numero' as const
             },
             {
               titulo: 'Promedio por Pago',
@@ -401,8 +396,9 @@ export default function AdminPagos() {
               cambio: 8,
               icono: DollarSign,
               color: 'from-purple-400 to-purple-600',
-              tendencia: 'up',
-              descripcion: 'Por transacción'
+              tendencia: 'up' as const,
+              descripcion: 'Por transacción',
+              formato: 'moneda' as const
             },
             {
               titulo: 'Problemas',
@@ -410,54 +406,25 @@ export default function AdminPagos() {
               sufijo: '',
               cambio: -2,
               icono: TrendingDown,
-              color: 'from-red-400 to-red-600',
-              tendencia: 'down',
-              descripcion: `${estadisticas.fallidos} fallidos`
+              color: 'from-amber-400 to-orange-600',
+              tendencia: 'down' as const,
+              descripcion: `${estadisticas.fallidos} fallidos`,
+              formato: 'numero' as const
             }
           ].map((tarjeta, index) => (
-            <motion.div
+            <AdminStatCard
               key={tarjeta.titulo}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
-            >
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`p-3 rounded-lg bg-gradient-to-br ${tarjeta.color}`}>
-                      <tarjeta.icono className="text-2xl text-white" aria-hidden="true" />
-                    </div>
-                  </div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">
-                    {tarjeta.titulo}
-                  </p>
-                  <p className="text-3xl font-bold text-gray-900">
-                    {tarjeta.titulo === 'Ingresos Totales' || tarjeta.titulo === 'Promedio por Pago' ? (
-                      formatearMonto(tarjeta.valor, 'COP')
-                    ) : (
-                      <CountUp
-                        end={tarjeta.valor}
-                        duration={2}
-                        suffix={tarjeta.sufijo}
-                      />
-                    )}
-                  </p>
-                  <div className="flex items-center mt-2">
-                    {tarjeta.tendencia === 'up' ? (
-                      <FaArrowUp className="text-green-500 mr-1 text-xs" />
-                    ) : (
-                      <FaArrowDown className="text-red-500 mr-1 text-xs" />
-                    )}
-                    <span className={`text-sm font-medium ${
-                      tarjeta.tendencia === 'up' ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {Math.abs(tarjeta.cambio)}% vs mes anterior
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
+              titulo={tarjeta.titulo}
+              valor={tarjeta.valor}
+              icono={tarjeta.icono}
+              color={tarjeta.color}
+              cambio={tarjeta.cambio}
+              tendencia={tarjeta.tendencia}
+              descripcion={tarjeta.descripcion}
+              formato={tarjeta.formato}
+              sufijo={tarjeta.sufijo}
+              delay={index * 0.1}
+            />
           ))}
         </div>
       )}

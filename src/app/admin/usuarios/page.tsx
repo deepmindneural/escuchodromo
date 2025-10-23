@@ -39,6 +39,7 @@ import { Search, ChevronLeft, ChevronRight, User, Shield, ShieldCheck, Activity 
 import { Skeleton } from '../../../lib/componentes/ui/skeleton';
 import { obtenerClienteNavegador } from '../../../lib/supabase/cliente';
 import { toast, Toaster } from 'react-hot-toast';
+import { AdminHeader, AdminStatCard } from '../../../lib/componentes/admin';
 
 interface Usuario {
   id: string;
@@ -324,18 +325,10 @@ export default function AdminUsuarios() {
       <Toaster position="top-center" />
 
       {/* Header de la página */}
-      <div className="bg-white border-b border-gray-200 mb-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Gestión de Usuarios</h1>
-              <p className="text-gray-600 mt-1">
-                Administra los usuarios de la plataforma
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <AdminHeader
+        titulo="Gestión de Usuarios 👥"
+        descripcion="Administra y supervisa todos los usuarios de la plataforma de bienestar emocional"
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
 
@@ -347,16 +340,16 @@ export default function AdminUsuarios() {
             valor: estadisticasResumen.totalUsuarios,
             cambio: estadisticasResumen.nuevosHoy,
             icono: FaUsers,
-            color: 'from-blue-400 to-blue-600',
-            tendencia: 'up'
+            color: 'from-teal-400 to-teal-600',
+            tendencia: 'up' as const
           },
           {
             titulo: 'Nuevos Hoy',
             valor: estadisticasResumen.nuevosHoy,
             cambio: 2,
             icono: User,
-            color: 'from-green-400 to-green-600',
-            tendencia: 'up'
+            color: 'from-cyan-400 to-cyan-600',
+            tendencia: 'up' as const
           },
           {
             titulo: 'Activos',
@@ -364,55 +357,27 @@ export default function AdminUsuarios() {
             cambio: 5,
             icono: Activity,
             color: 'from-purple-400 to-purple-600',
-            tendencia: 'up'
+            tendencia: 'up' as const
           },
           {
             titulo: 'Inactivos',
             valor: estadisticasResumen.inactivos,
             cambio: -3,
             icono: Shield,
-            color: 'from-orange-400 to-orange-600',
-            tendencia: 'down'
+            color: 'from-amber-400 to-orange-600',
+            tendencia: 'down' as const
           }
         ].map((tarjeta, index) => (
-          <motion.div
+          <AdminStatCard
             key={tarjeta.titulo}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
-          >
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className={`p-3 rounded-lg bg-gradient-to-br ${tarjeta.color}`}>
-                    <tarjeta.icono className="text-2xl text-white" aria-hidden="true" />
-                  </div>
-                </div>
-                <p className="text-sm font-medium text-gray-600 mb-1">
-                  {tarjeta.titulo}
-                </p>
-                <p className="text-3xl font-bold text-gray-900">
-                  <CountUp
-                    end={tarjeta.valor}
-                    duration={2}
-                  />
-                </p>
-                <div className="flex items-center mt-2">
-                  {tarjeta.tendencia === 'up' ? (
-                    <FaArrowUp className="text-green-500 mr-1 text-xs" />
-                  ) : (
-                    <FaArrowDown className="text-red-500 mr-1 text-xs" />
-                  )}
-                  <span className={`text-sm font-medium ${
-                    tarjeta.tendencia === 'up' ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {Math.abs(tarjeta.cambio)} hoy
-                  </span>
-                </div>
-              </div>
-            </div>
-          </motion.div>
+            titulo={tarjeta.titulo}
+            valor={tarjeta.valor}
+            icono={tarjeta.icono}
+            color={tarjeta.color}
+            cambio={tarjeta.cambio}
+            tendencia={tarjeta.tendencia}
+            delay={index * 0.1}
+          />
         ))}
       </div>
 

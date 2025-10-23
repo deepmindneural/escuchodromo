@@ -19,33 +19,29 @@ export function AdminHeader({ titulo, descripcion, acciones, icono }: AdminHeade
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
-      className="bg-gradient-to-r from-white via-gray-50 to-white border-b border-gray-200 mb-8 sticky top-0 z-40 backdrop-blur-sm bg-white/95"
+      className="bg-gradient-to-r from-teal-500 to-cyan-500 rounded-2xl shadow-xl p-8 mb-8 text-white"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-start gap-4">
-            {icono && (
-              <div className="flex-shrink-0 p-3 bg-gradient-to-br from-teal-400 to-teal-600 rounded-xl shadow-md">
-                <div className="text-white text-2xl">{icono}</div>
-              </div>
-            )}
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-                {titulo}
-              </h1>
-              {descripcion && (
-                <p className="text-gray-600 mt-1 text-sm sm:text-base">
-                  {descripcion}
-                </p>
-              )}
-            </div>
-          </div>
-          {acciones && (
-            <div className="flex items-center gap-3 flex-shrink-0">
-              {acciones}
-            </div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-start gap-4">
+          {icono && (
+            <div className="flex-shrink-0 text-5xl">{icono}</div>
           )}
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight mb-2">
+              {titulo}
+            </h1>
+            {descripcion && (
+              <p className="text-white/90 text-lg">
+                {descripcion}
+              </p>
+            )}
+          </div>
         </div>
+        {acciones && (
+          <div className="flex items-center gap-3 flex-shrink-0">
+            {acciones}
+          </div>
+        )}
       </div>
     </motion.div>
   );

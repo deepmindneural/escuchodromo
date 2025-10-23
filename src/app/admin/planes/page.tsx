@@ -30,6 +30,7 @@ import {
 import { obtenerClienteNavegador } from '../../../lib/supabase/cliente';
 import { toast, Toaster } from 'react-hot-toast';
 import { PALETA_ADMIN } from '../../../lib/constantes/coloresAdmin';
+import { AdminHeader, AdminStatCard } from '../../../lib/componentes/admin';
 
 interface Plan {
   id: string;
@@ -253,20 +254,16 @@ export default function PlanesAdminPage() {
       <Toaster position="top-center" />
 
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 mb-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Gestión de Planes</h1>
-              <p className="text-gray-600 mt-1">Administra los planes de suscripción disponibles</p>
-            </div>
-            <Button onClick={abrirModalCrear} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700">
-              <PlusCircle className="h-5 w-5" />
-              Crear Plan
-            </Button>
-          </div>
-        </div>
-      </div>
+      <AdminHeader
+        titulo="Gestión de Planes 📦"
+        descripcion="Administra los planes de suscripción disponibles para tu plataforma"
+        acciones={
+          <Button onClick={abrirModalCrear} className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700">
+            <PlusCircle className="h-5 w-5" />
+            Crear Plan
+          </Button>
+        }
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
         {/* Tarjetas de estadísticas */}
@@ -277,16 +274,16 @@ export default function PlanesAdminPage() {
               valor: totalPlanes,
               cambio: 0,
               icono: TrendingUp,
-              color: 'from-blue-400 to-blue-600',
-              tendencia: 'up',
+              color: 'from-teal-400 to-teal-600',
+              tendencia: 'neutral' as const,
             },
             {
               titulo: 'Planes Activos',
               valor: planesActivos,
               cambio: 0,
               icono: CheckCircle,
-              color: 'from-green-400 to-green-600',
-              tendencia: 'up',
+              color: 'from-cyan-400 to-cyan-600',
+              tendencia: 'neutral' as const,
             },
             {
               titulo: 'Total Suscriptores',
@@ -294,38 +291,29 @@ export default function PlanesAdminPage() {
               cambio: 0,
               icono: FaUsers,
               color: 'from-purple-400 to-purple-600',
-              tendencia: 'up',
+              tendencia: 'neutral' as const,
             },
             {
               titulo: 'Ingresos Mensuales',
               valor: ingresosTotales,
               cambio: 0,
               icono: DollarSign,
-              color: 'from-orange-400 to-orange-600',
-              tendencia: 'up',
+              color: 'from-amber-400 to-orange-600',
+              tendencia: 'neutral' as const,
+              formato: 'moneda' as const,
             },
           ].map((tarjeta, index) => (
-            <motion.div
+            <AdminStatCard
               key={tarjeta.titulo}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <div className={`p-3 rounded-lg bg-gradient-to-br ${tarjeta.color}`}>
-                  <tarjeta.icono className="text-2xl text-white" />
-                </div>
-              </div>
-              <p className="text-sm font-medium text-gray-600 mb-1">{tarjeta.titulo}</p>
-              <p className="text-3xl font-bold text-gray-900">
-                {tarjeta.titulo === 'Ingresos Mensuales' ? (
-                  formatearMoneda(tarjeta.valor, 'COP')
-                ) : (
-                  <CountUp end={tarjeta.valor} duration={2} />
-                )}
-              </p>
-            </motion.div>
+              titulo={tarjeta.titulo}
+              valor={tarjeta.valor}
+              icono={tarjeta.icono}
+              color={tarjeta.color}
+              cambio={tarjeta.cambio}
+              tendencia={tarjeta.tendencia}
+              formato={tarjeta.formato || 'numero'}
+              delay={index * 0.1}
+            />
           ))}
         </div>
 
