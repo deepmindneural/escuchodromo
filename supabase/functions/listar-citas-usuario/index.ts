@@ -112,13 +112,10 @@ serve(async (req) => {
     // ✅ 4. USAR SELECT CON FOREIGN KEY RELATIONSHIP
     const ahora = new Date().toISOString()
 
-    // Query base - usar sintaxis simple sin alias
+    // Query simple SIN join - obtener solo citas
     let query = supabase
       .from('Cita')
-      .select(`
-        *,
-        profesional:Usuario!profesional_id(id, nombre, apellido, email, avatar_url)
-      `, { count: 'exact' })
+      .select('*', { count: 'exact' })
       .eq('paciente_id', usuario.id)
 
     // Filtrar por estado
@@ -146,29 +143,53 @@ serve(async (req) => {
     const { data: citas, error: citasError, count } = await query
 
     if (citasError) {
-      console.error('Error obteniendo citas:', citasError)
+      console.error('❌ Error obteniendo citas:', citasError)
       return new Response(
         JSON.stringify({ success: false, error: 'Error al obtener citas', details: citasError.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Obtener perfiles profesionales
-    const profesionalesIds = citas?.map((c: any) => c.profesional_id).filter(Boolean) || []
+    console.log(`✅ Citas obtenidas: ${citas?.length || 0}`)
+
+    // Obtener IDs únicos de profesionales
+    const profesionalesIds = [...new Set(citas?.map((c: any) => c.profesional_id).filter(Boolean))] || []
+    console.log(`📋 Profesionales únicos: ${profesionalesIds.length}`)
+
+    let profesionales: any[] = []
     let perfilesProfesionales: any[] = []
 
     if (profesionalesIds.length > 0) {
-      const { data: perfiles } = await supabase
+      // Obtener datos de usuarios profesionales
+      const { data: usuariosData, error: usuariosError } = await supabase
+        .from('Usuario')
+        .select('id, nombre, apellido, email, avatar_url')
+        .in('id', profesionalesIds)
+
+      if (usuariosError) {
+        console.error('❌ Error obteniendo usuarios:', usuariosError)
+      } else {
+        profesionales = usuariosData || []
+        console.log(`✅ Usuarios profesionales obtenidos: ${profesionales.length}`)
+      }
+
+      // Obtener perfiles profesionales
+      const { data: perfiles, error: perfilesError } = await supabase
         .from('PerfilProfesional')
         .select('usuario_id, especialidades, tarifa_por_sesion')
         .in('usuario_id', profesionalesIds)
 
-      perfilesProfesionales = perfiles || []
+      if (perfilesError) {
+        console.error('❌ Error obteniendo perfiles:', perfilesError)
+      } else {
+        perfilesProfesionales = perfiles || []
+        console.log(`✅ Perfiles profesionales obtenidos: ${perfilesProfesionales.length}`)
+      }
     }
 
     // ✅ 8. FORMATEAR DATOS
     const citasConDatos: CitaConProfesional[] = (citas || []).map((cita: any) => {
-      const usuarioData = cita.profesional
+      const profesional = profesionales.find(p => p.id === cita.profesional_id)
       const perfilProf = perfilesProfesionales.find(p => p.usuario_id === cita.profesional_id)
 
       return {
@@ -180,13 +201,7 @@ serve(async (req) => {
         motivo_consulta: cita.motivo_consulta,
         link_videollamada: cita.link_videollamada,
         creado_en: cita.creado_en,
-        profesional: usuarioData ? {
-          id: usuarioData.id,
-          nombre: usuarioData.nombre,
-          apellido: usuarioData.apellido,
-          email: usuarioData.email,
-          avatar_url: usuarioData.avatar_url
-        } : {
+        profesional: profesional || {
           id: cita.profesional_id,
           nombre: 'Desconocido',
           apellido: '',
