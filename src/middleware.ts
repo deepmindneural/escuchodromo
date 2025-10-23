@@ -1,6 +1,6 @@
 /**
  * Middleware de Next.js para autenticación con Supabase
- * Se ejecuta antes de cada request para verificar y refrescar sesiones
+ * REFORZADO: Bloquea navegación entre roles sin cerrar sesión
  */
 
 import { type NextRequest, NextResponse } from 'next/server'
@@ -8,79 +8,145 @@ import { actualizarSesion } from './lib/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
   const { response, user, rol } = await actualizarSesion(request)
+  const pathname = request.nextUrl.pathname
 
-  // Rutas públicas (no requieren autenticación)
+  console.log('🔒 Middleware - Ruta:', pathname, '- Usuario:', user?.id, '- Rol:', rol);
+
+  // ==========================================
+  // 1. RUTAS PÚBLICAS (acceso sin autenticación)
+  // ==========================================
   const rutasPublicas = [
     '/',
     '/iniciar-sesion',
     '/registrar',
+    '/registrar-profesional',
+    '/recuperar-contrasena',
     '/chat-publico',
+    '/como-funciona',
+    '/servicios',
+    '/contacto',
+    '/precios',
+    '/profesionales', // Lista pública de profesionales
+    '/ayuda',
+    '/terminos',
+    '/privacidad',
+    '/confirmar-email',
   ]
 
-  // Rutas de admin
-  const rutasAdmin = [
-    '/admin',
-  ]
-
-  // Rutas protegidas (requieren autenticación)
-  const rutasProtegidas = [
-    '/dashboard',
-    '/chat',
-    '/evaluaciones',
-    '/perfil',
-    '/animo',
-    '/recomendaciones',
-    '/pago',
-  ]
-
-  const pathname = request.nextUrl.pathname
-
-  // Verificar si es una ruta pública
   const esRutaPublica = rutasPublicas.some(ruta => pathname === ruta || pathname.startsWith(ruta))
 
-  // Si es ruta pública, permitir acceso
+  // Si es ruta pública pero el usuario está autenticado, redirigir a su dashboard
+  if (esRutaPublica && user) {
+    // Permitir solo ciertas rutas públicas incluso autenticado
+    const rutasPermitidasAutenticado = ['/confirmar-email', '/profesionales']
+    const permitida = rutasPermitidasAutenticado.some(ruta => pathname.startsWith(ruta))
+
+    if (!permitida) {
+      console.log('🚫 Usuario autenticado intentando acceder a ruta pública:', pathname);
+      const url = request.nextUrl.clone()
+      url.pathname = rol === 'ADMIN' ? '/admin' : rol === 'TERAPEUTA' ? '/profesional/dashboard' : '/dashboard'
+      return NextResponse.redirect(url)
+    }
+  }
+
   if (esRutaPublica) {
     return response
   }
 
-  // Verificar si es ruta de admin
-  const esRutaAdmin = rutasAdmin.some(ruta => pathname.startsWith(ruta))
-
-  if (esRutaAdmin) {
-    if (!user) {
-      // Redirigir a login si no está autenticado
-      const url = request.nextUrl.clone()
-      url.pathname = '/iniciar-sesion'
-      url.searchParams.set('redirect', pathname)
-      return NextResponse.redirect(url)
-    }
-
-    // ✅ VULNERABILIDAD CRÍTICA #3 CORREGIDA
-    // Verificar que el usuario tiene rol de ADMIN
-    if (rol !== 'ADMIN') {
-      // Usuario autenticado pero sin privilegios de admin
-      // Redirigir a dashboard con mensaje
-      const url = request.nextUrl.clone()
-      url.pathname = '/dashboard'
-      url.searchParams.set('error', 'no_autorizado')
-      return NextResponse.redirect(url)
-    }
-
-    // Usuario es ADMIN, permitir acceso
-    return response
-  }
-
-  // Verificar si es ruta protegida
-  const esRutaProtegida = rutasProtegidas.some(ruta => pathname.startsWith(ruta))
-
-  if (esRutaProtegida && !user) {
-    // Redirigir a login si no está autenticado
+  // ==========================================
+  // 2. VERIFICAR AUTENTICACIÓN
+  // ==========================================
+  if (!user) {
+    console.log('❌ No autenticado, redirigiendo a login');
     const url = request.nextUrl.clone()
     url.pathname = '/iniciar-sesion'
     url.searchParams.set('redirect', pathname)
-    return response
+    return NextResponse.redirect(url)
   }
 
+  // ==========================================
+  // 3. RUTAS POR ROL (bloqueo estricto)
+  // ==========================================
+
+  // 3.1 ADMIN - Solo puede acceder a /admin/*
+  if (rol === 'ADMIN') {
+    const rutasPermitidas = ['/admin']
+    const tieneAcceso = rutasPermitidas.some(ruta => pathname.startsWith(ruta))
+
+    if (!tieneAcceso) {
+      console.log('🚫 ADMIN intentando acceder a:', pathname, '- Bloqueado');
+      const url = request.nextUrl.clone()
+      url.pathname = '/admin'
+      url.searchParams.set('error', 'acceso_denegado')
+      return NextResponse.redirect(url)
+    }
+  }
+
+  // 3.2 TERAPEUTA - Solo puede acceder a /profesional/*
+  if (rol === 'TERAPEUTA') {
+    const rutasPermitidas = ['/profesional', '/pacientes'] // Pacientes para ver progreso
+    const tieneAcceso = rutasPermitidas.some(ruta => pathname.startsWith(ruta))
+
+    if (!tieneAcceso) {
+      console.log('🚫 TERAPEUTA intentando acceder a:', pathname, '- Bloqueado');
+      const url = request.nextUrl.clone()
+      url.pathname = '/profesional/dashboard'
+      url.searchParams.set('error', 'acceso_denegado')
+      return NextResponse.redirect(url)
+    }
+  }
+
+  // 3.3 USUARIO - Puede acceder a sus rutas específicas
+  if (rol === 'USUARIO') {
+    const rutasPermitidas = [
+      '/dashboard',
+      '/perfil',
+      '/chat',
+      '/voz',
+      '/evaluaciones',
+      '/animo',
+      '/recomendaciones',
+      '/progreso',
+      '/plan-accion',
+      '/pagos',
+      '/pago',
+      '/suscripcion',
+    ]
+
+    const tieneAcceso = rutasPermitidas.some(ruta => pathname.startsWith(ruta))
+
+    if (!tieneAcceso) {
+      console.log('🚫 USUARIO intentando acceder a:', pathname, '- Bloqueado');
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard'
+      url.searchParams.set('error', 'acceso_denegado')
+      return NextResponse.redirect(url)
+    }
+  }
+
+  // ==========================================
+  // 4. BLOQUEAR RUTAS DE OTROS ROLES
+  // ==========================================
+
+  // Bloquear /admin para no-ADMIN
+  if (pathname.startsWith('/admin') && rol !== 'ADMIN') {
+    console.log('🚫 Acceso denegado a /admin para rol:', rol);
+    const url = request.nextUrl.clone()
+    url.pathname = rol === 'TERAPEUTA' ? '/profesional/dashboard' : '/dashboard'
+    url.searchParams.set('error', 'no_autorizado')
+    return NextResponse.redirect(url)
+  }
+
+  // Bloquear /profesional para no-TERAPEUTA
+  if (pathname.startsWith('/profesional') && rol !== 'TERAPEUTA' && rol !== 'ADMIN') {
+    console.log('🚫 Acceso denegado a /profesional para rol:', rol);
+    const url = request.nextUrl.clone()
+    url.pathname = rol === 'ADMIN' ? '/admin' : '/dashboard'
+    url.searchParams.set('error', 'no_autorizado')
+    return NextResponse.redirect(url)
+  }
+
+  console.log('✅ Acceso permitido a:', pathname, 'para rol:', rol);
   return response
 }
 

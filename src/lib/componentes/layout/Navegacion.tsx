@@ -35,22 +35,47 @@ export default function Navegacion() {
   };
 
   // Enlaces diferentes según autenticación y rol
-  const esProfesional = perfil?.rol === 'TERAPEUTA' || perfil?.rol === 'ADMIN';
+  const esAdmin = perfil?.rol === 'ADMIN';
+  const esProfesional = perfil?.rol === 'TERAPEUTA';
+  const esUsuario = perfil?.rol === 'USUARIO';
+
+  // Logo debe llevar al dashboard correspondiente si está autenticado
+  const logoHref = usuario
+    ? esAdmin
+      ? '/admin'
+      : esProfesional
+        ? '/profesional/dashboard'
+        : '/dashboard'
+    : '/';
+
+  // Perfil específico por rol
+  const perfilHref = esAdmin
+    ? '/admin'
+    : esProfesional
+      ? '/profesional/perfil'
+      : '/perfil';
 
   const enlacesNavegacion = usuario
-    ? esProfesional
+    ? esAdmin
       ? [
-          { href: '/profesional/dashboard', label: 'Dashboard' },
-          { href: '/profesional/calendario', label: 'Calendario' },
-          { href: '/profesional/disponibilidad', label: 'Horarios' },
-          { href: '/chat', label: 'Chat' },
+          { href: '/admin', label: 'Dashboard' },
+          { href: '/admin/usuarios', label: 'Usuarios' },
+          { href: '/admin/profesionales', label: 'Profesionales' },
+          { href: '/admin/suscripciones', label: 'Suscripciones' },
         ]
-      : [
-          { href: '/dashboard', label: 'Dashboard' },
-          { href: '/profesionales', label: 'Profesionales' },
-          { href: '/chat', label: 'Chat' },
-          { href: '/evaluaciones', label: 'Evaluaciones' },
-        ]
+      : esProfesional
+        ? [
+            { href: '/profesional/dashboard', label: 'Dashboard' },
+            { href: '/profesional/pacientes', label: 'Pacientes' },
+            { href: '/profesional/calendario', label: 'Calendario' },
+            { href: '/profesional/disponibilidad', label: 'Disponibilidad' },
+          ]
+        : [
+            { href: '/dashboard', label: 'Dashboard' },
+            { href: '/profesionales', label: 'Profesionales' },
+            { href: '/chat', label: 'Chat' },
+            { href: '/evaluaciones', label: 'Evaluaciones' },
+          ]
     : [
         { href: '/', label: 'Inicio' },
         { href: '/profesionales', label: 'Profesionales' },
@@ -73,7 +98,7 @@ export default function Navegacion() {
       <div className="container mx-auto px-4 py-4">
         <div className="flex justify-between items-center">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-3">
+          <Link href={logoHref} className="flex items-center space-x-3">
             <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -116,7 +141,7 @@ export default function Navegacion() {
             {usuario ? (
               <>
                 <Link
-                  href="/perfil"
+                  href={perfilHref}
                   className="flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 hover:bg-teal-50"
                 >
                   {/* Foto del usuario */}
@@ -209,7 +234,7 @@ export default function Navegacion() {
                     <>
                       {/* Perfil del usuario en móvil */}
                       <Link
-                        href="/perfil"
+                        href={perfilHref}
                         onClick={() => setMenuMovilAbierto(false)}
                         className="flex items-center gap-4 px-6 py-4 bg-teal-50 rounded-xl hover:bg-teal-100 transition-colors"
                       >
