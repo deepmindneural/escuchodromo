@@ -39,7 +39,7 @@ interface CitaConProfesional {
     nombre: string
     apellido: string
     email: string
-    avatar_url?: string
+    avatar_url?: string // Mantener como avatar_url para el frontend
   }
   perfil_profesional?: {
     especialidades?: string[]
@@ -163,7 +163,7 @@ serve(async (req) => {
       // Obtener datos de usuarios profesionales
       const { data: usuariosData, error: usuariosError } = await supabase
         .from('Usuario')
-        .select('id, nombre, apellido, email, avatar_url')
+        .select('id, nombre, apellido, email, imagen')
         .in('id', profesionalesIds)
 
       if (usuariosError) {
@@ -201,7 +201,13 @@ serve(async (req) => {
         motivo_consulta: cita.motivo_consulta,
         link_videollamada: cita.link_videollamada,
         creado_en: cita.creado_en,
-        profesional: profesional || {
+        profesional: profesional ? {
+          id: profesional.id,
+          nombre: profesional.nombre,
+          apellido: profesional.apellido,
+          email: profesional.email,
+          avatar_url: (profesional as any).imagen // Mapear 'imagen' de DB a 'avatar_url' para frontend
+        } : {
           id: cita.profesional_id,
           nombre: 'Desconocido',
           apellido: '',
