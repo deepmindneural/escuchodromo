@@ -8,6 +8,7 @@ import {
   Mail,
   Phone,
   Calendar,
+  Clock,
   TrendingUp,
   CheckCircle,
   Activity,
