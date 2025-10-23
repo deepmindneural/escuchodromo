@@ -77,6 +77,8 @@ export async function obtenerPacientesProfesional(
   try {
     const supabase = obtenerClienteNavegador();
 
+    console.log('🔍 [obtenerPacientesProfesional] Buscando pacientes para profesional:', profesionalId);
+
     // Obtener todas las citas del profesional para identificar pacientes únicos
     const { data: citas, error: errorCitas } = await supabase
       .from('Cita')
@@ -101,12 +103,16 @@ export async function obtenerPacientesProfesional(
       .eq('profesional_id', profesionalId)
       .order('fecha_hora', { ascending: false });
 
+    console.log('📊 [obtenerPacientesProfesional] Citas encontradas:', citas?.length || 0);
+    console.log('📋 [obtenerPacientesProfesional] Datos de citas:', JSON.stringify(citas, null, 2));
+
     if (errorCitas) {
-      console.error('Error obteniendo citas:', errorCitas);
+      console.error('❌ [obtenerPacientesProfesional] Error obteniendo citas:', errorCitas);
       return { data: null, error: errorCitas };
     }
 
     if (!citas || citas.length === 0) {
+      console.log('⚠️ [obtenerPacientesProfesional] No se encontraron citas');
       return { data: [], error: null };
     }
 
