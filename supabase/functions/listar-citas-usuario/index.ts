@@ -112,18 +112,12 @@ serve(async (req) => {
     // ✅ 4. USAR SELECT CON FOREIGN KEY RELATIONSHIP
     const ahora = new Date().toISOString()
 
-    // Query base
+    // Query base - usar sintaxis simple sin alias
     let query = supabase
       .from('Cita')
       .select(`
         *,
-        Usuario!Cita_profesional_id_fkey(
-          id,
-          nombre,
-          apellido,
-          email,
-          avatar_url
-        )
+        profesional:Usuario!profesional_id(id, nombre, apellido, email, avatar_url)
       `, { count: 'exact' })
       .eq('paciente_id', usuario.id)
 
@@ -174,7 +168,7 @@ serve(async (req) => {
 
     // ✅ 8. FORMATEAR DATOS
     const citasConDatos: CitaConProfesional[] = (citas || []).map((cita: any) => {
-      const usuarioData = cita.Usuario
+      const usuarioData = cita.profesional
       const perfilProf = perfilesProfesionales.find(p => p.usuario_id === cita.profesional_id)
 
       return {
