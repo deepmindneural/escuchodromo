@@ -12,55 +12,40 @@ import {
   CheckCircle,
   Activity,
   Loader2,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/lib/componentes/ui/button';
-import { GraficaEvolucion, type PuntoEvolucion } from '@/lib/componentes/GraficaEvolucion';
-import {
-  TimelineSesiones,
-  type SesionTimeline,
-} from '@/lib/componentes/TimelineSesiones';
-import {
-  TablaEvaluaciones,
-  type EvaluacionTabla,
-} from '@/lib/componentes/TablaEvaluaciones';
+import { TimelineSesiones, type SesionTimeline } from '@/lib/componentes/TimelineSesiones';
+import { TablaEvaluaciones, type EvaluacionTabla } from '@/lib/componentes/TablaEvaluaciones';
 import { obtenerClienteNavegador } from '@/lib/supabase/cliente';
-import toast from 'react-hot-toast';
+import {
+  obtenerEvaluacionesPaciente,
+  obtenerEvolucionPHQ9,
+  obtenerEvolucionGAD7,
+  obtenerResumenEvaluaciones,
+  type EvaluacionDetalle,
+  type EvolucionScore,
+} from '@/lib/supabase/queries/evaluaciones';
+import toast, { Toaster } from 'react-hot-toast';
 import clsx from 'clsx';
+import { motion } from 'framer-motion';
 
 interface DatosPaciente {
   id: string;
   nombre: string;
   apellido: string;
+  email: string;
   foto?: string;
-  estadoEmocional: EstadoEmocional;
-}
-
-interface MetricasProgreso {
-  phq9: {
-    promedio_ultimas_4_semanas: number;
-    tendencia: 'mejorando' | 'estable' | 'empeorando';
-    ultima_evaluacion: number;
-  };
-  gad7: {
-    promedio_ultimas_4_semanas: number;
-    tendencia: 'mejorando' | 'estable' | 'empeorando';
-    ultima_evaluacion: number;
-  };
-  sesiones_completadas: number;
-  sesiones_totales: number;
-  adherencia_porcentaje: number;
-  dias_activo: number;
 }
 
 /**
  * Página de Visualización de Progreso del Paciente
  *
  * Muestra:
- * - Gráfica de evolución (PHQ-9 y GAD-7)
- * - Alertas críticas
- * - Timeline de hitos
- * - Vista comparativa (semanal/mensual)
- * - Métricas clave
+ * - Tabla de evaluaciones (PHQ-9, GAD-7)
+ * - Gráficas de evolución temporal
+ * - Timeline de sesiones
+ * - Métricas y resumen
  */
 export default function PaginaProgresoPaciente() {
   const params = useParams();
@@ -71,12 +56,11 @@ export default function PaginaProgresoPaciente() {
 
   const [cargando, setCargando] = useState(true);
   const [paciente, setPaciente] = useState<DatosPaciente | null>(null);
-  const [metricas, setMetricas] = useState<MetricasProgreso | null>(null);
-  const [evolucion, setEvolucion] = useState<PuntoEvolucion[]>([]);
-  const [hitos, setHitos] = useState<Hito[]>([]);
-  const [alertas, setAlertas] = useState<any[]>([]);
-  const [datosSemanales, setDatosSemanales] = useState<DatosComparativos[]>([]);
-  const [datosMensuales, setDatosMensuales] = useState<DatosComparativos[]>([]);
+  const [evaluaciones, setEvaluaciones] = useState<EvaluacionTabla[]>([]);
+  const [sesiones, setSesiones] = useState<SesionTimeline[]>([]);
+  const [evolucionPHQ9, setEvolucionPHQ9] = useState<EvolucionScore[]>([]);
+  const [evolucionGAD7, setEvolucionGAD7] = useState<EvolucionScore[]>([]);
+  const [resumen, setResumen] = useState<any>(null);
 
   useEffect(() => {
     cargarDatosProgreso();
@@ -96,17 +80,16 @@ export default function PaginaProgresoPaciente() {
         return;
       }
 
-      const token = session.access_token;
-
       // Cargar datos del paciente
       const { data: datosUsuario, error: errorUsuario } = await supabase
         .from('Usuario')
-        .select('id, nombre, apellido, PerfilUsuario(*)')
+        .select('id, nombre, apellido, email, PerfilUsuario(foto_perfil)')
         .eq('id', pacienteId)
         .single();
 
       if (errorUsuario || !datosUsuario) {
         toast.error('No se pudo cargar la información del paciente');
+        setCargando(false);
         return;
       }
 
@@ -114,179 +97,69 @@ export default function PaginaProgresoPaciente() {
         id: datosUsuario.id,
         nombre: datosUsuario.nombre || '',
         apellido: datosUsuario.apellido || '',
+        email: datosUsuario.email || '',
         foto: datosUsuario.PerfilUsuario?.foto_perfil,
-        estadoEmocional: 'ESTABLE', // Default, debería venir de la API
       });
 
-      // Llamar a Edge Function de progreso
-      const response = await supabase.functions.invoke('progreso-paciente', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        // @ts-ignore
-        body: {
-          paciente_id: pacienteId,
-        },
-      });
+      // Cargar evaluaciones reales
+      const evaluacionesData = await obtenerEvaluacionesPaciente(pacienteId);
 
-      if (response.error) {
-        console.error('Error cargando progreso:', response.error);
-        // Usar datos mock en caso de error
-        cargarDatosMock();
-        return;
-      }
+      // Convertir a formato EvaluacionTabla
+      const evaluacionesFormateadas: EvaluacionTabla[] = evaluacionesData.map((ev) => ({
+        id: ev.id,
+        tipo_evaluacion: ev.test.codigo as 'PHQ-9' | 'GAD-7' | 'Otro',
+        puntuacion_total: ev.puntuacion,
+        nivel_severidad: ev.severidad || 'No especificado',
+        fecha_evaluacion: new Date(ev.creado_en),
+      }));
+      setEvaluaciones(evaluacionesFormateadas);
 
-      if (response.data?.success && response.data?.metricas) {
-        setMetricas(response.data.metricas);
+      // Cargar evolución PHQ-9 y GAD-7
+      const phq9Data = await obtenerEvolucionPHQ9(pacienteId);
+      setEvolucionPHQ9(phq9Data);
 
-        // Procesar alertas
-        if (response.data.alertas) {
-          setAlertas(response.data.alertas);
-        }
-      } else {
-        cargarDatosMock();
+      const gad7Data = await obtenerEvolucionGAD7(pacienteId);
+      setEvolucionGAD7(gad7Data);
+
+      // Cargar resumen
+      const resumenData = await obtenerResumenEvaluaciones(pacienteId);
+      setResumen(resumenData);
+
+      // Cargar sesiones/citas
+      const { data: citasData } = await supabase
+        .from('Cita')
+        .select('*')
+        .eq('paciente_id', pacienteId)
+        .order('fecha_hora', { ascending: false })
+        .limit(10);
+
+      if (citasData) {
+        const sesionesFormateadas: SesionTimeline[] = citasData.map((cita: any) => ({
+          id: cita.id,
+          fecha_hora: new Date(cita.fecha_hora),
+          duracion: cita.duracion || 60,
+          modalidad: cita.modalidad || 'virtual',
+          estado: cita.estado || 'pendiente',
+          motivo_consulta: cita.motivo_consulta,
+          notas_profesional: cita.notas_profesional,
+          notas_paciente: cita.notas_paciente,
+        }));
+        setSesiones(sesionesFormateadas);
       }
     } catch (error) {
       console.error('Error cargando progreso:', error);
       toast.error('Error al cargar el progreso del paciente');
-      cargarDatosMock();
     } finally {
       setCargando(false);
     }
   };
 
-  const cargarDatosMock = () => {
-    // Datos mock para desarrollo/demostración
-
-    // Métricas
-    setMetricas({
-      phq9: {
-        promedio_ultimas_4_semanas: 8,
-        tendencia: 'mejorando',
-        ultima_evaluacion: 6,
-      },
-      gad7: {
-        promedio_ultimas_4_semanas: 10,
-        tendencia: 'estable',
-        ultima_evaluacion: 9,
-      },
-      sesiones_completadas: 8,
-      sesiones_totales: 12,
-      adherencia_porcentaje: 85,
-      dias_activo: 45,
-    });
-
-    // Evolución (últimos 3 meses)
-    const hoy = new Date();
-    setEvolucion([
-      {
-        fecha: new Date(hoy.getTime() - 90 * 24 * 60 * 60 * 1000),
-        phq9: 18,
-        gad7: 16,
-      },
-      {
-        fecha: new Date(hoy.getTime() - 75 * 24 * 60 * 60 * 1000),
-        phq9: 15,
-        gad7: 14,
-      },
-      {
-        fecha: new Date(hoy.getTime() - 60 * 24 * 60 * 60 * 1000),
-        phq9: 12,
-        gad7: 13,
-      },
-      {
-        fecha: new Date(hoy.getTime() - 45 * 24 * 60 * 60 * 1000),
-        phq9: 10,
-        gad7: 11,
-      },
-      {
-        fecha: new Date(hoy.getTime() - 30 * 24 * 60 * 60 * 1000),
-        phq9: 8,
-        gad7: 10,
-      },
-      {
-        fecha: new Date(hoy.getTime() - 15 * 24 * 60 * 60 * 1000),
-        phq9: 7,
-        gad7: 9,
-      },
-      {
-        fecha: new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000),
-        phq9: 6,
-        gad7: 9,
-      },
-    ]);
-
-    // Hitos
-    setHitos([
-      {
-        id: '1',
-        tipo: 'evaluacion',
-        fecha: new Date(hoy.getTime() - 90 * 24 * 60 * 60 * 1000),
-        titulo: 'Evaluación inicial PHQ-9 y GAD-7',
-        descripcion: 'Primera evaluación completa. PHQ-9: 18 (Moderadamente severo), GAD-7: 16 (Severo)',
-      },
-      {
-        id: '2',
-        tipo: 'sesion',
-        fecha: new Date(hoy.getTime() - 83 * 24 * 60 * 60 * 1000),
-        titulo: 'Primera sesión terapéutica',
-        descripcion: 'Establecimiento de rapport y objetivos terapéuticos',
-      },
-      {
-        id: '3',
-        tipo: 'cambio_tratamiento',
-        fecha: new Date(hoy.getTime() - 60 * 24 * 60 * 60 * 1000),
-        titulo: 'Ajuste en el plan de tratamiento',
-        descripcion: 'Se incorporan técnicas de mindfulness y se aumenta frecuencia de sesiones',
-      },
-      {
-        id: '4',
-        tipo: 'evaluacion',
-        fecha: new Date(hoy.getTime() - 45 * 24 * 60 * 60 * 1000),
-        titulo: 'Re-evaluación a mitad de tratamiento',
-        descripcion: 'PHQ-9: 10 (Moderado), GAD-7: 11 (Moderado). Mejora significativa',
-      },
-      {
-        id: '5',
-        tipo: 'sesion',
-        fecha: new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000),
-        titulo: 'Sesión de seguimiento',
-        descripcion: 'Reforzamiento de herramientas de afrontamiento',
-      },
-    ]);
-
-    // Alertas
-    setAlertas([
-      {
-        id: '1',
-        tipo: 'info',
-        mensaje: 'Progreso positivo en las últimas 4 semanas',
-        descripcion: 'El paciente muestra una reducción consistente en los indicadores de depresión y ansiedad.',
-      },
-    ]);
-
-    // Datos semanales
-    setDatosSemanales([
-      { periodo: 'Sem 1', phq9: 12, gad7: 13 },
-      { periodo: 'Sem 2', phq9: 10, gad7: 11 },
-      { periodo: 'Sem 3', phq9: 8, gad7: 10 },
-      { periodo: 'Sem 4', phq9: 6, gad7: 9 },
-    ]);
-
-    // Datos mensuales
-    setDatosMensuales([
-      { periodo: 'Mes 1', phq9: 18, gad7: 16 },
-      { periodo: 'Mes 2', phq9: 12, gad7: 13 },
-      { periodo: 'Mes 3', phq9: 7, gad7: 9 },
-    ]);
-  };
 
   if (cargando) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-calma-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <Loader2 className="w-16 h-16 text-teal-500 animate-spin mx-auto mb-4" />
           <p className="text-gray-600">Cargando progreso del paciente...</p>
         </div>
       </div>
@@ -297,14 +170,10 @@ export default function PaginaProgresoPaciente() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center max-w-md">
+          <AlertTriangle className="w-16 h-16 text-orange-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Paciente no encontrado</h1>
           <p className="text-gray-600 mb-6">No se pudo cargar la información del paciente</p>
-          <button
-            onClick={() => router.back()}
-            className="px-6 py-3 bg-calma-600 text-white rounded-lg hover:bg-calma-700"
-          >
-            Volver
-          </button>
+          <Button onClick={() => router.back()}>Volver</Button>
         </div>
       </div>
     );
@@ -312,14 +181,16 @@ export default function PaginaProgresoPaciente() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Toaster position="top-right" />
+
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <button
             onClick={() => router.back()}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 focus:outline-none focus:ring-2 focus:ring-calma-500 rounded-lg p-2"
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 focus:outline-none focus:ring-2 focus:ring-teal-500 rounded-lg p-2 transition-colors"
           >
-            <ArrowLeftIcon className="w-5 h-5" aria-hidden="true" />
+            <ArrowLeft className="w-5 h-5" />
             <span>Volver</span>
           </button>
 
@@ -327,11 +198,11 @@ export default function PaginaProgresoPaciente() {
             {paciente.foto ? (
               <img
                 src={paciente.foto}
-                alt=""
-                className="w-16 h-16 rounded-full object-cover border-2 border-calma-200"
+                alt={`${paciente.nombre} ${paciente.apellido}`}
+                className="w-16 h-16 rounded-full object-cover border-2 border-teal-200"
               />
             ) : (
-              <div className="w-16 h-16 rounded-full bg-calma-200 flex items-center justify-center text-calma-700 font-bold text-xl">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white font-bold text-xl shadow-lg">
                 {paciente.nombre.charAt(0)}
                 {paciente.apellido.charAt(0)}
               </div>
@@ -340,14 +211,12 @@ export default function PaginaProgresoPaciente() {
               <h1 className="text-2xl font-bold text-gray-900">
                 Progreso de {paciente.nombre} {paciente.apellido}
               </h1>
-              <div className="flex items-center gap-3 mt-2">
-                <IndicadorEmocional estado={paciente.estadoEmocional} tamanio="sm" />
-                {metricas && (
-                  <span className="text-sm text-gray-600">
-                    {metricas.sesiones_completadas} de {metricas.sesiones_totales} sesiones completadas
-                  </span>
-                )}
-              </div>
+              <p className="text-sm text-gray-600 mt-1">{paciente.email}</p>
+              {resumen && (
+                <p className="text-sm text-gray-500 mt-1">
+                  {resumen.total} evaluaciones realizadas
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -356,123 +225,107 @@ export default function PaginaProgresoPaciente() {
       {/* Contenido principal */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-8">
-          {/* Alertas (si las hay) */}
-          {alertas.length > 0 && (
-            <section aria-labelledby="alertas-titulo">
-              <h2 id="alertas-titulo" className="sr-only">
-                Alertas del paciente
-              </h2>
-              <ListaAlertas alertas={alertas} />
-            </section>
-          )}
-
-          {/* Métricas clave */}
-          {metricas && (
-            <section
+          {/* Métricas de resumen */}
+          {resumen && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
-              aria-labelledby="metricas-titulo"
             >
-              <h2 id="metricas-titulo" className="sr-only">
-                Métricas principales
-              </h2>
-
               {/* PHQ-9 */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
                 <h3 className="text-sm font-medium text-gray-600 mb-2">PHQ-9 (Depresión)</h3>
-                <p className="text-3xl font-bold text-gray-900 mb-1">
-                  {metricas.phq9.ultima_evaluacion}
-                </p>
-                <p
-                  className={clsx('text-sm flex items-center gap-1', {
-                    'text-esperanza-700': metricas.phq9.tendencia === 'mejorando',
-                    'text-gray-600': metricas.phq9.tendencia === 'estable',
-                    'text-alerta-700': metricas.phq9.tendencia === 'empeorando',
-                  })}
-                >
-                  {metricas.phq9.tendencia === 'mejorando' && '↓ Mejorando'}
-                  {metricas.phq9.tendencia === 'estable' && '→ Estable'}
-                  {metricas.phq9.tendencia === 'empeorando' && '↑ Empeorando'}
-                </p>
+                {resumen.phq9.ultima_puntuacion !== null ? (
+                  <>
+                    <p className="text-3xl font-bold text-gray-900 mb-1">
+                      {resumen.phq9.ultima_puntuacion}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {resumen.phq9.ultima_severidad || 'Sin clasificar'}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-2">
+                      {resumen.phq9.total_realizadas} evaluaciones
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-400 italic">Sin evaluaciones</p>
+                )}
               </div>
 
               {/* GAD-7 */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
                 <h3 className="text-sm font-medium text-gray-600 mb-2">GAD-7 (Ansiedad)</h3>
-                <p className="text-3xl font-bold text-gray-900 mb-1">
-                  {metricas.gad7.ultima_evaluacion}
-                </p>
-                <p
-                  className={clsx('text-sm flex items-center gap-1', {
-                    'text-esperanza-700': metricas.gad7.tendencia === 'mejorando',
-                    'text-gray-600': metricas.gad7.tendencia === 'estable',
-                    'text-alerta-700': metricas.gad7.tendencia === 'empeorando',
-                  })}
-                >
-                  {metricas.gad7.tendencia === 'mejorando' && '↓ Mejorando'}
-                  {metricas.gad7.tendencia === 'estable' && '→ Estable'}
-                  {metricas.gad7.tendencia === 'empeorando' && '↑ Empeorando'}
-                </p>
+                {resumen.gad7.ultima_puntuacion !== null ? (
+                  <>
+                    <p className="text-3xl font-bold text-gray-900 mb-1">
+                      {resumen.gad7.ultima_puntuacion}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {resumen.gad7.ultima_severidad || 'Sin clasificar'}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-2">
+                      {resumen.gad7.total_realizadas} evaluaciones
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-400 italic">Sin evaluaciones</p>
+                )}
               </div>
 
-              {/* Adherencia */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h3 className="text-sm font-medium text-gray-600 mb-2">Adherencia</h3>
-                <p className="text-3xl font-bold text-gray-900 mb-1">
-                  {metricas.adherencia_porcentaje}%
-                </p>
-                <p className="text-sm text-gray-600">
-                  {metricas.sesiones_completadas} de {metricas.sesiones_totales} sesiones
-                </p>
+              {/* Total Evaluaciones */}
+              <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
+                <h3 className="text-sm font-medium text-gray-600 mb-2">Total Evaluaciones</h3>
+                <p className="text-3xl font-bold text-gray-900 mb-1">{resumen.total}</p>
+                <p className="text-xs text-gray-500">Completadas</p>
               </div>
 
-              {/* Días activo */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h3 className="text-sm font-medium text-gray-600 mb-2">Días en tratamiento</h3>
-                <p className="text-3xl font-bold text-gray-900 mb-1">{metricas.dias_activo}</p>
-                <p className="text-sm text-gray-600">Aproximadamente {Math.floor(metricas.dias_activo / 7)} semanas</p>
+              {/* Sesiones */}
+              <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
+                <h3 className="text-sm font-medium text-gray-600 mb-2">Sesiones</h3>
+                <p className="text-3xl font-bold text-gray-900 mb-1">{sesiones.length}</p>
+                <p className="text-xs text-gray-500">Registradas</p>
               </div>
-            </section>
+            </motion.div>
           )}
 
-          {/* Gráfica de evolución */}
-          {evolucion.length > 0 && (
-            <section aria-labelledby="evolucion-titulo">
-              <h2 id="evolucion-titulo" className="sr-only">
-                Gráfica de evolución
-              </h2>
-              <GraficaEvolucion
-                datos={evolucion}
-                descripcion={`Evolución de indicadores PHQ-9 y GAD-7 de ${paciente.nombre} ${paciente.apellido} en los últimos 3 meses`}
-              />
-            </section>
+          {/* Tabla de Evaluaciones */}
+          {evaluaciones.length > 0 && (
+            <motion.section
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <TablaEvaluaciones evaluaciones={evaluaciones} />
+            </motion.section>
           )}
 
-          {/* Grid: Vista Comparativa + Timeline */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Vista Comparativa */}
-            {datosSemanales.length > 0 && datosMensuales.length > 0 && (
-              <section aria-labelledby="comparativa-titulo">
-                <h2 id="comparativa-titulo" className="sr-only">
-                  Vista comparativa
-                </h2>
-                <VistaComparativa
-                  datosSemanales={datosSemanales}
-                  datosMensuales={datosMensuales}
-                  descripcion="Comparación de indicadores clínicos por periodo"
-                />
-              </section>
-            )}
+          {/* Timeline de Sesiones */}
+          {sesiones.length > 0 && (
+            <motion.section
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <TimelineSesiones sesiones={sesiones} />
+            </motion.section>
+          )}
 
-            {/* Timeline de hitos */}
-            {hitos.length > 0 && (
-              <section aria-labelledby="timeline-titulo">
-                <h2 id="timeline-titulo" className="sr-only">
-                  Historial de eventos
-                </h2>
-                <TimelineHitos hitos={hitos} />
-              </section>
-            )}
-          </div>
+          {/* Mensaje si no hay datos */}
+          {evaluaciones.length === 0 && sesiones.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="bg-white rounded-xl shadow-md p-12 text-center"
+            >
+              <Activity className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Sin datos de progreso aún
+              </h3>
+              <p className="text-gray-600">
+                Este paciente aún no tiene evaluaciones ni sesiones registradas.
+              </p>
+            </motion.div>
+          )}
         </div>
       </div>
     </div>
