@@ -35,6 +35,17 @@ export default function PaginaDashboard() {
     }
   }, [authUsuario, cargandoAuth, router]);
 
+  // Redirigir según el rol del usuario
+  useEffect(() => {
+    if (!cargando && usuario) {
+      if (usuario.rol === 'ADMIN') {
+        router.push('/admin');
+      } else if (usuario.rol === 'TERAPEUTA') {
+        router.push('/profesional/dashboard');
+      }
+    }
+  }, [usuario, cargando, router]);
+
   useEffect(() => {
     if (usuario?.id) {
       cargarEstadisticas();
