@@ -78,8 +78,8 @@ export default function PaginaDashboard() {
 
   const handleCerrarSesion = async () => {
     try {
+      // cerrarSesionSupabase ya maneja la redirección automáticamente
       await cerrarSesionSupabase();
-      router.push('/');
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
     }

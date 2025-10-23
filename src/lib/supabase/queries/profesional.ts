@@ -575,3 +575,476 @@ export async function actualizarPerfilProfesional(
     return { data: null, error };
   }
 }
+
+/**
+ * Tipo para una cita del día con información de pago
+ */
+export interface CitaDelDia extends CitaProxima {
+  pago?: {
+    id: string;
+    monto: number;
+    moneda: string;
+    estado: 'pendiente' | 'procesando' | 'completado' | 'fallido' | 'reembolsado' | 'cancelado';
+    fecha_pago?: Date | null;
+  } | null;
+  minutos_hasta_cita: number;
+  urgencia: 'critico' | 'proximo' | 'programado';
+}
+
+/**
+ * Obtiene las citas del día actual del profesional
+ * Incluye información de pagos asociados y urgencia
+ *
+ * @param profesionalId - ID del profesional (terapeuta)
+ * @returns Array de citas del día con pagos y urgencia
+ */
+export async function obtenerCitasHoy(
+  profesionalId: string
+): Promise<{ data: CitaDelDia[] | null; error: any }> {
+  try {
+    const supabase = obtenerClienteNavegador();
+    const ahora = new Date();
+
+    // Inicio del día actual (00:00:00)
+    const inicioDia = new Date(ahora);
+    inicioDia.setHours(0, 0, 0, 0);
+
+    // Fin del día actual (23:59:59)
+    const finDia = new Date(ahora);
+    finDia.setHours(23, 59, 59, 999);
+
+    const { data: citas, error: errorCitas } = await supabase
+      .from('Cita')
+      .select(
+        `
+        id,
+        fecha_hora,
+        duracion,
+        modalidad,
+        estado,
+        motivo_consulta,
+        link_videollamada,
+        Usuario:paciente_id(
+          id,
+          nombre,
+          apellido,
+          imagen
+        ),
+        PagoCita(
+          id,
+          monto,
+          moneda,
+          estado,
+          fecha_pago
+        )
+      `
+      )
+      .eq('profesional_id', profesionalId)
+      .gte('fecha_hora', inicioDia.toISOString())
+      .lte('fecha_hora', finDia.toISOString())
+      .in('estado', ['pendiente', 'confirmada', 'completada'])
+      .order('fecha_hora', { ascending: true });
+
+    if (errorCitas) {
+      console.error('Error obteniendo citas del día:', errorCitas);
+      return { data: null, error: errorCitas };
+    }
+
+    if (!citas || citas.length === 0) {
+      return { data: [], error: null };
+    }
+
+    const citasFormateadas: CitaDelDia[] = citas.map((cita: any) => {
+      const fechaCita = new Date(cita.fecha_hora);
+      const minutosHastaCita = Math.floor((fechaCita.getTime() - ahora.getTime()) / (1000 * 60));
+
+      let urgencia: 'critico' | 'proximo' | 'programado' = 'programado';
+      if (minutosHastaCita <= 60 && minutosHastaCita >= 0) {
+        urgencia = 'critico';
+      } else if (minutosHastaCita > 60 && minutosHastaCita <= 120) {
+        urgencia = 'proximo';
+      }
+
+      // Obtener primer pago (debería ser único por cita)
+      const pagoCita = Array.isArray(cita.PagoCita) ? cita.PagoCita[0] : cita.PagoCita;
+
+      return {
+        id: cita.id,
+        paciente: {
+          id: cita.Usuario?.id || '',
+          nombre: cita.Usuario?.nombre || '',
+          apellido: cita.Usuario?.apellido || null,
+          foto_perfil: cita.Usuario?.imagen || null,
+        },
+        fecha_hora: fechaCita,
+        duracion: cita.duracion || 60,
+        modalidad: cita.modalidad || 'virtual',
+        estado: cita.estado || 'pendiente',
+        motivo_consulta: cita.motivo_consulta || null,
+        link_videollamada: cita.link_videollamada || null,
+        pago: pagoCita
+          ? {
+              id: pagoCita.id,
+              monto: pagoCita.monto,
+              moneda: pagoCita.moneda || 'COP',
+              estado: pagoCita.estado || 'pendiente',
+              fecha_pago: pagoCita.fecha_pago ? new Date(pagoCita.fecha_pago) : null,
+            }
+          : null,
+        minutos_hasta_cita: minutosHastaCita,
+        urgencia,
+      };
+    });
+
+    return { data: citasFormateadas, error: null };
+  } catch (error) {
+    console.error('Error en obtenerCitasHoy:', error);
+    return { data: null, error };
+  }
+}
+
+/**
+ * Tipo para un pago con información completa de cita y paciente
+ */
+export interface PagoConDetalles {
+  id: string;
+  cita_id: string;
+  usuario_id: string;
+  monto: number;
+  moneda: string;
+  estado: 'pendiente' | 'procesando' | 'completado' | 'fallido' | 'reembolsado' | 'cancelado';
+  fecha_pago: Date | null;
+  stripe_payment_intent_id: string | null;
+  cita: {
+    id: string;
+    fecha_hora: Date;
+    duracion: number;
+    modalidad: 'virtual' | 'presencial';
+    estado: string;
+  };
+  paciente: {
+    id: string;
+    nombre: string;
+    apellido: string | null;
+    email: string;
+    foto_perfil?: string | null;
+  };
+  creado_en: Date;
+}
+
+/**
+ * Filtros para obtener pagos
+ */
+export interface FiltrosPagos {
+  fechaInicio?: Date;
+  fechaFin?: Date;
+  estado?: 'pendiente' | 'procesando' | 'completado' | 'fallido' | 'reembolsado' | 'cancelado';
+  pacienteId?: string;
+  montoMin?: number;
+  montoMax?: number;
+}
+
+/**
+ * Obtiene los pagos del profesional con filtros opcionales
+ * Incluye información completa de cita y paciente
+ *
+ * @param profesionalId - ID del profesional (terapeuta)
+ * @param filtros - Filtros opcionales para la consulta
+ * @returns Array de pagos con detalles completos
+ */
+export async function obtenerPagosProfesional(
+  profesionalId: string,
+  filtros?: FiltrosPagos
+): Promise<{ data: PagoConDetalles[] | null; error: any }> {
+  try {
+    const supabase = obtenerClienteNavegador();
+
+    // Construir query base
+    let query = supabase
+      .from('PagoCita')
+      .select(
+        `
+        id,
+        cita_id,
+        usuario_id,
+        monto,
+        moneda,
+        estado,
+        fecha_pago,
+        stripe_payment_intent_id,
+        creado_en,
+        Cita!inner(
+          id,
+          fecha_hora,
+          duracion,
+          modalidad,
+          estado,
+          profesional_id,
+          Usuario:paciente_id(
+            id,
+            nombre,
+            apellido,
+            email,
+            imagen
+          )
+        )
+      `
+      )
+      .eq('Cita.profesional_id', profesionalId);
+
+    // Aplicar filtros
+    if (filtros?.fechaInicio) {
+      query = query.gte('fecha_pago', filtros.fechaInicio.toISOString());
+    }
+    if (filtros?.fechaFin) {
+      query = query.lte('fecha_pago', filtros.fechaFin.toISOString());
+    }
+    if (filtros?.estado) {
+      query = query.eq('estado', filtros.estado);
+    }
+    if (filtros?.pacienteId) {
+      query = query.eq('usuario_id', filtros.pacienteId);
+    }
+    if (filtros?.montoMin !== undefined) {
+      query = query.gte('monto', filtros.montoMin);
+    }
+    if (filtros?.montoMax !== undefined) {
+      query = query.lte('monto', filtros.montoMax);
+    }
+
+    const { data: pagos, error: errorPagos } = await query.order('fecha_pago', {
+      ascending: false,
+      nullsFirst: false,
+    });
+
+    if (errorPagos) {
+      console.error('Error obteniendo pagos del profesional:', errorPagos);
+      return { data: null, error: errorPagos };
+    }
+
+    if (!pagos || pagos.length === 0) {
+      return { data: [], error: null };
+    }
+
+    const pagosFormateados: PagoConDetalles[] = pagos.map((pago: any) => ({
+      id: pago.id,
+      cita_id: pago.cita_id,
+      usuario_id: pago.usuario_id,
+      monto: pago.monto,
+      moneda: pago.moneda || 'COP',
+      estado: pago.estado || 'pendiente',
+      fecha_pago: pago.fecha_pago ? new Date(pago.fecha_pago) : null,
+      stripe_payment_intent_id: pago.stripe_payment_intent_id,
+      cita: {
+        id: pago.Cita.id,
+        fecha_hora: new Date(pago.Cita.fecha_hora),
+        duracion: pago.Cita.duracion,
+        modalidad: pago.Cita.modalidad,
+        estado: pago.Cita.estado,
+      },
+      paciente: {
+        id: pago.Cita.Usuario?.id || '',
+        nombre: pago.Cita.Usuario?.nombre || '',
+        apellido: pago.Cita.Usuario?.apellido || null,
+        email: pago.Cita.Usuario?.email || '',
+        foto_perfil: pago.Cita.Usuario?.imagen || null,
+      },
+      creado_en: new Date(pago.creado_en),
+    }));
+
+    return { data: pagosFormateados, error: null };
+  } catch (error) {
+    console.error('Error en obtenerPagosProfesional:', error);
+    return { data: null, error };
+  }
+}
+
+/**
+ * Tipo para resumen financiero del profesional
+ */
+export interface ResumenFinanciero {
+  ingresosMesActual: number;
+  ingresosMesAnterior: number;
+  cambioMensual: {
+    valor: number;
+    porcentaje: number;
+    tipo: 'positivo' | 'negativo' | 'neutro';
+  };
+  pagosPendientes: number;
+  pagosCompletados: number;
+  totalPagos: number;
+  tendenciaUltimos6Meses: {
+    mes: string;
+    ingresos: number;
+    pagos: number;
+  }[];
+  topPacientes: {
+    paciente: {
+      id: string;
+      nombre: string;
+      apellido: string | null;
+    };
+    totalPagado: number;
+    numeroPagos: number;
+  }[];
+}
+
+/**
+ * Obtiene el resumen financiero completo del profesional
+ * Incluye ingresos, tendencias y top pacientes
+ *
+ * @param profesionalId - ID del profesional (terapeuta)
+ * @returns Resumen financiero completo
+ */
+export async function obtenerResumenFinanciero(
+  profesionalId: string
+): Promise<{ data: ResumenFinanciero | null; error: any }> {
+  try {
+    const supabase = obtenerClienteNavegador();
+    const ahora = new Date();
+
+    // Calcular fechas
+    const inicioMesActual = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+    const finMesActual = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0, 23, 59, 59);
+    const inicioMesAnterior = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
+    const finMesAnterior = new Date(ahora.getFullYear(), ahora.getMonth(), 0, 23, 59, 59);
+    const inicio6MesesAtras = new Date(ahora.getFullYear(), ahora.getMonth() - 5, 1);
+
+    // Obtener todos los pagos desde hace 6 meses
+    const { data: pagosHistoricos, error: errorHistorico } = await supabase
+      .from('PagoCita')
+      .select(
+        `
+        id,
+        monto,
+        estado,
+        fecha_pago,
+        usuario_id,
+        Cita!inner(
+          profesional_id,
+          Usuario:paciente_id(
+            id,
+            nombre,
+            apellido
+          )
+        )
+      `
+      )
+      .eq('Cita.profesional_id', profesionalId)
+      .gte('creado_en', inicio6MesesAtras.toISOString())
+      .order('fecha_pago', { ascending: false });
+
+    if (errorHistorico) {
+      console.error('Error obteniendo pagos históricos:', errorHistorico);
+      return { data: null, error: errorHistorico };
+    }
+
+    // Calcular métricas del mes actual
+    const pagosMesActual = (pagosHistoricos || []).filter((p: any) => {
+      const fechaPago = p.fecha_pago ? new Date(p.fecha_pago) : new Date(p.creado_en);
+      return fechaPago >= inicioMesActual && fechaPago <= finMesActual;
+    });
+
+    const ingresosMesActual = pagosMesActual
+      .filter((p: any) => p.estado === 'completado')
+      .reduce((sum: number, p: any) => sum + Number(p.monto), 0);
+
+    const pagosPendientes = pagosMesActual.filter(
+      (p: any) => p.estado === 'pendiente' || p.estado === 'procesando'
+    ).length;
+
+    const pagosCompletados = pagosMesActual.filter((p: any) => p.estado === 'completado').length;
+
+    // Calcular métricas del mes anterior
+    const pagosMesAnterior = (pagosHistoricos || []).filter((p: any) => {
+      const fechaPago = p.fecha_pago ? new Date(p.fecha_pago) : new Date(p.creado_en);
+      return fechaPago >= inicioMesAnterior && fechaPago <= finMesAnterior;
+    });
+
+    const ingresosMesAnterior = pagosMesAnterior
+      .filter((p: any) => p.estado === 'completado')
+      .reduce((sum: number, p: any) => sum + Number(p.monto), 0);
+
+    // Calcular cambio mensual
+    const cambioValor = ingresosMesActual - ingresosMesAnterior;
+    const cambioPorcentaje =
+      ingresosMesAnterior > 0 ? Math.round((cambioValor / ingresosMesAnterior) * 100) : 0;
+
+    const cambioMensual = {
+      valor: cambioValor,
+      porcentaje: Math.abs(cambioPorcentaje),
+      tipo:
+        cambioValor > 0 ? ('positivo' as const) : cambioValor < 0 ? ('negativo' as const) : ('neutro' as const),
+    };
+
+    // Calcular tendencia últimos 6 meses
+    const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const tendenciaUltimos6Meses = [];
+
+    for (let i = 5; i >= 0; i--) {
+      const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
+      const finMes = new Date(ahora.getFullYear(), ahora.getMonth() - i + 1, 0, 23, 59, 59);
+
+      const pagosMes = (pagosHistoricos || []).filter((p: any) => {
+        const fechaPago = p.fecha_pago ? new Date(p.fecha_pago) : new Date(p.creado_en);
+        return fechaPago >= inicioMes && fechaPago <= finMes;
+      });
+
+      const ingresosMes = pagosMes
+        .filter((p: any) => p.estado === 'completado')
+        .reduce((sum: number, p: any) => sum + Number(p.monto), 0);
+
+      tendenciaUltimos6Meses.push({
+        mes: MESES[inicioMes.getMonth()],
+        ingresos: ingresosMes,
+        pagos: pagosMes.length,
+      });
+    }
+
+    // Calcular top 5 pacientes por monto pagado
+    const pagosPorPaciente = new Map<string, { paciente: any; totalPagado: number; numeroPagos: number }>();
+
+    for (const pago of pagosHistoricos || []) {
+      if (pago.estado !== 'completado') continue;
+
+      const pacienteId = pago.Cita?.Usuario?.id;
+      if (!pacienteId) continue;
+
+      if (!pagosPorPaciente.has(pacienteId)) {
+        pagosPorPaciente.set(pacienteId, {
+          paciente: {
+            id: pacienteId,
+            nombre: pago.Cita.Usuario.nombre,
+            apellido: pago.Cita.Usuario.apellido,
+          },
+          totalPagado: 0,
+          numeroPagos: 0,
+        });
+      }
+
+      const registro = pagosPorPaciente.get(pacienteId)!;
+      registro.totalPagado += Number(pago.monto);
+      registro.numeroPagos += 1;
+    }
+
+    const topPacientes = Array.from(pagosPorPaciente.values())
+      .sort((a, b) => b.totalPagado - a.totalPagado)
+      .slice(0, 5);
+
+    const resumen: ResumenFinanciero = {
+      ingresosMesActual,
+      ingresosMesAnterior,
+      cambioMensual,
+      pagosPendientes,
+      pagosCompletados,
+      totalPagos: pagosMesActual.length,
+      tendenciaUltimos6Meses,
+      topPacientes,
+    };
+
+    return { data: resumen, error: null };
+  } catch (error) {
+    console.error('Error en obtenerResumenFinanciero:', error);
+    return { data: null, error };
+  }
+}

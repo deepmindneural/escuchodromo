@@ -16,12 +16,15 @@ import {
 import { GridMetricas, type Metrica } from '@/lib/componentes/GridMetricas';
 import { TablaPacientes, type Paciente } from '@/lib/componentes/TablaPacientes';
 import { ProximasCitas, type Cita } from '@/lib/componentes/ProximasCitas';
+import { CitasDelDia } from '@/lib/componentes/CitasDelDia';
 import { ModalConfirmacion } from '@/lib/componentes/ui/modal-confirmacion';
 import { obtenerClienteNavegador } from '@/lib/supabase/cliente';
 import {
   obtenerPacientesProfesional,
   obtenerMetricasProfesional,
   obtenerProximasCitas,
+  obtenerCitasHoy,
+  type CitaDelDia,
 } from '@/lib/supabase/queries/profesional';
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -45,6 +48,7 @@ export default function DashboardProfesional() {
   const [metricas, setMetricas] = useState<Metrica[]>([]);
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [citasProximas, setCitasProximas] = useState<Cita[]>([]);
+  const [citasHoy, setCitasHoy] = useState<CitaDelDia[]>([]);
 
   // Estado para modal de confirmación
   const [citaACancelar, setCitaACancelar] = useState<string | null>(null);
@@ -91,6 +95,16 @@ export default function DashboardProfesional() {
 
       setProfesionalId(usuarioData.id);
       setNombreProfesional(usuarioData.nombre || 'Profesional');
+
+      // Cargar citas de hoy
+      const { data: citasHoyData, error: errorCitasHoy } = await obtenerCitasHoy(usuarioData.id);
+
+      if (errorCitasHoy) {
+        console.error('Error obteniendo citas de hoy:', errorCitasHoy);
+        toast.error('Error al cargar las citas de hoy');
+      } else if (citasHoyData) {
+        setCitasHoy(citasHoyData);
+      }
 
       // Cargar próximas citas del profesional
       const { data: citasData, error: errorCitas } = await obtenerProximasCitas(usuarioData.id, 10);
@@ -399,6 +413,17 @@ export default function DashboardProfesional() {
       {/* Contenido principal */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-8">
+          {/* Citas de Hoy - Banner prominente */}
+          {citasHoy.length > 0 && (
+            <CitasDelDia
+              citas={citasHoy}
+              cargando={false}
+              onIniciarSesion={manejarIniciarSesion}
+              onVerPaciente={manejarClickPaciente}
+              onCancelar={manejarCancelarCita}
+            />
+          )}
+
           {/* Métricas con animación */}
           <motion.section
             initial={{ opacity: 0, y: 20 }}

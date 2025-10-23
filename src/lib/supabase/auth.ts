@@ -114,10 +114,16 @@ export async function iniciarSesion({ email, password }: CredencialesLogin) {
 export async function cerrarSesion() {
   const supabase = obtenerClienteNavegador()
 
-  const { error } = await supabase.auth.signOut()
+  // Logout global para cerrar sesión en todas las pestañas/dispositivos
+  const { error } = await supabase.auth.signOut({ scope: 'global' })
 
   if (error) {
     throw new Error(`Error al cerrar sesión: ${error.message}`)
+  }
+
+  // Forzar recarga completa para limpiar el estado del middleware
+  if (typeof window !== 'undefined') {
+    window.location.href = '/'
   }
 }
 
