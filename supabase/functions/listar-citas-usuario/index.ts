@@ -67,7 +67,13 @@ serve(async (req) => {
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
     )
 
     // Verificar usuario autenticado
@@ -103,25 +109,25 @@ serve(async (req) => {
     const pagina = parseInt(url.searchParams.get('pagina') || '1')
     const offset = (pagina - 1) * limite
 
-    // ✅ 4. CONSTRUIR QUERY BASE
+    // ✅ 4. USAR SELECT CON FOREIGN KEY RELATIONSHIP
+    const ahora = new Date().toISOString()
+
+    // Query base
     let query = supabase
       .from('Cita')
       .select(`
-        id,
-        fecha_hora,
-        duracion,
-        estado,
-        modalidad,
-        motivo_consulta,
-        link_videollamada,
-        creado_en,
-        profesional_id
+        *,
+        Usuario!Cita_profesional_id_fkey(
+          id,
+          nombre,
+          apellido,
+          email,
+          avatar_url
+        )
       `, { count: 'exact' })
       .eq('paciente_id', usuario.id)
 
-    // ✅ 5. FILTRAR POR ESTADO
-    const ahora = new Date().toISOString()
-
+    // Filtrar por estado
     switch (estadoParam) {
       case 'proximas':
         query = query
@@ -136,13 +142,9 @@ serve(async (req) => {
       case 'canceladas':
         query = query.eq('estado', 'cancelada')
         break
-      case 'todas':
-      default:
-        // No filtrar
-        break
     }
 
-    // ✅ 6. ORDENAR Y PAGINAR
+    // Ordenar y paginar
     query = query
       .order('fecha_hora', { ascending: false })
       .range(offset, offset + limite - 1)
@@ -152,52 +154,27 @@ serve(async (req) => {
     if (citasError) {
       console.error('Error obteniendo citas:', citasError)
       return new Response(
-        JSON.stringify({ success: false, error: 'Error al obtener citas' }),
+        JSON.stringify({ success: false, error: 'Error al obtener citas', details: citasError.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // ✅ 7. OBTENER DATOS DE PROFESIONALES
-    const profesionalesIds = citas?.map(c => (c as any).profesional_id).filter(Boolean) || []
-
-    console.log('📋 IDs de profesionales:', profesionalesIds)
-
-    let profesionales: any[] = []
+    // Obtener perfiles profesionales
+    const profesionalesIds = citas?.map((c: any) => c.profesional_id).filter(Boolean) || []
     let perfilesProfesionales: any[] = []
 
     if (profesionalesIds.length > 0) {
-      // Obtener datos básicos de usuarios
-      const { data: usuarios, error: usuariosError } = await supabase
-        .from('Usuario')
-        .select('id, nombre, apellido, email, avatar_url')
-        .in('id', profesionalesIds)
-
-      if (usuariosError) {
-        console.error('❌ Error obteniendo usuarios:', usuariosError)
-      } else {
-        console.log('✅ Usuarios obtenidos:', usuarios?.length)
-      }
-
-      profesionales = usuarios || []
-
-      // Obtener perfiles profesionales
-      const { data: perfiles, error: perfilesError } = await supabase
+      const { data: perfiles } = await supabase
         .from('PerfilProfesional')
         .select('usuario_id, especialidades, tarifa_por_sesion')
         .in('usuario_id', profesionalesIds)
 
-      if (perfilesError) {
-        console.error('❌ Error obteniendo perfiles:', perfilesError)
-      } else {
-        console.log('✅ Perfiles obtenidos:', perfiles?.length)
-      }
-
       perfilesProfesionales = perfiles || []
     }
 
-    // ✅ 8. COMBINAR DATOS
+    // ✅ 8. FORMATEAR DATOS
     const citasConDatos: CitaConProfesional[] = (citas || []).map((cita: any) => {
-      const profesional = profesionales.find(p => p.id === cita.profesional_id)
+      const usuarioData = cita.Usuario
       const perfilProf = perfilesProfesionales.find(p => p.usuario_id === cita.profesional_id)
 
       return {
@@ -209,7 +186,13 @@ serve(async (req) => {
         motivo_consulta: cita.motivo_consulta,
         link_videollamada: cita.link_videollamada,
         creado_en: cita.creado_en,
-        profesional: profesional || {
+        profesional: usuarioData ? {
+          id: usuarioData.id,
+          nombre: usuarioData.nombre,
+          apellido: usuarioData.apellido,
+          email: usuarioData.email,
+          avatar_url: usuarioData.avatar_url
+        } : {
           id: cita.profesional_id,
           nombre: 'Desconocido',
           apellido: '',
