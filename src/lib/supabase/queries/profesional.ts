@@ -471,3 +471,123 @@ export async function obtenerProximasCitas(
     return { data: null, error };
   }
 }
+
+/**
+ * Tipo para el perfil profesional completo
+ */
+export interface PerfilProfesionalCompleto {
+  id: string;
+  usuario_id: string;
+  titulo_profesional: string | null;
+  numero_licencia: string | null;
+  universidad: string | null;
+  anos_experiencia: number | null;
+  especialidades: string[];
+  biografia: string | null;
+  idiomas: string[];
+  tarifa_por_sesion: number | null;
+  moneda: 'COP' | 'USD';
+  perfil_aprobado: boolean;
+  total_pacientes: number;
+  total_citas: number;
+  calificacion_promedio: number | null;
+  creado_en: Date;
+  actualizado_en: Date;
+}
+
+/**
+ * Obtiene el perfil profesional completo por usuario_id
+ *
+ * @param usuarioId - ID del usuario (no el auth_id)
+ * @returns Perfil profesional completo
+ */
+export async function obtenerPerfilProfesional(
+  usuarioId: string
+): Promise<{ data: PerfilProfesionalCompleto | null; error: any }> {
+  try {
+    const supabase = obtenerClienteNavegador();
+
+    const { data, error } = await supabase
+      .from('PerfilProfesional')
+      .select('*')
+      .eq('usuario_id', usuarioId)
+      .single();
+
+    if (error) {
+      console.error('Error al obtener perfil profesional:', error);
+      return { data: null, error };
+    }
+
+    if (!data) {
+      return { data: null, error: new Error('Perfil profesional no encontrado') };
+    }
+
+    return {
+      data: {
+        ...data,
+        creado_en: new Date(data.creado_en),
+        actualizado_en: new Date(data.actualizado_en),
+      },
+      error: null,
+    };
+  } catch (error) {
+    console.error('Error en obtenerPerfilProfesional:', error);
+    return { data: null, error };
+  }
+}
+
+/**
+ * Tipo para actualizar perfil profesional
+ */
+export interface ActualizarPerfilProfesionalInput {
+  titulo_profesional?: string;
+  numero_licencia?: string;
+  universidad?: string;
+  anos_experiencia?: number;
+  especialidades?: string[];
+  biografia?: string;
+  idiomas?: string[];
+  tarifa_por_sesion?: number;
+  moneda?: 'COP' | 'USD';
+}
+
+/**
+ * Actualiza el perfil profesional
+ *
+ * @param usuarioId - ID del usuario profesional
+ * @param datos - Datos a actualizar
+ * @returns Perfil actualizado
+ */
+export async function actualizarPerfilProfesional(
+  usuarioId: string,
+  datos: ActualizarPerfilProfesionalInput
+): Promise<{ data: PerfilProfesionalCompleto | null; error: any }> {
+  try {
+    const supabase = obtenerClienteNavegador();
+
+    // Actualizar el perfil
+    const { data, error } = await supabase
+      .from('PerfilProfesional')
+      .update(datos)
+      .eq('usuario_id', usuarioId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error al actualizar perfil profesional:', error);
+      return { data: null, error };
+    }
+
+    return {
+      data: {
+        ...data,
+        creado_en: new Date(data.creado_en),
+        actualizado_en: new Date(data.actualizado_en),
+      },
+      error: null,
+    };
+  } catch (error) {
+    console.error('Error en actualizarPerfilProfesional:', error);
+    return { data: null, error };
+  }
+}

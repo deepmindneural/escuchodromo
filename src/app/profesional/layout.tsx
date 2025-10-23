@@ -91,7 +91,7 @@ export default function ProfesionalLayout({
   const cerrarSesion = async () => {
     const supabase = obtenerClienteNavegador();
     await supabase.auth.signOut();
-    router.push('/');
+    router.push('/iniciar-sesion');
   };
 
   if (cargando) {

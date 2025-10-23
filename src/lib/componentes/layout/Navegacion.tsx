@@ -27,7 +27,7 @@ export default function Navegacion() {
   const handleCerrarSesion = async () => {
     try {
       await cerrarSesion();
-      router.push('/');
+      router.push('/iniciar-sesion');
       setMenuMovilAbierto(false);
     } catch (error) {
       console.error('Error al cerrar sesión:', error);

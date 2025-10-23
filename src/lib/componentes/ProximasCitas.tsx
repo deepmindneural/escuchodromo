@@ -34,6 +34,14 @@ interface ProximasCitasProps {
   onReprogramar?: (citaId: string) => void;
   /** Callback para iniciar sesión */
   onIniciarSesion?: (citaId: string) => void;
+  /** Callback para confirmar cita */
+  onConfirmar?: (citaId: string) => void;
+  /** Callback para completar cita */
+  onCompletar?: (citaId: string) => void;
+  /** Callback para marcar como no asistió */
+  onMarcarNoAsistio?: (citaId: string) => void;
+  /** Callback para agregar notas */
+  onAgregarNotas?: (citaId: string) => void;
   /** Estado de carga */
   cargando?: boolean;
   /** Límite de citas a mostrar */
@@ -54,6 +62,10 @@ export function ProximasCitas({
   onCancelar,
   onReprogramar,
   onIniciarSesion,
+  onConfirmar,
+  onCompletar,
+  onMarcarNoAsistio,
+  onAgregarNotas,
   cargando = false,
   limite = 5,
 }: ProximasCitasProps) {
@@ -198,23 +210,79 @@ export function ProximasCitas({
                         align="end"
                         sideOffset={5}
                       >
-                        {onReprogramar && cita.estado !== 'CANCELADA' && (
+                        {/* Confirmar cita (solo si está pendiente) */}
+                        {onConfirmar && cita.estado === 'PENDIENTE' && (
                           <DropdownMenu.Item
-                            className="px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded cursor-pointer focus:outline-none focus:bg-gray-100"
-                            onSelect={() => onReprogramar(cita.id)}
+                            className="px-3 py-2 text-sm text-esperanza-700 hover:bg-esperanza-50 rounded cursor-pointer focus:outline-none focus:bg-esperanza-50"
+                            onSelect={() => onConfirmar(cita.id)}
                           >
-                            Reprogramar
+                            ✓ Confirmar cita
                           </DropdownMenu.Item>
                         )}
 
-                        {onCancelar && cita.estado !== 'CANCELADA' && (
+                        {/* Completar cita (solo si está confirmada y ha pasado) */}
+                        {onCompletar && cita.estado === 'CONFIRMADA' && (
                           <DropdownMenu.Item
-                            className="px-3 py-2 text-sm text-alerta-700 hover:bg-alerta-50 rounded cursor-pointer focus:outline-none focus:bg-alerta-50"
-                            onSelect={() => onCancelar(cita.id)}
+                            className="px-3 py-2 text-sm text-calma-700 hover:bg-calma-50 rounded cursor-pointer focus:outline-none focus:bg-calma-50"
+                            onSelect={() => onCompletar(cita.id)}
                           >
-                            Cancelar cita
+                            ✓ Marcar completada
                           </DropdownMenu.Item>
                         )}
+
+                        {/* Marcar no asistió (solo si está confirmada) */}
+                        {onMarcarNoAsistio && cita.estado === 'CONFIRMADA' && (
+                          <DropdownMenu.Item
+                            className="px-3 py-2 text-sm text-alerta-700 hover:bg-alerta-50 rounded cursor-pointer focus:outline-none focus:bg-alerta-50"
+                            onSelect={() => onMarcarNoAsistio(cita.id)}
+                          >
+                            ✗ No asistió
+                          </DropdownMenu.Item>
+                        )}
+
+                        {/* Agregar notas */}
+                        {onAgregarNotas && cita.estado === 'COMPLETADA' && (
+                          <DropdownMenu.Item
+                            className="px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded cursor-pointer focus:outline-none focus:bg-gray-100"
+                            onSelect={() => onAgregarNotas(cita.id)}
+                          >
+                            📝 Agregar notas
+                          </DropdownMenu.Item>
+                        )}
+
+                        {/* Separador */}
+                        {((onConfirmar && cita.estado === 'PENDIENTE') ||
+                          (onCompletar && cita.estado === 'CONFIRMADA') ||
+                          (onMarcarNoAsistio && cita.estado === 'CONFIRMADA') ||
+                          (onAgregarNotas && cita.estado === 'COMPLETADA')) &&
+                          (onReprogramar || onCancelar) &&
+                          cita.estado !== 'CANCELADA' && (
+                            <DropdownMenu.Separator className="h-px bg-gray-200 my-1" />
+                          )}
+
+                        {/* Reprogramar */}
+                        {onReprogramar &&
+                          cita.estado !== 'CANCELADA' &&
+                          cita.estado !== 'COMPLETADA' && (
+                            <DropdownMenu.Item
+                              className="px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded cursor-pointer focus:outline-none focus:bg-gray-100"
+                              onSelect={() => onReprogramar(cita.id)}
+                            >
+                              Reprogramar
+                            </DropdownMenu.Item>
+                          )}
+
+                        {/* Cancelar */}
+                        {onCancelar &&
+                          cita.estado !== 'CANCELADA' &&
+                          cita.estado !== 'COMPLETADA' && (
+                            <DropdownMenu.Item
+                              className="px-3 py-2 text-sm text-alerta-700 hover:bg-alerta-50 rounded cursor-pointer focus:outline-none focus:bg-alerta-50"
+                              onSelect={() => onCancelar(cita.id)}
+                            >
+                              Cancelar cita
+                            </DropdownMenu.Item>
+                          )}
                       </DropdownMenu.Content>
                     </DropdownMenu.Portal>
                   </DropdownMenu.Root>

@@ -1,13 +1,28 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { useRouter, useParams } from 'next/navigation';
+import {
+  ArrowLeft,
+  User,
+  Mail,
+  Phone,
+  Calendar,
+  TrendingUp,
+  CheckCircle,
+  Activity,
+  Loader2,
+} from 'lucide-react';
+import { Button } from '@/lib/componentes/ui/button';
 import { GraficaEvolucion, type PuntoEvolucion } from '@/lib/componentes/GraficaEvolucion';
-import { TimelineHitos, type Hito } from '@/lib/componentes/TimelineHitos';
-import { VistaComparativa, type DatosComparativos } from '@/lib/componentes/VistaComparativa';
-import { ListaAlertas } from '@/lib/componentes/AlertaCritica';
-import { IndicadorEmocional, type EstadoEmocional } from '@/lib/componentes/IndicadorEmocional';
+import {
+  TimelineSesiones,
+  type SesionTimeline,
+} from '@/lib/componentes/TimelineSesiones';
+import {
+  TablaEvaluaciones,
+  type EvaluacionTabla,
+} from '@/lib/componentes/TablaEvaluaciones';
 import { obtenerClienteNavegador } from '@/lib/supabase/cliente';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';

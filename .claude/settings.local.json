@@ -57,7 +57,24 @@
       "Read(///**)",
       "Bash(npx next lint src/app/profesional)",
       "Bash(npx next build --no-lint)",
-      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://cvezncgcdsjntzrzztrj.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2ZXpuY2djZHNqbnR6cnp6dHJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0NjY2NjcsImV4cCI6MjA3NjA0MjY2N30.CddHpq9maykqCT9AfBAGRzidelWwdcYcWQ7pKm_81Q4 node test-foreign-keys.js)"
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://cvezncgcdsjntzrzztrj.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2ZXpuY2djZHNqbnR6cnp6dHJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0NjY2NjcsImV4cCI6MjA3NjA0MjY2N30.CddHpq9maykqCT9AfBAGRzidelWwdcYcWQ7pKm_81Q4 node test-foreign-keys.js)",
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://cvezncgcdsjntzrzztrj.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2ZXpuY2djZHNqbnR6cnp6dHJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0NjY2NjcsImV4cCI6MjA3NjA0MjY2N30.CddHpq9maykqCT9AfBAGRzidelWwdcYcWQ7pKm_81Q4 node listar-profesionales-existentes.js)",
+      "Bash(export NEXT_PUBLIC_SUPABASE_URL=https://cvezncgcdsjntzrzztrj.supabase.co)",
+      "Bash(export NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2ZXpuY2djZHNqbnR6cnp6dHJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0NjY2NjcsImV4cCI6MjA3NjA0MjY2N30.CddHpq9maykqCT9AfBAGRzidelWwdcYcWQ7pKm_81Q4)",
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=https://cvezncgcdsjntzrzztrj.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2ZXpuY2djZHNqbnR6cnp6dHJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0NjY2NjcsImV4cCI6MjA3NjA0MjY2N30.CddHpq9maykqCT9AfBAGRzidelWwdcYcWQ7pKm_81Q4 node:*)",
+      "Bash(timeout 10 npm run dev)",
+      "Read(//Users/leob/.config/**)",
+      "Read(//Users/leob/Library/Application Support/Claude/**)",
+      "Read(//Users/leob/Library/**)",
+      "Read(//Users/leob/**)",
+      "Bash(claude mcp:*)",
+      "WebFetch(domain:supabase.com)",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__list_edge_functions",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__get_edge_function",
+      "mcp__supabase__get_advisors",
+      "mcp__supabase__apply_migration"
     ],
     "deny": []
   }

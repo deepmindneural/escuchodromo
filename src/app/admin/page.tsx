@@ -18,6 +18,7 @@ import {
 } from 'recharts';
 import { toast, Toaster } from 'react-hot-toast';
 import { obtenerClienteNavegador } from '../../lib/supabase/cliente';
+import AlertasCriticas from '../../lib/componentes/admin/AlertasCriticas';
 
 // Importación dinámica para evitar errores de SSR
 const ApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
@@ -34,24 +35,15 @@ export default function PaginaAdmin() {
     ingresosMensuales: 125430,
     usuariosActivos: 1876
   });
+  const [datosEvaluacionesPorTipo, setDatosEvaluacionesPorTipo] = useState<any[]>([
+    { nombre: 'PHQ-9', valor: 0, color: '#3B82F6' },
+    { nombre: 'GAD-7', valor: 0, color: '#10B981' },
+    { nombre: 'Otras', valor: 0, color: '#8B5CF6' }
+  ]);
+  const [datosUsuariosPorMes, setDatosUsuariosPorMes] = useState<any[]>([]);
+  const [datosSeveridad, setDatosSeveridad] = useState<any[]>([]);
   const [cargando, setCargando] = useState(true);
   const [vistaActiva, setVistaActiva] = useState('general');
-
-  // Datos para gráficos
-  const datosUsuariosPorMes = [
-    { mes: 'Ene', usuarios: 1200 },
-    { mes: 'Feb', usuarios: 1350 },
-    { mes: 'Mar', usuarios: 1680 },
-    { mes: 'Abr', usuarios: 1890 },
-    { mes: 'May', usuarios: 2150 },
-    { mes: 'Jun', usuarios: 2543 }
-  ];
-
-  const datosEvaluaciones = [
-    { nombre: 'PHQ-9', valor: 456, color: '#3B82F6' },
-    { nombre: 'GAD-7', valor: 378, color: '#10B981' },
-    { nombre: 'Otras', valor: 400, color: '#8B5CF6' }
-  ];
 
   const opcionesApexChart = {
     chart: {
@@ -182,6 +174,83 @@ export default function PaginaAdmin() {
 
       const ingresosMensuales = suscripciones?.reduce((sum, s) => sum + (s.precio || 0), 0) || 0;
 
+      // Distribución de evaluaciones por tipo
+      const { data: evaluaciones } = await supabase
+        .from('Resultado')
+        .select('codigo');
+
+      const distribucionEvaluaciones = {
+        'PHQ-9': 0,
+        'GAD-7': 0,
+        'Otras': 0
+      };
+
+      evaluaciones?.forEach((eval: any) => {
+        if (eval.codigo === 'PHQ-9') {
+          distribucionEvaluaciones['PHQ-9']++;
+        } else if (eval.codigo === 'GAD-7') {
+          distribucionEvaluaciones['GAD-7']++;
+        } else {
+          distribucionEvaluaciones['Otras']++;
+        }
+      });
+
+      setDatosEvaluacionesPorTipo([
+        { nombre: 'PHQ-9', valor: distribucionEvaluaciones['PHQ-9'], color: '#3B82F6' },
+        { nombre: 'GAD-7', valor: distribucionEvaluaciones['GAD-7'], color: '#10B981' },
+        { nombre: 'Otras', valor: distribucionEvaluaciones['Otras'], color: '#8B5CF6' }
+      ]);
+
+      // Crecimiento de usuarios por mes (últimos 6 meses)
+      const { data: todosUsuarios } = await supabase
+        .from('Usuario')
+        .select('creado_en')
+        .order('creado_en', { ascending: true });
+
+      const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      const ahora = new Date();
+      const datosGrowth = [];
+
+      for (let i = 5; i >= 0; i--) {
+        const fecha = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
+        const mesNombre = meses[fecha.getMonth()];
+        const usuariosHastaMes = todosUsuarios?.filter(u => {
+          const creado = new Date(u.creado_en);
+          return creado <= fecha;
+        }).length || 0;
+
+        datosGrowth.push({ mes: mesNombre, usuarios: usuariosHastaMes });
+      }
+
+      setDatosUsuariosPorMes(datosGrowth);
+
+      // Distribución de severidad de evaluaciones (para gráfico adicional)
+      const { data: resultadosConSeveridad } = await supabase
+        .from('Resultado')
+        .select('severidad');
+
+      const distribucionSeveridad: any = {
+        'mínima': 0,
+        'leve': 0,
+        'moderada': 0,
+        'moderadamente_severa': 0,
+        'severa': 0
+      };
+
+      resultadosConSeveridad?.forEach((r: any) => {
+        if (r.severidad && distribucionSeveridad[r.severidad] !== undefined) {
+          distribucionSeveridad[r.severidad]++;
+        }
+      });
+
+      setDatosSeveridad([
+        { nombre: 'Mínima', valor: distribucionSeveridad.mínima, color: '#10B981' },
+        { nombre: 'Leve', valor: distribucionSeveridad.leve, color: '#3B82F6' },
+        { nombre: 'Moderada', valor: distribucionSeveridad.moderada, color: '#F59E0B' },
+        { nombre: 'Mod. Severa', valor: distribucionSeveridad.moderadamente_severa, color: '#EF4444' },
+        { nombre: 'Severa', valor: distribucionSeveridad.severa, color: '#DC2626' }
+      ]);
+
       setEstadisticas({
         totalUsuarios: totalUsuarios || 0,
         nuevosUsuariosHoy: nuevosUsuariosHoy || 0,
@@ -285,6 +354,11 @@ export default function PaginaAdmin() {
       </div>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+        {/* Alertas Críticas */}
+        <div className="mb-8">
+          <AlertasCriticas />
+        </div>
+
         {/* Tarjetas de estadísticas */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {tarjetasEstadisticas.map((tarjeta, index) => (
@@ -400,8 +474,8 @@ export default function PaginaAdmin() {
           </motion.div>
         </div>
 
-        {/* Gráfico circular y acciones rápidas */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        {/* Gráficos de distribución */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Distribución de evaluaciones */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -414,7 +488,7 @@ export default function PaginaAdmin() {
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
                 <Pie
-                  data={datosEvaluaciones}
+                  data={datosEvaluacionesPorTipo}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -423,7 +497,7 @@ export default function PaginaAdmin() {
                   dataKey="valor"
                   label={({ nombre, percent }: any) => `${nombre} ${((percent || 0) * 100).toFixed(0)}%`}
                 >
-                  {datosEvaluaciones.map((entry, index) => (
+                  {datosEvaluacionesPorTipo.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -439,23 +513,58 @@ export default function PaginaAdmin() {
             </ResponsiveContainer>
           </motion.div>
 
-          {/* Accesos rápidos */}
+          {/* Distribución por severidad */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <span className="mr-2">📊</span>
+              Distribución por Severidad
+            </h3>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={datosSeveridad}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                <XAxis
+                  dataKey="nombre"
+                  stroke="#6B7280"
+                  style={{ fontSize: '11px' }}
+                  angle={-15}
+                  textAnchor="end"
+                  height={60}
+                />
+                <YAxis stroke="#6B7280" style={{ fontSize: '12px' }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  }}
+                />
+                <Bar dataKey="valor" radius={[8, 8, 0, 0]}>
+                  {datosSeveridad.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </motion.div>
+        </div>
+
+        {/* Accesos rápidos */}
+        <div className="grid grid-cols-1 gap-6 mb-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
           >
             <h3 className="text-lg font-semibold text-gray-900 mb-6">
               Acciones Rápidas
             </h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {[
-                {
-                  titulo: 'Historiales de Usuarios',
-                  icono: FaHistory,
-                  color: 'from-teal-500 to-cyan-500',
-                  href: '/admin/historiales'
-                },
                 {
                   titulo: 'Gestión de Usuarios',
                   icono: FaUsers,
@@ -469,9 +578,39 @@ export default function PaginaAdmin() {
                   href: '/admin/profesionales'
                 },
                 {
+                  titulo: 'Gestión de Citas',
+                  icono: FaClipboardCheck,
+                  color: 'from-purple-500 to-purple-600',
+                  href: '/admin/citas'
+                },
+                {
+                  titulo: 'Pagos y Facturación',
+                  icono: FaMoneyBillWave,
+                  color: 'from-orange-500 to-orange-600',
+                  href: '/admin/pagos'
+                },
+                {
+                  titulo: 'Analytics',
+                  icono: FaChartBar,
+                  color: 'from-indigo-500 to-indigo-600',
+                  href: '/admin/analytics'
+                },
+                {
+                  titulo: 'Historiales',
+                  icono: FaHistory,
+                  color: 'from-teal-500 to-cyan-500',
+                  href: '/admin/historiales'
+                },
+                {
+                  titulo: 'Suscripciones',
+                  icono: FaChartLine,
+                  color: 'from-pink-500 to-pink-600',
+                  href: '/admin/suscripciones'
+                },
+                {
                   titulo: 'Configuración',
                   icono: FaCog,
-                  color: 'from-purple-500 to-purple-600',
+                  color: 'from-gray-500 to-gray-600',
                   href: '/admin/configuracion'
                 }
               ].map((accion, index) => (
