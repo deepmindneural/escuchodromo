@@ -399,9 +399,9 @@ export default function AdminPagos() {
             </div>
 
             <Select
-              value={filtroEstado}
+              value={filtroEstado || 'todos'}
               onValueChange={(value) => {
-                setFiltroEstado(value);
+                setFiltroEstado(value === 'todos' ? '' : value);
                 setPaginaActual(1);
               }}
             >
@@ -409,7 +409,7 @@ export default function AdminPagos() {
                 <SelectValue placeholder="Todos los estados" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos los estados</SelectItem>
+                <SelectItem value="todos">Todos los estados</SelectItem>
                 <SelectItem value="completado">Completado</SelectItem>
                 <SelectItem value="pendiente">Pendiente</SelectItem>
                 <SelectItem value="procesando">Procesando</SelectItem>

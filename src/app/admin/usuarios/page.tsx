@@ -291,9 +291,9 @@ export default function AdminUsuarios() {
             </div>
 
             <Select
-              value={filtroRol}
+              value={filtroRol || 'todos'}
               onValueChange={(value) => {
-                setFiltroRol(value);
+                setFiltroRol(value === 'todos' ? '' : value);
                 setPaginaActual(1);
               }}
             >
@@ -301,7 +301,7 @@ export default function AdminUsuarios() {
                 <SelectValue placeholder="Todos los roles" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos los roles</SelectItem>
+                <SelectItem value="todos">Todos los roles</SelectItem>
                 <SelectItem value="USUARIO">Usuario</SelectItem>
                 <SelectItem value="TERAPEUTA">Terapeuta</SelectItem>
                 <SelectItem value="ADMIN">Admin</SelectItem>
@@ -309,9 +309,9 @@ export default function AdminUsuarios() {
             </Select>
 
             <Select
-              value={filtroEstado || ''}
+              value={filtroEstado || 'todos'}
               onValueChange={(value) => {
-                setFiltroEstado(value || null);
+                setFiltroEstado(value === 'todos' ? null : value);
                 setPaginaActual(1);
               }}
             >
@@ -319,7 +319,7 @@ export default function AdminUsuarios() {
                 <SelectValue placeholder="Todos los estados" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos los estados</SelectItem>
+                <SelectItem value="todos">Todos los estados</SelectItem>
                 <SelectItem value="activo">Activos</SelectItem>
                 <SelectItem value="inactivo">Inactivos</SelectItem>
               </SelectContent>
