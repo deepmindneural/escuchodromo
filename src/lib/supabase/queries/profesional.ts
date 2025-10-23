@@ -79,39 +79,19 @@ export async function obtenerPacientesProfesional(
 
     console.log('🔍 [obtenerPacientesProfesional] Buscando pacientes para profesional:', profesionalId);
 
-    // Obtener todas las citas del profesional para identificar pacientes únicos
-    const { data: citas, error: errorCitas } = await supabase
-      .from('Cita')
-      .select(
-        `
-        paciente_id,
-        estado,
-        fecha_hora,
-        Usuario:paciente_id(
-          id,
-          nombre,
-          apellido,
-          email,
-          imagen,
-          PerfilUsuario(
-            telefono,
-            genero
-          )
-        )
-      `
-      )
-      .eq('profesional_id', profesionalId)
-      .order('fecha_hora', { ascending: false });
+    // Usar función de base de datos con SECURITY DEFINER para evitar bloqueo de RLS
+    const { data: citasConPacientes, error: errorCitas } = await supabase
+      .rpc('obtener_pacientes_con_citas', { p_profesional_id: profesionalId });
 
-    console.log('📊 [obtenerPacientesProfesional] Citas encontradas:', citas?.length || 0);
-    console.log('📋 [obtenerPacientesProfesional] Datos de citas:', JSON.stringify(citas, null, 2));
+    console.log('📊 [obtenerPacientesProfesional] Citas encontradas:', citasConPacientes?.length || 0);
+    console.log('📋 [obtenerPacientesProfesional] Datos de citas:', JSON.stringify(citasConPacientes?.slice(0, 3), null, 2));
 
     if (errorCitas) {
       console.error('❌ [obtenerPacientesProfesional] Error obteniendo citas:', errorCitas);
       return { data: null, error: errorCitas };
     }
 
-    if (!citas || citas.length === 0) {
+    if (!citasConPacientes || citasConPacientes.length === 0) {
       console.log('⚠️ [obtenerPacientesProfesional] No se encontraron citas');
       return { data: [], error: null };
     }
@@ -119,21 +99,19 @@ export async function obtenerPacientesProfesional(
     // Agrupar citas por paciente
     const pacientesMap = new Map<string, any>();
 
-    for (const cita of citas) {
-      const pacienteData = (cita as any).Usuario;
-      if (!pacienteData) continue;
-
-      const pacienteId = pacienteData.id;
+    for (const cita of citasConPacientes) {
+      const pacienteId = cita.paciente_id;
+      if (!pacienteId) continue;
 
       if (!pacientesMap.has(pacienteId)) {
         pacientesMap.set(pacienteId, {
-          id: pacienteData.id,
-          nombre: pacienteData.nombre || '',
-          apellido: pacienteData.apellido || null,
-          email: pacienteData.email || '',
-          foto_perfil: pacienteData.imagen || null,
-          telefono: pacienteData.PerfilUsuario?.telefono || null,
-          genero: pacienteData.PerfilUsuario?.genero || null,
+          id: pacienteId,
+          nombre: cita.paciente_nombre || '',
+          apellido: cita.paciente_apellido || null,
+          email: cita.paciente_email || '',
+          foto_perfil: cita.paciente_imagen || null,
+          telefono: null,
+          genero: null,
           total_citas: 0,
           citas_completadas: 0,
           ultima_cita: null,
@@ -144,11 +122,11 @@ export async function obtenerPacientesProfesional(
       const paciente = pacientesMap.get(pacienteId);
       paciente.total_citas += 1;
 
-      if ((cita as any).estado === 'completada') {
+      if (cita.cita_estado === 'completada') {
         paciente.citas_completadas += 1;
       }
 
-      const fechaCita = new Date((cita as any).fecha_hora);
+      const fechaCita = new Date(cita.cita_fecha_hora);
       const ahora = new Date();
 
       // Actualizar última cita (pasada)
@@ -161,7 +139,7 @@ export async function obtenerPacientesProfesional(
       // Actualizar próxima cita (futura)
       if (
         fechaCita > ahora &&
-        ((cita as any).estado === 'pendiente' || (cita as any).estado === 'confirmada')
+        (cita.cita_estado === 'pendiente' || cita.cita_estado === 'confirmada')
       ) {
         if (!paciente.proxima_cita || fechaCita < paciente.proxima_cita) {
           paciente.proxima_cita = fechaCita;
