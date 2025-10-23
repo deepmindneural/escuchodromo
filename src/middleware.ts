@@ -33,7 +33,8 @@ export async function middleware(request: NextRequest) {
     '/confirmar-email',
   ]
 
-  const esRutaPublica = rutasPublicas.some(ruta => pathname === ruta || pathname.startsWith(ruta))
+  // Verificar si es ruta pública (especial para '/' solo exacto)
+  const esRutaPublica = pathname === '/' || rutasPublicas.slice(1).some(ruta => pathname.startsWith(ruta))
 
   // Si es ruta pública pero el usuario está autenticado, redirigir a su dashboard
   if (esRutaPublica && user) {
