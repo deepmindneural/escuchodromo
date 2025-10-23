@@ -39,7 +39,7 @@ export default function PaginaDashboard() {
   }, [usuario?.id]);
 
   const cargarEstadisticas = async () => {
-    if (!usuario?.id) return;
+    if (!usuario?.id || !authUsuario?.id) return;
 
     try {
       const { obtenerClienteNavegador } = await import('../../lib/supabase/cliente');
@@ -57,13 +57,13 @@ export default function PaginaDashboard() {
         .select('*', { count: 'exact', head: true })
         .eq('usuario_id', usuario.id);
 
-      // Obtener plan actual
-      const { data: suscripcion } = await supabase
-        .from('Suscripcion')
-        .select('plan')
-        .eq('usuario_id', usuario.id)
-        .eq('estado', 'activa')
-        .single();
+      // Obtener plan actual usando función RPC para evitar error 406
+      const { data: suscripcionData } = await supabase
+        .rpc('obtener_suscripcion_usuario', {
+          p_auth_id: authUsuario.id
+        });
+
+      const suscripcion = suscripcionData && suscripcionData.length > 0 ? suscripcionData[0] : null;
 
       setEstadisticas({
         totalEvaluaciones: totalEvaluaciones || 0,
