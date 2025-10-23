@@ -160,23 +160,37 @@ serve(async (req) => {
     // ✅ 7. OBTENER DATOS DE PROFESIONALES
     const profesionalesIds = citas?.map(c => (c as any).profesional_id).filter(Boolean) || []
 
+    console.log('📋 IDs de profesionales:', profesionalesIds)
+
     let profesionales: any[] = []
     let perfilesProfesionales: any[] = []
 
     if (profesionalesIds.length > 0) {
       // Obtener datos básicos de usuarios
-      const { data: usuarios } = await supabase
+      const { data: usuarios, error: usuariosError } = await supabase
         .from('Usuario')
         .select('id, nombre, apellido, email, avatar_url')
         .in('id', profesionalesIds)
 
+      if (usuariosError) {
+        console.error('❌ Error obteniendo usuarios:', usuariosError)
+      } else {
+        console.log('✅ Usuarios obtenidos:', usuarios?.length)
+      }
+
       profesionales = usuarios || []
 
       // Obtener perfiles profesionales
-      const { data: perfiles } = await supabase
+      const { data: perfiles, error: perfilesError } = await supabase
         .from('PerfilProfesional')
         .select('usuario_id, especialidades, tarifa_por_sesion')
         .in('usuario_id', profesionalesIds)
+
+      if (perfilesError) {
+        console.error('❌ Error obteniendo perfiles:', perfilesError)
+      } else {
+        console.log('✅ Perfiles obtenidos:', perfiles?.length)
+      }
 
       perfilesProfesionales = perfiles || []
     }
