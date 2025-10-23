@@ -75,7 +75,8 @@
       "mcp__supabase__get_edge_function",
       "mcp__supabase__get_advisors",
       "mcp__supabase__apply_migration",
-      "Bash(vercel --prod --yes)"
+      "Bash(vercel --prod --yes)",
+      "mcp__supabase__get_logs"
     ],
     "deny": []
   }
