@@ -137,100 +137,65 @@ export default function PaginaAdmin() {
     const supabase = obtenerClienteNavegador();
 
     try {
-      // Total de usuarios
-      const { count: totalUsuarios } = await supabase
-        .from('Usuario')
-        .select('*', { count: 'exact', head: true });
+      // Usar función RPC optimizada que obtiene todo en una sola query
+      const { data: stats, error: statsError } = await supabase
+        .rpc('obtener_estadisticas_dashboard');
 
-      // Usuarios nuevos hoy
-      const hoy = new Date();
-      hoy.setHours(0, 0, 0, 0);
-      const { count: nuevosUsuariosHoy } = await supabase
-        .from('Usuario')
-        .select('*', { count: 'exact', head: true })
-        .gte('creado_en', hoy.toISOString());
-
-      // Total de conversaciones
-      const { count: conversacionesActivas } = await supabase
-        .from('Conversacion')
-        .select('*', { count: 'exact', head: true });
-
-      // Total de evaluaciones (resultados de pruebas)
-      const { count: evaluacionesRealizadas } = await supabase
-        .from('Resultado')
-        .select('*', { count: 'exact', head: true });
-
-      // Suscripciones activas
-      const { count: suscripcionesActivas } = await supabase
-        .from('Suscripcion')
-        .select('*', { count: 'exact', head: true })
-        .eq('estado', 'activa');
-
-      // Calcular ingresos mensuales (suma de suscripciones activas)
-      const { data: suscripciones } = await supabase
-        .from('Suscripcion')
-        .select('precio')
-        .eq('estado', 'activa');
-
-      const ingresosMensuales = suscripciones?.reduce((sum, s) => sum + (s.precio || 0), 0) || 0;
-
-      // Distribución de evaluaciones por tipo
-      const { data: evaluaciones } = await supabase
-        .from('Resultado')
-        .select('codigo');
-
-      const distribucionEvaluaciones = {
-        'PHQ-9': 0,
-        'GAD-7': 0,
-        'Otras': 0
-      };
-
-      evaluaciones?.forEach((evaluacion: any) => {
-        if (evaluacion.codigo === 'PHQ-9') {
-          distribucionEvaluaciones['PHQ-9']++;
-        } else if (evaluacion.codigo === 'GAD-7') {
-          distribucionEvaluaciones['GAD-7']++;
-        } else {
-          distribucionEvaluaciones['Otras']++;
-        }
-      });
-
-      setDatosEvaluacionesPorTipo([
-        { nombre: 'PHQ-9', valor: distribucionEvaluaciones['PHQ-9'], color: '#3B82F6' },
-        { nombre: 'GAD-7', valor: distribucionEvaluaciones['GAD-7'], color: '#10B981' },
-        { nombre: 'Otras', valor: distribucionEvaluaciones['Otras'], color: '#8B5CF6' }
-      ]);
-
-      // Crecimiento de usuarios por mes (últimos 6 meses)
-      const { data: todosUsuarios } = await supabase
-        .from('Usuario')
-        .select('creado_en')
-        .order('creado_en', { ascending: true });
-
-      const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-      const ahora = new Date();
-      const datosGrowth = [];
-
-      for (let i = 5; i >= 0; i--) {
-        const fecha = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
-        const mesNombre = meses[fecha.getMonth()];
-        const usuariosHastaMes = todosUsuarios?.filter(u => {
-          const creado = new Date(u.creado_en);
-          return creado <= fecha;
-        }).length || 0;
-
-        datosGrowth.push({ mes: mesNombre, usuarios: usuariosHastaMes });
+      if (statsError) {
+        console.error('Error al cargar estadísticas del dashboard:', statsError);
+        toast.error('Error al cargar estadísticas');
+        return;
       }
 
-      setDatosUsuariosPorMes(datosGrowth);
+      // Extraer valores de la respuesta RPC
+      const totalUsuarios = stats?.total_usuarios || 0;
+      const nuevosUsuariosHoy = stats?.nuevos_usuarios_hoy || 0;
+      const conversacionesActivas = stats?.conversaciones_activas || 0;
+      const evaluacionesRealizadas = stats?.evaluaciones_realizadas || 0;
+      const suscripcionesActivas = stats?.suscripciones_activas || 0;
+      const ingresosMensuales = parseFloat(stats?.ingresos_mensuales || 0);
 
-      // Distribución de severidad de evaluaciones (para gráfico adicional)
+      // Obtener crecimiento de usuarios usando RPC
+      const { data: crecimientoData, error: crecimientoError } = await supabase
+        .rpc('obtener_crecimiento_usuarios', { p_meses: 6 });
+
+      if (!crecimientoError && crecimientoData) {
+        setDatosUsuariosPorMes(crecimientoData.map((item: any) => ({
+          mes: item.mes,
+          usuarios: item.total_usuarios
+        })));
+      }
+
+      // Para distribución de evaluaciones, necesitamos hacer queries manuales
+      // ya que no hay RPC específico para esto
+      const { data: evaluacionesPhq9, count: countPhq9 } = await supabase
+        .from('Evaluacion')
+        .select('*', { count: 'exact', head: true })
+        .eq('test_codigo', 'PHQ-9');
+
+      const { data: evaluacionesGad7, count: countGad7 } = await supabase
+        .from('Evaluacion')
+        .select('*', { count: 'exact', head: true })
+        .eq('test_codigo', 'GAD-7');
+
+      const totalEvaluaciones = evaluacionesRealizadas || 0;
+      const phq9Count = countPhq9 || 0;
+      const gad7Count = countGad7 || 0;
+      const otrasCount = Math.max(0, totalEvaluaciones - phq9Count - gad7Count);
+
+      setDatosEvaluacionesPorTipo([
+        { nombre: 'PHQ-9', valor: phq9Count, color: '#3B82F6' },
+        { nombre: 'GAD-7', valor: gad7Count, color: '#10B981' },
+        { nombre: 'Otras', valor: otrasCount, color: '#8B5CF6' }
+      ]);
+
+      // Para severidad, también necesitamos query manual
       const { data: resultadosConSeveridad } = await supabase
-        .from('Resultado')
+        .from('Evaluacion')
         .select('severidad');
 
       const distribucionSeveridad: any = {
-        'mínima': 0,
+        'minima': 0,
         'leve': 0,
         'moderada': 0,
         'moderadamente_severa': 0,
@@ -238,13 +203,14 @@ export default function PaginaAdmin() {
       };
 
       resultadosConSeveridad?.forEach((r: any) => {
-        if (r.severidad && distribucionSeveridad[r.severidad] !== undefined) {
-          distribucionSeveridad[r.severidad]++;
+        const sev = r.severidad?.toLowerCase();
+        if (sev && distribucionSeveridad[sev] !== undefined) {
+          distribucionSeveridad[sev]++;
         }
       });
 
       setDatosSeveridad([
-        { nombre: 'Mínima', valor: distribucionSeveridad.mínima, color: '#10B981' },
+        { nombre: 'Mínima', valor: distribucionSeveridad.minima, color: '#10B981' },
         { nombre: 'Leve', valor: distribucionSeveridad.leve, color: '#3B82F6' },
         { nombre: 'Moderada', valor: distribucionSeveridad.moderada, color: '#F59E0B' },
         { nombre: 'Mod. Severa', valor: distribucionSeveridad.moderadamente_severa, color: '#EF4444' },

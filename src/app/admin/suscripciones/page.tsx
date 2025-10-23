@@ -34,7 +34,7 @@ interface Suscripcion {
   estado: string;
   fecha_inicio: string;
   fecha_fin: string;
-  fecha_proximo_pago: string | null;
+  fecha_proximo_pago: string | null; // Mapeado desde fecha_renovacion en línea 98
   usuario: {
     id: string;
     nombre: string;
@@ -69,54 +69,52 @@ export default function AdminSuscripciones() {
       const limite = 10;
       const offset = (paginaActual - 1) * limite;
 
-      // Construir query base
-      let query = supabase
-        .from('Suscripcion')
-        .select('id, plan, periodo, precio, moneda, estado, fecha_inicio, fecha_fin, fecha_proximo_pago, usuario:Usuario!usuario_id(id, nombre, email)', { count: 'exact' });
+      // Usar función RPC optimizada que evita problemas con RLS
+      const { data: suscripcionesData, error: suscripcionesError } = await supabase
+        .rpc('buscar_suscripciones', {
+          p_limit: limite,
+          p_offset: offset,
+          p_busqueda: busqueda || null,
+          p_plan_filtro: filtroPlan || null,
+          p_estado_filtro: filtroEstado || null,
+        });
 
-      // Aplicar filtros
-      if (busqueda) {
-        // Buscar por nombre o email del usuario no es directo en Supabase
-        // Por ahora solo filtraremos después de obtener los datos
-      }
-
-      if (filtroPlan) {
-        query = query.eq('plan', filtroPlan);
-      }
-
-      if (filtroEstado) {
-        query = query.eq('estado', filtroEstado);
-      }
-
-      // Aplicar paginación y ordenamiento
-      const { data: suscripcionesData, error, count } = await query
-        .order('fecha_inicio', { ascending: false })
-        .range(offset, offset + limite - 1);
-
-      if (error) {
-        console.error('Error al cargar suscripciones:', error);
+      if (suscripcionesError) {
+        console.error('Error al cargar suscripciones:', suscripcionesError);
         toast.error('Error al cargar suscripciones');
         return;
       }
 
-      // Filtrar por búsqueda si hay texto
-      let suscripcionesFiltradas = suscripcionesData || [];
-      if (busqueda) {
-        const busquedaLower = busqueda.toLowerCase();
-        suscripcionesFiltradas = suscripcionesFiltradas.filter(s =>
-          s.usuario?.nombre?.toLowerCase().includes(busquedaLower) ||
-          s.usuario?.email?.toLowerCase().includes(busquedaLower)
-        );
-      }
+      // Transformar datos al formato esperado por la UI
+      const suscripcionesFormateadas = (suscripcionesData || []).map((s: any) => ({
+        id: s.id,
+        plan: s.plan,
+        periodo: s.periodo,
+        precio: s.precio,
+        moneda: s.moneda,
+        estado: s.estado,
+        fecha_inicio: s.fecha_inicio,
+        fecha_fin: s.fecha_fin,
+        fecha_proximo_pago: s.fecha_renovacion, // La RPC usa fecha_renovacion
+        usuario: {
+          id: s.usuario_id,
+          nombre: s.usuario_nombre,
+          email: s.usuario_email
+        }
+      }));
 
-      setSuscripciones(suscripcionesFiltradas);
+      setSuscripciones(suscripcionesFormateadas);
 
-      // Configurar paginación
-      const totalPaginas = Math.ceil((count || 0) / limite);
+      // Obtener total usando función RPC de estadísticas
+      const { data: estadisticasData } = await supabase
+        .rpc('obtener_estadisticas_suscripciones');
+
+      const total = estadisticasData?.total || 0;
+      const totalPaginas = Math.ceil(total / limite);
       setPaginacion({
         pagina: paginaActual,
         limite,
-        total: count || 0,
+        total,
         totalPaginas,
       });
     } catch (error) {
@@ -131,10 +129,31 @@ export default function AdminSuscripciones() {
     try {
       const supabase = obtenerClienteNavegador();
 
-      const { error } = await supabase
-        .from('Suscripcion')
-        .update({ estado: nuevoEstado })
-        .eq('id', suscripcionId);
+      // IMPORTANTE: Admin NO puede actualizar suscripciones directamente por seguridad
+      // Debe usarse una Edge Function que valide con Stripe
+      // Por ahora, mostramos un mensaje informativo
+
+      toast.error('La actualización de suscripciones debe realizarse desde la página de detalles del usuario', {
+        duration: 4000,
+      });
+
+      // TODO: Implementar Edge Function admin-actualizar-suscripcion que:
+      // 1. Valide que el admin tenga permisos
+      // 2. Registre la acción en AuditLogAdmin
+      // 3. Valide el cambio con Stripe si es necesario
+      // 4. Actualice la suscripción usando service_role
+
+      /*
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Sesión no válida');
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('admin-actualizar-suscripcion', {
+        body: { suscripcion_id: suscripcionId, nuevo_estado: nuevoEstado },
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      });
 
       if (error) {
         console.error('Error al cambiar estado:', error);
@@ -144,6 +163,7 @@ export default function AdminSuscripciones() {
 
       toast.success('Estado actualizado correctamente');
       cargarSuscripciones();
+      */
     } catch (error) {
       console.error('Error al cambiar estado:', error);
       toast.error('Error al cambiar estado');
