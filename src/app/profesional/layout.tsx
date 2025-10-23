@@ -1,21 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
   LayoutDashboard,
   Users,
-  MessageSquare,
-  Brain,
-  CreditCard,
-  Bell,
-  Settings,
+  Calendar,
+  Clock,
+  User,
+  FileText,
   LogOut,
   Menu,
   X,
-  FileText,
-  UserCheck,
 } from 'lucide-react';
 import { Button } from '../../lib/componentes/ui/button';
 import { cn } from '../../lib/utilidades';
@@ -30,28 +27,30 @@ interface Usuario {
 }
 
 const menuItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/admin' },
-  { icon: FileText, label: 'Historiales', href: '/admin/historiales' },
-  { icon: Users, label: 'Usuarios', href: '/admin/usuarios' },
-  { icon: UserCheck, label: 'Profesionales', href: '/admin/profesionales' },
-  { icon: CreditCard, label: 'Suscripciones', href: '/admin/suscripciones' },
+  { icon: LayoutDashboard, label: 'Dashboard', href: '/profesional/dashboard' },
+  { icon: Users, label: 'Pacientes', href: '/profesional/pacientes' },
+  { icon: Calendar, label: 'Calendario', href: '/profesional/calendario' },
+  { icon: Clock, label: 'Disponibilidad', href: '/profesional/disponibilidad' },
+  { icon: User, label: 'Mi Perfil', href: '/profesional/perfil' },
+  { icon: FileText, label: 'Historial', href: '/profesional/historial' },
 ];
 
-export default function AdminLayout({
+export default function ProfesionalLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
-    verificarAdmin();
+    verificarProfesional();
   }, []);
 
-  const verificarAdmin = async () => {
+  const verificarProfesional = async () => {
     const supabase = obtenerClienteNavegador();
 
     try {
@@ -74,15 +73,15 @@ export default function AdminLayout({
         return;
       }
 
-      // Verificar que sea admin
-      if (usuarioData.rol !== 'ADMIN') {
+      // Verificar que sea profesional (TERAPEUTA) o ADMIN
+      if (usuarioData.rol !== 'TERAPEUTA' && usuarioData.rol !== 'ADMIN') {
         router.push('/dashboard');
         return;
       }
 
       setUsuario(usuarioData);
     } catch (error) {
-      console.error('Error al verificar admin:', error);
+      console.error('Error al verificar profesional:', error);
       router.push('/iniciar-sesion');
     } finally {
       setCargando(false);
@@ -98,7 +97,7 @@ export default function AdminLayout({
   if (cargando) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-calma-600"></div>
       </div>
     );
   }
@@ -129,10 +128,10 @@ export default function AdminLayout({
           {/* Header del sidebar */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div>
-              <h2 className="text-xl font-bold bg-gradient-to-r from-teal-500 to-cyan-500 bg-clip-text text-transparent">
+              <h2 className="text-xl font-bold bg-gradient-to-r from-calma-500 to-calma-700 bg-clip-text text-transparent">
                 Escuchodromo
               </h2>
-              <p className="text-xs text-gray-500 mt-1">Panel Administrador</p>
+              <p className="text-xs text-gray-500 mt-1">Panel Profesional</p>
             </div>
             <Button
               variant="ghost"
@@ -147,18 +146,33 @@ export default function AdminLayout({
           {/* Navegación */}
           <nav className="flex-1 p-4 overflow-y-auto">
             <ul className="space-y-1">
-              {menuItems.map((item) => (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors group"
-                    onClick={() => setMenuAbierto(false)}
-                  >
-                    <item.icon className="h-5 w-5 text-gray-500 group-hover:text-teal-600" />
-                    <span className="font-medium">{item.label}</span>
-                  </Link>
-                </li>
-              ))}
+              {menuItems.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors group',
+                        isActive
+                          ? 'bg-calma-50 text-calma-700 font-semibold'
+                          : 'text-gray-700 hover:bg-calma-50 hover:text-calma-700'
+                      )}
+                      onClick={() => setMenuAbierto(false)}
+                    >
+                      <item.icon
+                        className={cn(
+                          'h-5 w-5',
+                          isActive
+                            ? 'text-calma-600'
+                            : 'text-gray-500 group-hover:text-calma-600'
+                        )}
+                      />
+                      <span className="font-medium">{item.label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           </nav>
 
@@ -166,7 +180,10 @@ export default function AdminLayout({
           <div className="p-4 border-t border-gray-200 bg-gray-50">
             <div className="mb-3 px-2">
               <p className="text-xs text-gray-500 mb-1">Sesión iniciada como:</p>
-              <p className="text-sm font-medium text-gray-900 truncate">{usuario.email}</p>
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {usuario.nombre || usuario.email}
+              </p>
+              <p className="text-xs text-gray-500 truncate">{usuario.email}</p>
             </div>
             <Button
               variant="outline"
@@ -193,7 +210,7 @@ export default function AdminLayout({
             >
               <Menu className="h-5 w-5" />
             </Button>
-            <h1 className="text-lg font-semibold text-gray-900">Panel Admin</h1>
+            <h1 className="text-lg font-semibold text-gray-900">Panel Profesional</h1>
             <div className="w-10" />
           </div>
         </header>
