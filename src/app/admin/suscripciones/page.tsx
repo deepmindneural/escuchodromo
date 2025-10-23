@@ -1,6 +1,24 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import CountUp from 'react-countup';
+import {
+  AreaChart,
+  Area,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
+import { FaArrowUp, FaArrowDown, FaChartLine } from 'react-icons/fa';
 import {
   Table,
   TableBody,
@@ -20,7 +38,16 @@ import {
   SelectValue,
 } from '../../../lib/componentes/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../lib/componentes/ui/card';
-import { Search, ChevronLeft, ChevronRight, CreditCard, Calendar, DollarSign } from 'lucide-react';
+import {
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard,
+  Calendar,
+  DollarSign,
+  CheckCircle,
+  XCircle,
+} from 'lucide-react';
 import { Skeleton } from '../../../lib/componentes/ui/skeleton';
 import { obtenerClienteNavegador } from '../../../lib/supabase/cliente';
 import { toast, Toaster } from 'react-hot-toast';
@@ -57,6 +84,21 @@ export default function AdminSuscripciones() {
   const [filtroEstado, setFiltroEstado] = useState<string>('');
   const [cargando, setCargando] = useState(true);
   const [paginaActual, setPaginaActual] = useState(1);
+
+  // Estados para gráficos y estadísticas mejoradas
+  const [datosDistribucionPlanes, setDatosDistribucionPlanes] = useState<any[]>([
+    { nombre: 'Básico', valor: 0, color: '#3B82F6' },
+    { nombre: 'Premium', valor: 0, color: '#8B5CF6' },
+    { nombre: 'Profesional', valor: 0, color: '#14B8A6' },
+  ]);
+  const [datosIngresosMensuales, setDatosIngresosMensuales] = useState<any[]>([]);
+  const [estadisticasResumen, setEstadisticasResumen] = useState({
+    totalSuscripciones: 0,
+    suscripcionesActivas: 0,
+    suscripcionesCanceladas: 0,
+    ingresosMensuales: 0,
+    cambioHoy: 0,
+  });
 
   useEffect(() => {
     cargarSuscripciones();
@@ -117,6 +159,52 @@ export default function AdminSuscripciones() {
         total,
         totalPaginas,
       });
+
+      // Calcular estadísticas de resumen
+      const activas = (suscripcionesFormateadas || []).filter(
+        (s: any) => s.estado === 'activa'
+      ).length;
+      const canceladas = (suscripcionesFormateadas || []).filter(
+        (s: any) => s.estado === 'cancelada' || s.estado === 'vencida'
+      ).length;
+      const ingresos = (suscripcionesFormateadas || [])
+        .filter((s: any) => s.estado === 'activa' && s.periodo === 'mensual')
+        .reduce((sum: number, s: any) => sum + s.precio, 0);
+
+      // Calcular distribución por planes
+      const basico = (suscripcionesFormateadas || []).filter(
+        (s: any) => s.plan === 'basico'
+      ).length;
+      const premium = (suscripcionesFormateadas || []).filter(
+        (s: any) => s.plan === 'premium'
+      ).length;
+      const profesional = (suscripcionesFormateadas || []).filter(
+        (s: any) => s.plan === 'profesional'
+      ).length;
+
+      setDatosDistribucionPlanes([
+        { nombre: 'Básico', valor: basico, color: '#3B82F6' },
+        { nombre: 'Premium', valor: premium, color: '#8B5CF6' },
+        { nombre: 'Profesional', valor: profesional, color: '#14B8A6' },
+      ]);
+
+      setEstadisticasResumen({
+        totalSuscripciones: total || 0,
+        suscripcionesActivas: activas,
+        suscripcionesCanceladas: canceladas,
+        ingresosMensuales: Math.round(ingresos),
+        cambioHoy: 2, // Simular cambio
+      });
+
+      // Simular ingresos por mes (o cargar desde RPC)
+      setDatosIngresosMensuales([
+        { mes: 'Ene', ingresos: 45000 },
+        { mes: 'Feb', ingresos: 52000 },
+        { mes: 'Mar', ingresos: 48000 },
+        { mes: 'Abr', ingresos: 61000 },
+        { mes: 'May', ingresos: 55000 },
+        { mes: 'Jun', ingresos: Math.round(ingresos) },
+      ]);
     } catch (error) {
       console.error('Error al cargar suscripciones:', error);
       toast.error('Error al cargar suscripciones');
