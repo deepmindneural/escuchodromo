@@ -28,7 +28,7 @@ interface ReservarCitaRequest {
   profesional_id: string
   fecha_hora: string // ISO 8601
   duracion: number // minutos (30 o 60)
-  modalidad: 'VIRTUAL' | 'PRESENCIAL'
+  modalidad: 'virtual' | 'presencial' | 'VIRTUAL' | 'PRESENCIAL'
   motivo_consulta: string
 }
 
@@ -146,9 +146,10 @@ serve(async (req) => {
       )
     }
 
-    if (!['VIRTUAL', 'PRESENCIAL'].includes(modalidad)) {
+    const modalidadUpper = modalidad.toUpperCase()
+    if (!['VIRTUAL', 'PRESENCIAL'].includes(modalidadUpper)) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Modalidad debe ser VIRTUAL o PRESENCIAL' }),
+        JSON.stringify({ success: false, error: 'Modalidad debe ser virtual o presencial' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -255,42 +256,47 @@ serve(async (req) => {
       )
     }
 
-    // ✅ 11. ENCRIPTAR MOTIVO DE CONSULTA
-    if (motivo_consulta) {
-      const encryptionKey = Deno.env.get('PHI_ENCRYPTION_KEY') ?? 'default-key-change-in-production'
+    // ✅ 11. ENCRIPTAR MOTIVO DE CONSULTA (opcional)
+    try {
+      if (motivo_consulta) {
+        const encryptionKey = Deno.env.get('PHI_ENCRYPTION_KEY') ?? 'default-key-change-in-production'
 
-      const { error: encryptError } = await supabase.rpc('encriptar_nota_sesion', {
-        p_cita_id: nuevaCita.id,
-        p_notas_profesional: '', // Vacío inicialmente
-        p_motivo_consulta: motivo_consulta,
-        p_clave: encryptionKey
-      })
-
-      if (encryptError) {
-        console.error('Error encriptando motivo de consulta:', encryptError)
-        // No fallar la operación, pero registrar
+        await supabase.rpc('encriptar_nota_sesion', {
+          p_cita_id: nuevaCita.id,
+          p_notas_profesional: '', // Vacío inicialmente
+          p_motivo_consulta: motivo_consulta,
+          p_clave: encryptionKey
+        })
       }
+    } catch (encryptError) {
+      console.error('Error encriptando motivo (no crítico):', encryptError)
+      // No fallar la operación
     }
 
-    // ✅ 12. REGISTRAR AUDITORÍA
-    const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'
-    const userAgent = req.headers.get('user-agent') || 'unknown'
-    const duracionMs = Date.now() - tiempoInicio
+    // ✅ 12. REGISTRAR AUDITORÍA (opcional)
+    try {
+      const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'
+      const userAgent = req.headers.get('user-agent') || 'unknown'
+      const duracionMs = Date.now() - tiempoInicio
 
-    await supabase.rpc('registrar_acceso_phi', {
-      p_usuario_id: usuario.id,
-      p_tipo_recurso: 'cita',
-      p_recurso_id: nuevaCita.id,
-      p_accion: 'crear',
-      p_ip_address: ipAddress,
-      p_user_agent: userAgent,
-      p_endpoint: '/functions/v1/reservar-cita',
-      p_metodo_http: 'POST',
-      p_justificacion: 'Reserva de cita por paciente',
-      p_exitoso: true,
-      p_codigo_http: 201,
-      p_duracion_ms: duracionMs
-    })
+      await supabase.rpc('registrar_acceso_phi', {
+        p_usuario_id: usuario.id,
+        p_tipo_recurso: 'cita',
+        p_recurso_id: nuevaCita.id,
+        p_accion: 'crear',
+        p_ip_address: ipAddress,
+        p_user_agent: userAgent,
+        p_endpoint: '/functions/v1/reservar-cita',
+        p_metodo_http: 'POST',
+        p_justificacion: 'Reserva de cita por paciente',
+        p_exitoso: true,
+        p_codigo_http: 201,
+        p_duracion_ms: duracionMs
+      })
+    } catch (auditError) {
+      console.error('Error en auditoría (no crítico):', auditError)
+      // No fallar la operación
+    }
 
     // ✅ 13. RESPONSE CON DATOS MÍNIMOS (no incluir PHI)
     const response: ReservarCitaResponse = {
