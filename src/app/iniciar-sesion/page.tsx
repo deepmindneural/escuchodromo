@@ -57,24 +57,35 @@ export default function PaginaIniciarSesion() {
     setCargando(true);
 
     try {
+      console.log('🔐 Intentando login con:', formData.email);
       const resultado = await iniciarSesion({
         email: formData.email,
         password: formData.contrasena,
+      });
+
+      console.log('✅ Login exitoso - Resultado:', {
+        user_id: resultado.user?.id,
+        rol: resultado.rol
       });
 
       toast.success('¡Bienvenido de vuelta!');
 
       // Redirigir según el rol del usuario
       setTimeout(() => {
+        console.log('🚦 Redirigiendo según rol:', resultado.rol);
         if (resultado.rol === 'ADMIN') {
+          console.log('➡️ Redirigiendo a /admin');
           router.push('/admin');
         } else if (resultado.rol === 'TERAPEUTA') {
+          console.log('➡️ Redirigiendo a /profesional/dashboard');
           router.push('/profesional/dashboard');
         } else {
+          console.log('➡️ Redirigiendo a /dashboard');
           router.push('/dashboard');
         }
       }, 1000);
     } catch (error) {
+      console.error('❌ Error en login:', error);
       toast.error(error instanceof Error ? error.message : 'Error al iniciar sesión');
     } finally {
       setCargando(false);

@@ -83,15 +83,28 @@ export async function iniciarSesion({ email, password }: CredencialesLogin) {
   // Obtener rol del usuario desde la tabla Usuario
   let rol: string | null = null
   if (data.user) {
-    const { data: usuario } = await supabase
+    console.log('🔍 iniciarSesion - Obteniendo rol para auth_id:', data.user.id);
+
+    const { data: usuario, error: rolError } = await supabase
       .from('Usuario')
-      .select('rol')
+      .select('rol, email, nombre')
       .eq('auth_id', data.user.id)
       .single()
+
+    if (rolError) {
+      console.error('❌ Error al obtener rol:', rolError);
+    } else {
+      console.log('✅ Usuario encontrado:', {
+        email: usuario.email,
+        nombre: usuario.nombre,
+        rol: usuario.rol
+      });
+    }
 
     rol = usuario?.rol || null
   }
 
+  console.log('🚀 iniciarSesion completado - Rol:', rol);
   return { ...data, rol }
 }
 

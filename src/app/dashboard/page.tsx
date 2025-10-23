@@ -29,8 +29,24 @@ export default function PaginaDashboard() {
   const cargando = cargandoAuth || cargandoPerfil;
   const usuario = perfil;
 
+  // DEBUG: Logs para depuración
+  useEffect(() => {
+    console.log('🔍 DEBUG Dashboard - Estado actual:', {
+      cargandoAuth,
+      cargandoPerfil,
+      authUsuario: authUsuario?.id,
+      perfil: perfil ? {
+        id: perfil.id,
+        email: perfil.email,
+        nombre: perfil.nombre,
+        rol: perfil.rol
+      } : null
+    });
+  }, [cargandoAuth, cargandoPerfil, authUsuario, perfil]);
+
   useEffect(() => {
     if (!cargandoAuth && !authUsuario) {
+      console.log('❌ No hay usuario autenticado, redirigiendo a login');
       router.push('/iniciar-sesion');
     }
   }, [authUsuario, cargandoAuth, router]);
@@ -38,10 +54,15 @@ export default function PaginaDashboard() {
   // Redirigir según el rol del usuario
   useEffect(() => {
     if (!cargando && usuario) {
+      console.log('🚦 Verificando redirección por rol:', usuario.rol);
       if (usuario.rol === 'ADMIN') {
+        console.log('➡️ Redirigiendo ADMIN a /admin');
         router.push('/admin');
       } else if (usuario.rol === 'TERAPEUTA') {
+        console.log('➡️ Redirigiendo TERAPEUTA a /profesional/dashboard');
         router.push('/profesional/dashboard');
+      } else {
+        console.log('✅ Usuario USUARIO permanece en /dashboard');
       }
     }
   }, [usuario, cargando, router]);

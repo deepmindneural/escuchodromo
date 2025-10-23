@@ -59,15 +59,29 @@ export function usePerfilUsuario() {
 
     async function cargarPerfil() {
       try {
+        console.log('🔍 usePerfilUsuario - Cargando perfil para auth_id:', usuario!.id);
+
         const { data, error } = await supabase
           .from('Usuario')
           .select('*')
           .eq('auth_id', usuario!.id)
           .single()
 
-        if (error) throw error
+        if (error) {
+          console.error('❌ Error al cargar perfil:', error);
+          throw error;
+        }
+
+        console.log('✅ Perfil cargado:', {
+          id: data.id,
+          email: data.email,
+          nombre: data.nombre,
+          rol: data.rol
+        });
+
         setPerfil(data)
       } catch (err) {
+        console.error('❌ Error en cargarPerfil:', err);
         setError(err as Error)
       } finally {
         setCargando(false)
