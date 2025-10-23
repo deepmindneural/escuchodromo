@@ -146,8 +146,9 @@ serve(async (req) => {
       )
     }
 
-    const modalidadUpper = modalidad.toUpperCase()
-    if (!['VIRTUAL', 'PRESENCIAL'].includes(modalidadUpper)) {
+    // Normalizar modalidad a minúsculas (constraint de DB requiere lowercase)
+    const modalidadNormalizada = modalidad.toLowerCase()
+    if (!['virtual', 'presencial'].includes(modalidadNormalizada)) {
       return new Response(
         JSON.stringify({ success: false, error: 'Modalidad debe ser virtual o presencial' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -241,7 +242,7 @@ serve(async (req) => {
         fecha_hora: fecha_hora,
         duracion: duracion,
         estado: 'pendiente', // Profesional debe confirmar
-        modalidad: modalidad,
+        modalidad: modalidadNormalizada, // Usar valor normalizado a minúsculas
         motivo_consulta: motivo_consulta || 'Sin especificar',
         recordatorio_enviado: false,
       })
@@ -321,11 +322,16 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error inesperado en reservar-cita:', error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorStack = error instanceof Error ? error.stack : ''
+    console.error('Stack trace:', errorStack)
 
     return new Response(
       JSON.stringify({
         success: false,
-        error: 'Error interno del servidor'
+        error: 'Error interno del servidor',
+        message: errorMessage,
+        stack: errorStack
       }),
       {
         status: 500,
