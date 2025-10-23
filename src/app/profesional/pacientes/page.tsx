@@ -55,7 +55,10 @@ export default function PaginaPacientesProfesional() {
 
   const verificarAutenticacion = async () => {
     try {
+      console.log('🔐 [verificarAutenticacion] Iniciando verificación...');
       const { data: { user } } = await supabase.auth.getUser();
+
+      console.log('👤 [verificarAutenticacion] Usuario autenticado:', user?.id);
 
       if (!user) {
         toast.error('Debes iniciar sesión');
@@ -70,37 +73,51 @@ export default function PaginaPacientesProfesional() {
         .eq('auth_id', user.id)
         .single();
 
+      console.log('📋 [verificarAutenticacion] Datos del usuario:', userData);
+      console.log('⚠️ [verificarAutenticacion] Error en query:', error);
+
       if (error || !userData || (userData.rol !== 'TERAPEUTA' && userData.rol !== 'ADMIN')) {
         toast.error('No tienes permisos para acceder a esta página');
         router.push('/dashboard');
         return;
       }
 
+      console.log('✅ [verificarAutenticacion] Estableciendo profesionalId:', userData.id);
       setProfesionalId(userData.id);
     } catch (error) {
-      console.error('Error verificando autenticación:', error);
+      console.error('❌ [verificarAutenticacion] Error:', error);
       toast.error('Error de autenticación');
       router.push('/iniciar-sesion');
     }
   };
 
   const cargarPacientes = async () => {
-    if (!profesionalId) return;
+    console.log('🏥 [cargarPacientes] Ejecutando con profesionalId:', profesionalId);
+
+    if (!profesionalId) {
+      console.log('⚠️ [cargarPacientes] No hay profesionalId, saliendo...');
+      return;
+    }
 
     try {
       setCargando(true);
+      console.log('📞 [cargarPacientes] Llamando a obtenerPacientesProfesional...');
 
       const { data, error } = await obtenerPacientesProfesional(profesionalId);
 
+      console.log('📦 [cargarPacientes] Respuesta recibida - data:', data);
+      console.log('⚠️ [cargarPacientes] Respuesta recibida - error:', error);
+
       if (error) {
-        console.error('Error obteniendo pacientes:', error);
+        console.error('❌ [cargarPacientes] Error obteniendo pacientes:', error);
         toast.error('Error al cargar los pacientes');
         return;
       }
 
+      console.log('✅ [cargarPacientes] Estableciendo pacientes, cantidad:', data?.length || 0);
       setPacientes(data || []);
     } catch (error) {
-      console.error('Error en cargarPacientes:', error);
+      console.error('❌ [cargarPacientes] Error inesperado:', error);
       toast.error('Error inesperado al cargar pacientes');
     } finally {
       setCargando(false);
