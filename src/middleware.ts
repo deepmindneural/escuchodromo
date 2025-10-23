@@ -112,6 +112,7 @@ export async function middleware(request: NextRequest) {
       '/pagos',
       '/pago',
       '/suscripcion',
+      '/mis-citas',
     ]
 
     const tieneAcceso = rutasPermitidas.some(ruta => pathname.startsWith(ruta))
