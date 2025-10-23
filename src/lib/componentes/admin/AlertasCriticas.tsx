@@ -83,14 +83,14 @@ export default function AlertasCriticas({ onAlertaRevisada }: AlertasCriticasPro
       hace7Dias.setDate(hace7Dias.getDate() - 7);
 
       const { data: resultados, error } = await supabase
-        .from('Resultado')
+        .from('Evaluacion')
         .select(`
           id,
           usuario_id,
           puntuacion,
           severidad,
           creado_en,
-          Prueba:prueba_id (
+          Test:test_id (
             id,
             codigo,
             nombre,
@@ -114,7 +114,7 @@ export default function AlertasCriticas({ onAlertaRevisada }: AlertasCriticasPro
 
       // Procesar y clasificar alertas
       const alertasClasificadas: AlertaCritica[] = (resultados || []).map((resultado: any) => {
-        const prueba = resultado.Prueba;
+        const test = resultado.Test;
         const usuario = resultado.Usuario;
         const diasDesde = Math.floor(
           (Date.now() - new Date(resultado.creado_en).getTime()) / (1000 * 60 * 60 * 24)
@@ -124,7 +124,7 @@ export default function AlertasCriticas({ onAlertaRevisada }: AlertasCriticasPro
         let tipo: AlertaCritica['tipo'] = 'moderadamente_severa';
         let accionRecomendada = 'Se recomienda seguimiento profesional';
 
-        if (prueba.codigo === 'PHQ-9') {
+        if (test?.codigo === 'PHQ-9') {
           if (resultado.puntuacion >= 20) {
             tipo = 'riesgo_suicidio';
             accionRecomendada = 'URGENTE: Contacto inmediato requerido. Posible ideación suicida';
@@ -132,7 +132,7 @@ export default function AlertasCriticas({ onAlertaRevisada }: AlertasCriticasPro
             tipo = 'depresion_severa';
             accionRecomendada = 'Contactar al usuario y asignar terapeuta en las próximas 24 horas';
           }
-        } else if (prueba.codigo === 'GAD-7') {
+        } else if (test?.codigo === 'GAD-7') {
           if (resultado.puntuacion >= 15) {
             tipo = 'ansiedad_severa';
             accionRecomendada = 'Ansiedad severa detectada. Asignar terapeuta especializado en ansiedad';
@@ -149,8 +149,8 @@ export default function AlertasCriticas({ onAlertaRevisada }: AlertasCriticasPro
           },
           evaluacion: {
             id: resultado.id,
-            tipo: prueba.nombre,
-            codigo: prueba.codigo,
+            tipo: test?.nombre || 'Evaluación',
+            codigo: test?.codigo || 'DESCONOCIDO',
             puntuacion: resultado.puntuacion,
             severidad: resultado.severidad,
             fecha: resultado.creado_en,

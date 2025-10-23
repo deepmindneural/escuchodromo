@@ -77,7 +77,8 @@
       "mcp__supabase__apply_migration",
       "Bash(vercel --prod --yes)",
       "mcp__supabase__get_logs",
-      "mcp__supabase__list_migrations"
+      "mcp__supabase__list_migrations",
+      "Bash(psql:*)"
     ],
     "deny": []
   }

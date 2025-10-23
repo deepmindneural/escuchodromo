@@ -168,15 +168,24 @@ export default function PaginaAdmin() {
 
       // Para distribución de evaluaciones, necesitamos hacer queries manuales
       // ya que no hay RPC específico para esto
-      const { data: evaluacionesPhq9, count: countPhq9 } = await supabase
-        .from('Evaluacion')
-        .select('*', { count: 'exact', head: true })
-        .eq('test_codigo', 'PHQ-9');
+      // Primero obtener los IDs de los tests PHQ-9 y GAD-7
+      const { data: tests } = await supabase
+        .from('Test')
+        .select('id, codigo')
+        .in('codigo', ['PHQ-9', 'GAD-7']);
 
-      const { data: evaluacionesGad7, count: countGad7 } = await supabase
+      const phq9Test = tests?.find(t => t.codigo === 'PHQ-9');
+      const gad7Test = tests?.find(t => t.codigo === 'GAD-7');
+
+      const { count: countPhq9 } = await supabase
         .from('Evaluacion')
         .select('*', { count: 'exact', head: true })
-        .eq('test_codigo', 'GAD-7');
+        .eq('test_id', phq9Test?.id || '00000000-0000-0000-0000-000000000000');
+
+      const { count: countGad7 } = await supabase
+        .from('Evaluacion')
+        .select('*', { count: 'exact', head: true })
+        .eq('test_id', gad7Test?.id || '00000000-0000-0000-0000-000000000000');
 
       const totalEvaluaciones = evaluacionesRealizadas || 0;
       const phq9Count = countPhq9 || 0;
@@ -190,7 +199,7 @@ export default function PaginaAdmin() {
       ]);
 
       // Para severidad, también necesitamos query manual
-      const { data: resultadosConSeveridad } = await supabase
+      const { data: evaluacionesConSeveridad } = await supabase
         .from('Evaluacion')
         .select('severidad');
 
@@ -202,8 +211,8 @@ export default function PaginaAdmin() {
         'severa': 0
       };
 
-      resultadosConSeveridad?.forEach((r: any) => {
-        const sev = r.severidad?.toLowerCase();
+      evaluacionesConSeveridad?.forEach((e: any) => {
+        const sev = e.severidad?.toLowerCase();
         if (sev && distribucionSeveridad[sev] !== undefined) {
           distribucionSeveridad[sev]++;
         }
