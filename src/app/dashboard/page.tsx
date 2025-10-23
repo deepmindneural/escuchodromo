@@ -29,43 +29,8 @@ export default function PaginaDashboard() {
   const cargando = cargandoAuth || cargandoPerfil;
   const usuario = perfil;
 
-  // DEBUG: Logs para depuración
-  useEffect(() => {
-    console.log('🔍 DEBUG Dashboard - Estado actual:', {
-      cargandoAuth,
-      cargandoPerfil,
-      authUsuario: authUsuario?.id,
-      perfil: perfil ? {
-        id: perfil.id,
-        email: perfil.email,
-        nombre: perfil.nombre,
-        rol: perfil.rol
-      } : null
-    });
-  }, [cargandoAuth, cargandoPerfil, authUsuario, perfil]);
-
-  useEffect(() => {
-    if (!cargandoAuth && !authUsuario) {
-      console.log('❌ No hay usuario autenticado, redirigiendo a login');
-      router.push('/iniciar-sesion');
-    }
-  }, [authUsuario, cargandoAuth, router]);
-
-  // Redirigir según el rol del usuario
-  useEffect(() => {
-    if (!cargando && usuario) {
-      console.log('🚦 Verificando redirección por rol:', usuario.rol);
-      if (usuario.rol === 'ADMIN') {
-        console.log('➡️ Redirigiendo ADMIN a /admin');
-        router.push('/admin');
-      } else if (usuario.rol === 'TERAPEUTA') {
-        console.log('➡️ Redirigiendo TERAPEUTA a /profesional/dashboard');
-        router.push('/profesional/dashboard');
-      } else {
-        console.log('✅ Usuario USUARIO permanece en /dashboard');
-      }
-    }
-  }, [usuario, cargando, router]);
+  // El middleware ya maneja las redirecciones de autenticación y rol
+  // Solo mostrar loading mientras carga
 
   useEffect(() => {
     if (usuario?.id) {
@@ -120,12 +85,25 @@ export default function PaginaDashboard() {
     }
   };
 
-  if (cargando) {
+  // Mostrar loading mientras carga O si no hay usuario (el middleware redirigirá)
+  if (cargando || !usuario) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Solo renderizar si es USUARIO (el middleware ya bloqueó otros roles)
+  if (usuario.rol !== 'USUARIO') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Redirigiendo...</p>
         </div>
       </div>
     );
@@ -244,9 +222,8 @@ export default function PaginaDashboard() {
 
         <h2 className="text-2xl font-bold text-gray-900 mb-6">Accesos Rápidos</h2>
 
-        {/* Dashboard específico por rol */}
-        {usuario?.rol === 'USUARIO' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Dashboard para USUARIO */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <Link href="/chat">
               <motion.div
                 whileHover={{ scale: 1.02, y: -5 }}
@@ -426,134 +403,7 @@ export default function PaginaDashboard() {
                 </p>
               </motion.div>
             </Link>
-          </div>
-        )}
-
-        {/* Dashboard para TERAPEUTA */}
-        {usuario?.rol === 'TERAPEUTA' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Link href="/profesional/pacientes">
-              <motion.div
-                whileHover={{ scale: 1.02, y: -5 }}
-                whileTap={{ scale: 0.98 }}
-                className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition-all cursor-pointer border-2 border-transparent hover:border-teal-200"
-              >
-                <div className="w-14 h-14 bg-gradient-to-br from-teal-100 to-cyan-100 rounded-xl flex items-center justify-center mb-4">
-                  <FaUsers className="text-3xl text-teal-600" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
-                  Mis Pacientes
-                </h3>
-                <p className="text-gray-600 text-sm">
-                  Gestiona y supervisa a tus pacientes asignados
-                </p>
-              </motion.div>
-            </Link>
-
-            <Link href="/profesional/dashboard">
-              <motion.div
-                whileHover={{ scale: 1.02, y: -5 }}
-                whileTap={{ scale: 0.98 }}
-                className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition-all cursor-pointer border-2 border-transparent hover:border-blue-200"
-              >
-                <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center mb-4">
-                  <FaFileAlt className="text-3xl text-blue-600" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
-                  Dashboard Profesional
-                </h3>
-                <p className="text-gray-600 text-sm">
-                  Revisa métricas, evaluaciones y progreso de pacientes
-                </p>
-              </motion.div>
-            </Link>
-
-            <Link href="/evaluaciones">
-              <motion.div
-                whileHover={{ scale: 1.02, y: -5 }}
-                whileTap={{ scale: 0.98 }}
-                className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition-all cursor-pointer border-2 border-transparent hover:border-purple-200"
-              >
-                <div className="w-14 h-14 bg-gradient-to-br from-purple-100 to-pink-100 rounded-xl flex items-center justify-center mb-4">
-                  <FaClipboardList className="text-3xl text-purple-600" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
-                  Herramientas de Evaluación
-                </h3>
-                <p className="text-gray-600 text-sm">
-                  Accede a pruebas psicológicas profesionales
-                </p>
-              </motion.div>
-            </Link>
-
-            <Link href="/chat">
-              <motion.div
-                whileHover={{ scale: 1.02, y: -5 }}
-                whileTap={{ scale: 0.98 }}
-                className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition-all cursor-pointer border-2 border-transparent hover:border-green-200"
-              >
-                <div className="w-14 h-14 bg-gradient-to-br from-green-100 to-green-200 rounded-xl flex items-center justify-center mb-4">
-                  <FaRobot className="text-3xl text-green-600" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
-                  Supervisar IA
-                </h3>
-                <p className="text-gray-600 text-sm">
-                  Revisa conversaciones y ajusta parámetros de IA
-                </p>
-              </motion.div>
-            </Link>
-
-            <Link href="/profesional/calendario">
-              <motion.div
-                whileHover={{ scale: 1.02, y: -5 }}
-                whileTap={{ scale: 0.98 }}
-                className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition-all cursor-pointer border-2 border-transparent hover:border-orange-200"
-              >
-                <div className="w-14 h-14 bg-gradient-to-br from-orange-100 to-orange-200 rounded-xl flex items-center justify-center mb-4">
-                  <FaCalendar className="text-3xl text-orange-600" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
-                  Calendario
-                </h3>
-                <p className="text-gray-600 text-sm">
-                  Programa y gestiona sesiones con pacientes
-                </p>
-              </motion.div>
-            </Link>
-
-            <Link href="/perfil">
-              <motion.div
-                whileHover={{ scale: 1.02, y: -5 }}
-                whileTap={{ scale: 0.98 }}
-                className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition-all cursor-pointer border-2 border-transparent hover:border-indigo-200"
-              >
-                <div className="w-14 h-14 bg-gradient-to-br from-indigo-100 to-indigo-200 rounded-xl flex items-center justify-center mb-4">
-                  <FaUserMd className="text-3xl text-indigo-600" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
-                  Mi Perfil
-                </h3>
-                <p className="text-gray-600 text-sm">
-                  Gestiona tu información profesional
-                </p>
-              </motion.div>
-            </Link>
-          </div>
-        )}
-
-        {usuario?.rol === 'ADMIN' && (
-          <div className="mt-12">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">
-              Administración
-            </h3>
-            <Link href="/admin">
-              <Boton>
-                Ir al Panel de Administración
-              </Boton>
-            </Link>
-          </div>
-        )}
+        </div>
 
         <div className="mt-12 bg-blue-50 rounded-lg p-6 mb-8">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
