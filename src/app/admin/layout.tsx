@@ -16,6 +16,8 @@ import {
   X,
   FileText,
   UserCheck,
+  Package,
+  DollarSign,
 } from 'lucide-react';
 import { Button } from '../../lib/componentes/ui/button';
 import { cn } from '../../lib/utilidades';
@@ -34,7 +36,9 @@ const menuItems = [
   { icon: FileText, label: 'Historiales', href: '/admin/historiales' },
   { icon: Users, label: 'Usuarios', href: '/admin/usuarios' },
   { icon: UserCheck, label: 'Profesionales', href: '/admin/profesionales' },
+  { icon: Package, label: 'Planes', href: '/admin/planes' },
   { icon: CreditCard, label: 'Suscripciones', href: '/admin/suscripciones' },
+  { icon: DollarSign, label: 'Pagos', href: '/admin/pagos' },
 ];
 
 export default function AdminLayout({
