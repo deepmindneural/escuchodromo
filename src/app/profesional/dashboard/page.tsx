@@ -12,6 +12,7 @@ import {
   HeartIcon,
   TrophyIcon,
   SparklesIcon,
+  ArrowTrendingUpIcon,
 } from '@heroicons/react/24/outline';
 import { GridMetricas, type Metrica } from '@/lib/componentes/GridMetricas';
 import { TablaPacientes, type Paciente } from '@/lib/componentes/TablaPacientes';
@@ -325,6 +326,29 @@ export default function DashboardProfesional() {
     router.push(`/chat?cita=${citaId}`);
   };
 
+  // Animaciones
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.4,
+        ease: 'easeOut',
+      },
+    },
+  };
+
   if (cargando) {
     return (
       <div
@@ -354,7 +378,7 @@ export default function DashboardProfesional() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-calma-50 via-white to-esperanza-50">
+    <div className="min-h-screen bg-gradient-to-br from-calma-50/50 via-white to-esperanza-50/50">
       <Toaster position="top-right" />
 
       {/* Modal de confirmación de cancelación */}
@@ -375,62 +399,97 @@ export default function DashboardProfesional() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="bg-gradient-to-r from-calma-600 via-calma-500 to-esperanza-500 text-white shadow-xl"
+        className="relative bg-gradient-to-r from-calma-600 via-calma-500 to-esperanza-500 text-white shadow-2xl overflow-hidden"
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                  <HeartIcon className="w-7 h-7 text-white" aria-hidden="true" />
+        {/* Patrón decorativo de fondo */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-0 left-0 w-64 h-64 bg-white rounded-full mix-blend-overlay filter blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-0 right-0 w-96 h-96 bg-white rounded-full mix-blend-overlay filter blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+            <div className="flex-1">
+              <div className="flex items-center gap-4 mb-3">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+                  className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-lg"
+                >
+                  <HeartIcon className="w-8 h-8 text-white" aria-hidden="true" />
+                </motion.div>
+                <div>
+                  <motion.h1
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="text-3xl md:text-4xl font-bold tracking-tight"
+                  >
+                    ¡Hola, {nombreProfesional}!
+                  </motion.h1>
+                  <motion.p
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className="text-white/90 text-base md:text-lg mt-1"
+                  >
+                    Bienvenido a tu espacio profesional de apoyo terapéutico
+                  </motion.p>
                 </div>
-                <h1 className="text-3xl md:text-4xl font-bold">
-                  ¡Hola, {nombreProfesional}! 👋
-                </h1>
               </div>
-              <p className="text-white/90 text-lg ml-15">
-                Bienvenido a tu espacio profesional de apoyo terapéutico
-              </p>
-              <div className="flex items-center gap-2 mt-3 ml-15">
-                <SparklesIcon className="w-5 h-5 text-yellow-300" aria-hidden="true" />
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="flex items-center gap-2 ml-18"
+              >
+                <SparklesIcon className="w-5 h-5 text-yellow-300 animate-pulse" aria-hidden="true" />
                 <span className="text-sm text-white/80">
                   Gestiona tus pacientes y citas programadas
                 </span>
-              </div>
+              </motion.div>
             </div>
+
             <motion.button
-              whileHover={{ scale: 1.05 }}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.6, type: 'spring' }}
+              whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => router.push('/profesional/perfil')}
-              className="px-6 py-3 bg-white text-calma-700 font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-calma-600"
+              className="px-6 py-3.5 bg-white text-calma-700 font-semibold rounded-xl shadow-xl hover:shadow-2xl transition-all focus:outline-none focus:ring-4 focus:ring-white/50 flex items-center gap-2 group"
             >
-              Ver mi perfil
+              <span>Ver mi perfil</span>
+              <ArrowTrendingUpIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </motion.button>
           </div>
         </div>
       </motion.div>
 
       {/* Contenido principal */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+      >
         <div className="space-y-8">
           {/* Citas de Hoy - Banner prominente */}
           {citasHoy.length > 0 && (
-            <CitasDelDia
-              citas={citasHoy}
-              cargando={false}
-              onIniciarSesion={manejarIniciarSesion}
-              onVerPaciente={manejarClickPaciente}
-              onCancelar={manejarCancelarCita}
-            />
+            <motion.div variants={itemVariants}>
+              <CitasDelDia
+                citas={citasHoy}
+                cargando={false}
+                onIniciarSesion={manejarIniciarSesion}
+                onVerPaciente={manejarClickPaciente}
+                onCancelar={manejarCancelarCita}
+              />
+            </motion.div>
           )}
 
-          {/* Métricas con animación */}
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.5 }}
-            aria-labelledby="metricas-titulo"
-          >
+          {/* Métricas con animación mejorada */}
+          <motion.section variants={itemVariants} aria-labelledby="metricas-titulo">
             <h2 id="metricas-titulo" className="sr-only">
               Métricas principales
             </h2>
@@ -438,12 +497,10 @@ export default function DashboardProfesional() {
           </motion.section>
 
           {/* Grid de 2 columnas: Tabla de pacientes + Próximas citas */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
             {/* Tabla de pacientes (2/3 del ancho) */}
             <motion.section
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2, duration: 0.5 }}
+              variants={itemVariants}
               className="lg:col-span-2"
               aria-labelledby="pacientes-titulo"
             >
@@ -458,12 +515,7 @@ export default function DashboardProfesional() {
             </motion.section>
 
             {/* Próximas citas (1/3 del ancho) */}
-            <motion.section
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
-              aria-labelledby="citas-titulo"
-            >
+            <motion.section variants={itemVariants} aria-labelledby="citas-titulo">
               <h2 id="citas-titulo" className="sr-only">
                 Próximas citas
               </h2>
@@ -480,71 +532,82 @@ export default function DashboardProfesional() {
 
           {/* Acciones rápidas con diseño mejorado */}
           <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.5 }}
-            className="bg-white rounded-2xl shadow-lg border border-calma-100 p-8 hover:shadow-xl transition-shadow"
+            variants={itemVariants}
+            className="relative bg-white rounded-2xl shadow-xl border border-gray-100 p-8 overflow-hidden group hover:shadow-2xl transition-all duration-300"
             aria-labelledby="acciones-titulo"
           >
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-gradient-to-br from-calma-500 to-esperanza-500 rounded-lg flex items-center justify-center">
-                <TrophyIcon className="w-6 h-6 text-white" aria-hidden="true" />
+            {/* Gradiente decorativo de fondo */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-calma-100 to-esperanza-100 rounded-full filter blur-3xl opacity-50 group-hover:opacity-70 transition-opacity"></div>
+
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 bg-gradient-to-br from-calma-500 to-esperanza-500 rounded-xl flex items-center justify-center shadow-lg">
+                  <TrophyIcon className="w-6 h-6 text-white" aria-hidden="true" />
+                </div>
+                <h3 id="acciones-titulo" className="text-2xl font-bold text-gray-900">
+                  Acciones rápidas
+                </h3>
               </div>
-              <h3 id="acciones-titulo" className="text-xl font-bold text-gray-900">
-                Acciones rápidas
-              </h3>
-            </div>
-            <div className="flex flex-wrap gap-4">
-              <motion.button
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => router.push('/profesional/calendario')}
-                className="px-6 py-3.5 bg-gradient-to-r from-calma-600 to-calma-700 text-white rounded-xl hover:from-calma-700 hover:to-calma-800 font-semibold shadow-md hover:shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-calma-500 focus:ring-offset-2 flex items-center gap-2"
-              >
-                <CalendarDaysIcon className="w-5 h-5" />
-                Ver calendario completo
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => router.push('/profesional/pacientes')}
-                className="px-6 py-3.5 bg-white text-calma-700 border-2 border-calma-600 rounded-xl hover:bg-calma-50 font-semibold shadow-md hover:shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-calma-500 focus:ring-offset-2 flex items-center gap-2"
-              >
-                <UserGroupIcon className="w-5 h-5" />
-                Gestionar pacientes
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => router.push('/profesional/disponibilidad')}
-                className="px-6 py-3.5 bg-white text-esperanza-700 border-2 border-esperanza-600 rounded-xl hover:bg-esperanza-50 font-semibold shadow-md hover:shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-esperanza-500 focus:ring-offset-2 flex items-center gap-2"
-              >
-                <ClockIcon className="w-5 h-5" />
-                Configurar disponibilidad
-              </motion.button>
+
+              <div className="flex flex-wrap gap-4">
+                <motion.button
+                  whileHover={{ scale: 1.02, y: -3 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => router.push('/profesional/calendario')}
+                  className="px-6 py-4 bg-gradient-to-r from-calma-600 to-calma-700 text-white rounded-xl hover:from-calma-700 hover:to-calma-800 font-semibold shadow-lg hover:shadow-xl transition-all focus:outline-none focus:ring-4 focus:ring-calma-300 flex items-center gap-3 group"
+                >
+                  <CalendarDaysIcon className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                  <span>Ver calendario completo</span>
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.02, y: -3 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => router.push('/profesional/pacientes')}
+                  className="px-6 py-4 bg-white text-calma-700 border-2 border-calma-600 rounded-xl hover:bg-calma-50 font-semibold shadow-lg hover:shadow-xl transition-all focus:outline-none focus:ring-4 focus:ring-calma-300 flex items-center gap-3 group"
+                >
+                  <UserGroupIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  <span>Gestionar pacientes</span>
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.02, y: -3 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => router.push('/profesional/disponibilidad')}
+                  className="px-6 py-4 bg-white text-esperanza-700 border-2 border-esperanza-600 rounded-xl hover:bg-esperanza-50 font-semibold shadow-lg hover:shadow-xl transition-all focus:outline-none focus:ring-4 focus:ring-esperanza-300 flex items-center gap-3 group"
+                >
+                  <ClockIcon className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                  <span>Configurar disponibilidad</span>
+                </motion.button>
+              </div>
             </div>
           </motion.section>
 
-          {/* Mensaje de soporte emocional */}
+          {/* Mensaje de soporte emocional mejorado */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.6, duration: 0.5 }}
-            className="bg-gradient-to-r from-esperanza-100 via-calma-50 to-serenidad-100 border-l-4 border-esperanza-500 rounded-xl p-6 shadow-md"
+            variants={itemVariants}
+            className="relative bg-gradient-to-r from-esperanza-100 via-calma-50 to-serenidad-100 border-l-4 border-esperanza-500 rounded-2xl p-8 shadow-lg overflow-hidden"
             role="complementary"
             aria-label="Mensaje de apoyo"
           >
-            <div className="flex items-start gap-4">
+            {/* Patrón decorativo */}
+            <div className="absolute top-0 right-0 w-40 h-40 bg-esperanza-200 rounded-full filter blur-3xl opacity-30"></div>
+
+            <div className="relative flex items-start gap-5">
               <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-esperanza-500 rounded-full flex items-center justify-center">
-                  <HeartIcon className="w-7 h-7 text-white" aria-hidden="true" />
-                </div>
+                <motion.div
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  className="w-14 h-14 bg-gradient-to-br from-esperanza-500 to-calma-500 rounded-2xl flex items-center justify-center shadow-lg"
+                >
+                  <HeartIcon className="w-8 h-8 text-white" aria-hidden="true" />
+                </motion.div>
               </div>
-              <div>
-                <h4 className="text-lg font-bold text-gray-900 mb-2">
+              <div className="flex-1">
+                <h4 className="text-xl font-bold text-gray-900 mb-3 flex items-center gap-2">
                   Gracias por tu dedicación
+                  <SparklesIcon className="w-5 h-5 text-esperanza-600" />
                 </h4>
-                <p className="text-gray-700 leading-relaxed">
+                <p className="text-gray-700 leading-relaxed text-base">
                   Tu trabajo como profesional de la salud mental es fundamental para el bienestar de tus pacientes.
                   Recuerda que también es importante cuidar de tu propio bienestar emocional. Si necesitas apoyo,
                   no dudes en contactar a nuestro equipo de supervisión.
@@ -553,7 +616,7 @@ export default function DashboardProfesional() {
             </div>
           </motion.div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
