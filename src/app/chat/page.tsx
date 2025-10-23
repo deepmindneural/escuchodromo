@@ -75,25 +75,24 @@ export default function PaginaChat() {
   }, [perfil?.id]);
 
   const cargarContextoUsuario = async () => {
-    if (!perfil?.id) return;
+    if (!perfil?.id || !usuario?.id) return;
 
     try {
-      // Cargar última evaluación
-      const { data: ultimaEvaluacion } = await supabase
-        .from('Resultado')
-        .select(`
-          puntuacion,
-          severidad,
-          creado_en,
-          Test (
-            nombre,
-            codigo
-          )
-        `)
-        .eq('usuario_id', perfil.id)
-        .order('creado_en', { ascending: false })
-        .limit(1)
-        .single();
+      // Cargar última evaluación usando función RPC
+      const { data: evaluacionData } = await supabase
+        .rpc('obtener_ultima_evaluacion_usuario', {
+          p_auth_id: usuario.id
+        });
+
+      const ultimaEvaluacion = evaluacionData && evaluacionData.length > 0 ? {
+        puntuacion: evaluacionData[0].puntuacion,
+        severidad: evaluacionData[0].severidad,
+        creado_en: evaluacionData[0].creado_en,
+        Test: {
+          nombre: evaluacionData[0].test_nombre,
+          codigo: evaluacionData[0].test_codigo
+        }
+      } : null;
 
       // Cargar registros de ánimo recientes
       const { data: registrosAnimo } = await supabase

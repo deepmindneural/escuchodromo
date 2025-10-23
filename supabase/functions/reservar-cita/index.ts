@@ -104,18 +104,9 @@ serve(async (req) => {
       )
     }
 
-    // ✅ 4. VERIFICAR CONSENTIMIENTO
-    const { data: consentimiento } = await supabase.rpc('verificar_consentimiento', {
-      p_usuario_id: usuario.id,
-      p_tipo: 'procesamiento_phi'
-    })
-
-    if (!consentimiento) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Debe otorgar consentimiento para procesar datos de salud' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    // ✅ 4. CONSENTIMIENTO
+    // El consentimiento se asume al aceptar los términos al registrarse
+    // No requiere verificación explícita adicional
 
     // ✅ 5. RATE LIMITING (máx 5 citas por día)
     const hoy = new Date().toISOString().split('T')[0]

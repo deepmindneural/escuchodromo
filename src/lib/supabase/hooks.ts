@@ -57,10 +57,14 @@ export function usePerfilUsuario() {
       return
     }
 
+    // Evitar cargas duplicadas si ya tenemos perfil del mismo usuario
+    if (perfil && perfil.auth_id === usuario.id) {
+      setCargando(false)
+      return
+    }
+
     async function cargarPerfil() {
       try {
-        console.log('🔍 usePerfilUsuario - Cargando perfil para auth_id:', usuario!.id);
-
         const { data, error } = await supabase
           .from('Usuario')
           .select('*')
@@ -68,20 +72,11 @@ export function usePerfilUsuario() {
           .single()
 
         if (error) {
-          console.error('❌ Error al cargar perfil:', error);
           throw error;
         }
 
-        console.log('✅ Perfil cargado:', {
-          id: data.id,
-          email: data.email,
-          nombre: data.nombre,
-          rol: data.rol
-        });
-
         setPerfil(data)
       } catch (err) {
-        console.error('❌ Error en cargarPerfil:', err);
         setError(err as Error)
       } finally {
         setCargando(false)
@@ -89,7 +84,7 @@ export function usePerfilUsuario() {
     }
 
     cargarPerfil()
-  }, [usuario, supabase])
+  }, [usuario?.id]) // Solo depender del ID del usuario, no del objeto completo
 
   return { perfil, cargando, error }
 }
