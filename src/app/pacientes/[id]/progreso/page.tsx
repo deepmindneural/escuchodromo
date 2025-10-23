@@ -370,7 +370,7 @@ export default function PaginaProgresoPaciente() {
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Contenido principal */}
       <main role="main" aria-label="Contenido principal de progreso del paciente">
