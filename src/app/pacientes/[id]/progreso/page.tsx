@@ -80,25 +80,42 @@ export default function PaginaProgresoPaciente() {
         return;
       }
 
-      // Cargar datos del paciente
-      const { data: datosUsuario, error: errorUsuario } = await supabase
+      // Obtener el ID del profesional autenticado
+      const { data: usuarioActual } = await supabase
         .from('Usuario')
-        .select('id, nombre, apellido, email, PerfilUsuario(foto_perfil)')
-        .eq('id', pacienteId)
+        .select('id')
+        .eq('auth_id', session.user.id)
         .single();
 
-      if (errorUsuario || !datosUsuario) {
-        toast.error('No se pudo cargar la información del paciente');
+      if (!usuarioActual) {
+        toast.error('No se pudo verificar tu identidad');
+        router.push('/iniciar-sesion');
+        return;
+      }
+
+      const profesionalId = usuarioActual.id;
+
+      // Cargar datos del paciente usando la función de BD
+      const { data: datosPaciente, error: errorPaciente } = await supabase
+        .rpc('obtener_datos_paciente_para_profesional', {
+          p_profesional_id: profesionalId,
+          p_paciente_id: pacienteId
+        });
+
+      if (errorPaciente || !datosPaciente || datosPaciente.length === 0) {
+        toast.error('No tienes permiso para ver este paciente o no existe');
+        router.push('/profesional/pacientes');
         setCargando(false);
         return;
       }
 
+      const pacienteData = datosPaciente[0];
       setPaciente({
-        id: datosUsuario.id,
-        nombre: datosUsuario.nombre || '',
-        apellido: datosUsuario.apellido || '',
-        email: datosUsuario.email || '',
-        foto: datosUsuario.PerfilUsuario?.foto_perfil,
+        id: pacienteData.id,
+        nombre: pacienteData.nombre || '',
+        apellido: pacienteData.apellido || '',
+        email: pacienteData.email || '',
+        foto: pacienteData.imagen,
       });
 
       // Cargar evaluaciones reales
