@@ -115,13 +115,7 @@ serve(async (req) => {
         motivo_consulta,
         link_videollamada,
         creado_en,
-        profesional:profesional_id (
-          id,
-          nombre,
-          apellido,
-          email,
-          avatar_url
-        )
+        profesional_id
       `, { count: 'exact' })
       .eq('paciente_id', usuario.id)
 
@@ -163,11 +157,22 @@ serve(async (req) => {
       )
     }
 
-    // ✅ 7. OBTENER PERFILES PROFESIONALES (para especialidades y tarifa)
-    const profesionalesIds = citas?.map(c => (c as any).profesional?.id).filter(Boolean) || []
+    // ✅ 7. OBTENER DATOS DE PROFESIONALES
+    const profesionalesIds = citas?.map(c => (c as any).profesional_id).filter(Boolean) || []
 
+    let profesionales: any[] = []
     let perfilesProfesionales: any[] = []
+
     if (profesionalesIds.length > 0) {
+      // Obtener datos básicos de usuarios
+      const { data: usuarios } = await supabase
+        .from('Usuario')
+        .select('id, nombre, apellido, email, avatar_url')
+        .in('id', profesionalesIds)
+
+      profesionales = usuarios || []
+
+      // Obtener perfiles profesionales
       const { data: perfiles } = await supabase
         .from('PerfilProfesional')
         .select('usuario_id, especialidades, tarifa_por_sesion')
@@ -178,7 +183,8 @@ serve(async (req) => {
 
     // ✅ 8. COMBINAR DATOS
     const citasConDatos: CitaConProfesional[] = (citas || []).map((cita: any) => {
-      const perfilProf = perfilesProfesionales.find(p => p.usuario_id === cita.profesional?.id)
+      const profesional = profesionales.find(p => p.id === cita.profesional_id)
+      const perfilProf = perfilesProfesionales.find(p => p.usuario_id === cita.profesional_id)
 
       return {
         id: cita.id,
@@ -189,7 +195,12 @@ serve(async (req) => {
         motivo_consulta: cita.motivo_consulta,
         link_videollamada: cita.link_videollamada,
         creado_en: cita.creado_en,
-        profesional: cita.profesional,
+        profesional: profesional || {
+          id: cita.profesional_id,
+          nombre: 'Desconocido',
+          apellido: '',
+          email: '',
+        },
         perfil_profesional: perfilProf ? {
           especialidades: perfilProf.especialidades,
           tarifa_por_sesion: perfilProf.tarifa_por_sesion
