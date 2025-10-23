@@ -302,9 +302,9 @@ export default function AdminSuscripciones() {
             </div>
 
             <Select
-              value={filtroPlan}
+              value={filtroPlan || 'todos'}
               onValueChange={(value) => {
-                setFiltroPlan(value);
+                setFiltroPlan(value === 'todos' ? '' : value);
                 setPaginaActual(1);
               }}
             >
@@ -312,7 +312,7 @@ export default function AdminSuscripciones() {
                 <SelectValue placeholder="Todos los planes" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos los planes</SelectItem>
+                <SelectItem value="todos">Todos los planes</SelectItem>
                 <SelectItem value="basico">Básico</SelectItem>
                 <SelectItem value="premium">Premium</SelectItem>
                 <SelectItem value="profesional">Profesional</SelectItem>
@@ -320,9 +320,9 @@ export default function AdminSuscripciones() {
             </Select>
 
             <Select
-              value={filtroEstado}
+              value={filtroEstado || 'todos'}
               onValueChange={(value) => {
-                setFiltroEstado(value);
+                setFiltroEstado(value === 'todos' ? '' : value);
                 setPaginaActual(1);
               }}
             >
@@ -330,7 +330,7 @@ export default function AdminSuscripciones() {
                 <SelectValue placeholder="Todos los estados" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos los estados</SelectItem>
+                <SelectItem value="todos">Todos los estados</SelectItem>
                 <SelectItem value="activa">Activa</SelectItem>
                 <SelectItem value="cancelada">Cancelada</SelectItem>
                 <SelectItem value="pausada">Pausada</SelectItem>
