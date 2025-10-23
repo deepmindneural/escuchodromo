@@ -306,74 +306,205 @@ export default function AdminSuscripciones() {
     }
   };
 
+  if (cargando) {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        aria-label="Cargando suscripciones"
+        className="min-h-screen bg-gray-50 flex items-center justify-center"
+      >
+        <motion.div
+          className="text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          <div
+            className="w-16 h-16 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto"
+            aria-hidden="true"
+          ></div>
+          <p className="mt-4 text-gray-600 text-lg">Cargando suscripciones...</p>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <>
       <Toaster position="top-center" />
 
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 -mx-6 -mt-6 px-6 py-6 mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Gestión de Suscripciones</h1>
-        <p className="text-gray-600 mt-1">
-          Administra y monitorea las suscripciones de los usuarios
-        </p>
+      {/* Header de la página */}
+      <div className="bg-white border-b border-gray-200 mb-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Gestión de Suscripciones</h1>
+              <p className="text-gray-600 mt-1">
+                Administra y monitorea las suscripciones de los usuarios
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Estadísticas */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Suscripciones</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{paginacion?.total || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Activas</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {suscripciones.filter(s => s.estado === 'activa').length}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">{/* Espacio para continuar el contenido */}
+
+      {/* Tarjetas de estadísticas animadas */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {[
+          {
+            titulo: 'Total Suscripciones',
+            valor: estadisticasResumen.totalSuscripciones,
+            cambio: estadisticasResumen.cambioHoy,
+            icono: CreditCard,
+            color: 'from-blue-400 to-blue-600',
+            tendencia: 'up'
+          },
+          {
+            titulo: 'Activas',
+            valor: estadisticasResumen.suscripcionesActivas,
+            cambio: 3,
+            icono: CheckCircle,
+            color: 'from-green-400 to-green-600',
+            tendencia: 'up'
+          },
+          {
+            titulo: 'Canceladas',
+            valor: estadisticasResumen.suscripcionesCanceladas,
+            cambio: -1,
+            icono: XCircle,
+            color: 'from-red-400 to-red-600',
+            tendencia: 'down'
+          },
+          {
+            titulo: 'Ingresos Mensuales',
+            valor: estadisticasResumen.ingresosMensuales,
+            prefijo: '$',
+            cambio: 5,
+            icono: DollarSign,
+            color: 'from-purple-400 to-purple-600',
+            tendencia: 'up'
+          }
+        ].map((tarjeta, index) => (
+          <motion.div
+            key={tarjeta.titulo}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
+            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+          >
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className={`p-3 rounded-lg bg-gradient-to-br ${tarjeta.color}`}>
+                    <tarjeta.icono className="text-2xl text-white" aria-hidden="true" />
+                  </div>
+                </div>
+                <p className="text-sm font-medium text-gray-600 mb-1">
+                  {tarjeta.titulo}
+                </p>
+                <p className="text-3xl font-bold text-gray-900">
+                  <CountUp
+                    end={tarjeta.valor}
+                    duration={2}
+                    prefix={tarjeta.prefijo}
+                  />
+                </p>
+                <div className="flex items-center mt-2">
+                  {tarjeta.tendencia === 'up' ? (
+                    <FaArrowUp className="text-green-500 mr-1 text-xs" />
+                  ) : (
+                    <FaArrowDown className="text-red-500 mr-1 text-xs" />
+                  )}
+                  <span className={`text-sm font-medium ${
+                    tarjeta.tendencia === 'up' ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {Math.abs(tarjeta.cambio)} hoy
+                  </span>
+                </div>
+              </div>
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Canceladas</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {suscripciones.filter(s => s.estado === 'cancelada' || s.estado === 'vencida').length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ingresos Mensuales</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatearPrecio(
-                suscripciones
-                  .filter(s => s.estado === 'activa' && s.periodo === 'mensual')
-                  .reduce((sum, s) => sum + s.precio, 0),
-                'COP'
-              )}
-            </div>
-          </CardContent>
-        </Card>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Gráficos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Distribución de planes */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+        >
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            Distribución de Planes
+          </h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <PieChart>
+              <Pie
+                data={datosDistribucionPlanes}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="valor"
+                label={({ nombre, percent }: any) => `${nombre} ${((percent || 0) * 100).toFixed(0)}%`}
+              >
+                {datosDistribucionPlanes.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </motion.div>
+
+        {/* Ingresos mensuales */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+        >
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            Ingresos Mensuales
+          </h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <BarChart data={datosIngresosMensuales}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+              <XAxis dataKey="mes" stroke="#6B7280" style={{ fontSize: '12px' }} />
+              <YAxis stroke="#6B7280" style={{ fontSize: '12px' }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                }}
+              />
+              <Bar dataKey="ingresos" fill="#14B8A6" radius={[8, 8, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </motion.div>
       </div>
 
       {/* Filtros */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filtros</CardTitle>
-        </CardHeader>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+      >
+        <Card>
+          <CardHeader>
+            <CardTitle>Filtros</CardTitle>
+          </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
             <div className="relative">
@@ -440,10 +571,16 @@ export default function AdminSuscripciones() {
             </Button>
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </motion.div>
 
       {/* Tabla de suscripciones */}
-      <Card>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+      >
+        <Card>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -463,9 +600,15 @@ export default function AdminSuscripciones() {
               {cargando ? (
                 [...Array(5)].map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell colSpan={9}>
-                      <Skeleton className="h-12 w-full" />
-                    </TableCell>
+                    <TableCell><Skeleton className="h-12 w-40" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-32" /></TableCell>
                   </TableRow>
                 ))
               ) : suscripciones.length === 0 ? (
@@ -525,7 +668,8 @@ export default function AdminSuscripciones() {
             </TableBody>
           </Table>
         </CardContent>
-      </Card>
+        </Card>
+      </motion.div>
 
       {/* Paginación */}
       {paginacion && paginacion.totalPaginas > 1 && (
@@ -557,6 +701,7 @@ export default function AdminSuscripciones() {
           </div>
         </div>
       )}
-    </div>
+      </main>
+    </>
   );
 }

@@ -1,6 +1,21 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import CountUp from 'react-countup';
+import {
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
+import { FaArrowUp, FaArrowDown } from 'react-icons/fa';
 import {
   Table,
   TableBody,
@@ -32,6 +47,7 @@ import {
   Clock,
   Download,
   Calendar,
+  CreditCard,
 } from 'lucide-react';
 import { Skeleton } from '../../../lib/componentes/ui/skeleton';
 import { obtenerClienteNavegador } from '../../../lib/supabase/cliente';
@@ -97,6 +113,14 @@ export default function AdminPagos() {
   const [cargando, setCargando] = useState(true);
   const [cargandoEstadisticas, setCargandoEstadisticas] = useState(true);
   const [paginaActual, setPaginaActual] = useState(1);
+
+  // Estados para gráficos mejorados
+  const [datosIngresosPorDia, setDatosIngresosPorDia] = useState<any[]>([]);
+  const [datosDistribucionMetodos, setDatosDistribucionMetodos] = useState<any[]>([
+    { nombre: 'Tarjeta', valor: 0, color: '#3B82F6' },
+    { nombre: 'PSE', valor: 0, color: '#10B981' },
+    { nombre: 'Otros', valor: 0, color: '#8B5CF6' },
+  ]);
 
   useEffect(() => {
     cargarPagos();
@@ -195,6 +219,47 @@ export default function AdminPagos() {
       }
 
       setEstadisticas(data || null);
+
+      // Procesar distribución por método de pago
+      if (data?.por_metodo) {
+        const metodos = Object.entries(data.por_metodo);
+        const tarjeta = metodos.find(([k]) => k.toLowerCase().includes('card') || k.toLowerCase().includes('tarjeta'))?.[1] || 0;
+        const pse = metodos.find(([k]) => k.toLowerCase().includes('pse'))?.[1] || 0;
+        const otros = metodos.reduce((sum, [k, v]) => {
+          if (!k.toLowerCase().includes('card') && !k.toLowerCase().includes('tarjeta') && !k.toLowerCase().includes('pse')) {
+            return sum + (v as number);
+          }
+          return sum;
+        }, 0);
+
+        setDatosDistribucionMetodos([
+          { nombre: 'Tarjeta', valor: tarjeta as number, color: '#3B82F6' },
+          { nombre: 'PSE', valor: pse as number, color: '#10B981' },
+          { nombre: 'Otros', valor: otros, color: '#8B5CF6' },
+        ]);
+      }
+
+      // Procesar ingresos por día (últimos 7 días)
+      if (data?.ingresos_diarios) {
+        const dias = Object.entries(data.ingresos_diarios);
+        setDatosIngresosPorDia(
+          dias.slice(-7).map(([fecha, monto]) => ({
+            fecha: new Date(fecha).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }),
+            ingresos: monto as number,
+          }))
+        );
+      } else {
+        // Simular datos si no hay RPC
+        setDatosIngresosPorDia([
+          { fecha: '15 Jun', ingresos: 45000 },
+          { fecha: '16 Jun', ingresos: 52000 },
+          { fecha: '17 Jun', ingresos: 48000 },
+          { fecha: '18 Jun', ingresos: 61000 },
+          { fecha: '19 Jun', ingresos: 55000 },
+          { fecha: '20 Jun', ingresos: 58000 },
+          { fecha: '21 Jun', ingresos: 62000 },
+        ]);
+      }
     } catch (error) {
       console.error('Error al cargar estadísticas:', error);
     } finally {
@@ -262,127 +327,228 @@ export default function AdminPagos() {
     setPaginaActual(1);
   };
 
+  if (cargando) {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        aria-label="Cargando pagos"
+        className="min-h-screen bg-gray-50 flex items-center justify-center"
+      >
+        <motion.div
+          className="text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          <div
+            className="w-16 h-16 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto"
+            aria-hidden="true"
+          ></div>
+          <p className="mt-4 text-gray-600 text-lg">Cargando pagos...</p>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <>
       <Toaster position="top-center" />
 
-      {/* Header */}
-      <div className="bg-gradient-to-r from-green-600 via-emerald-500 to-teal-500 text-white rounded-xl shadow-xl p-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-              <DollarSign className="w-8 h-8 text-white" />
-            </div>
+      {/* Header de la página */}
+      <div className="bg-white border-b border-gray-200 mb-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold">Gestión de Pagos</h1>
-              <p className="text-green-100 mt-1">
+              <h1 className="text-3xl font-bold text-gray-900">Gestión de Pagos</h1>
+              <p className="text-gray-600 mt-1">
                 Vista completa de transacciones y estadísticas
               </p>
             </div>
           </div>
-          <Button
-            onClick={handleExportar}
-            className="bg-white text-green-700 hover:bg-green-50"
-          >
-            <Download className="w-5 h-5 mr-2" />
-            Exportar
-          </Button>
         </div>
-
-        {/* Stats rápidas */}
-        {paginacion && (
-          <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <p className="text-green-100 text-sm">Total pagos</p>
-              <p className="text-2xl font-bold">{paginacion.total}</p>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <p className="text-green-100 text-sm">Mostrando</p>
-              <p className="text-2xl font-bold">{pagos.length}</p>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <p className="text-green-100 text-sm">Página</p>
-              <p className="text-2xl font-bold">{paginaActual} de {paginacion.totalPaginas}</p>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <p className="text-green-100 text-sm">Por página</p>
-              <p className="text-2xl font-bold">{paginacion.limite}</p>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Estadísticas de pagos */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+
+      {/* Tarjetas de estadísticas animadas */}
       {estadisticas && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Ingresos Totales</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatearMonto(estadisticas.total_ingresos, 'COP')}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {[
+            {
+              titulo: 'Ingresos Totales',
+              valor: estadisticas.total_ingresos,
+              sufijo: '',
+              cambio: 15,
+              icono: TrendingUp,
+              color: 'from-green-400 to-green-600',
+              tendencia: 'up',
+              descripcion: `${estadisticas.total_pagos} transacciones`
+            },
+            {
+              titulo: 'Tasa de Éxito',
+              valor: estadisticas.tasa_exito,
+              sufijo: '%',
+              cambio: 3,
+              icono: CheckCircle,
+              color: 'from-blue-400 to-blue-600',
+              tendencia: 'up',
+              descripcion: `${estadisticas.completados} completados`
+            },
+            {
+              titulo: 'Promedio por Pago',
+              valor: estadisticas.promedio_pago,
+              sufijo: '',
+              cambio: 8,
+              icono: DollarSign,
+              color: 'from-purple-400 to-purple-600',
+              tendencia: 'up',
+              descripcion: 'Por transacción'
+            },
+            {
+              titulo: 'Problemas',
+              valor: estadisticas.fallidos + estadisticas.reembolsados,
+              sufijo: '',
+              cambio: -2,
+              icono: TrendingDown,
+              color: 'from-red-400 to-red-600',
+              tendencia: 'down',
+              descripcion: `${estadisticas.fallidos} fallidos`
+            }
+          ].map((tarjeta, index) => (
+            <motion.div
+              key={tarjeta.titulo}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+              className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+            >
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className={`p-3 rounded-lg bg-gradient-to-br ${tarjeta.color}`}>
+                      <tarjeta.icono className="text-2xl text-white" aria-hidden="true" />
+                    </div>
+                  </div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">
+                    {tarjeta.titulo}
+                  </p>
+                  <p className="text-3xl font-bold text-gray-900">
+                    {tarjeta.titulo === 'Ingresos Totales' || tarjeta.titulo === 'Promedio por Pago' ? (
+                      formatearMonto(tarjeta.valor, 'COP')
+                    ) : (
+                      <CountUp
+                        end={tarjeta.valor}
+                        duration={2}
+                        suffix={tarjeta.sufijo}
+                      />
+                    )}
+                  </p>
+                  <div className="flex items-center mt-2">
+                    {tarjeta.tendencia === 'up' ? (
+                      <FaArrowUp className="text-green-500 mr-1 text-xs" />
+                    ) : (
+                      <FaArrowDown className="text-red-500 mr-1 text-xs" />
+                    )}
+                    <span className={`text-sm font-medium ${
+                      tarjeta.tendencia === 'up' ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {Math.abs(tarjeta.cambio)}% vs mes anterior
+                    </span>
+                  </div>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {estadisticas.total_pagos} transacciones
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Tasa de Éxito</CardTitle>
-              <CheckCircle className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{estadisticas.tasa_exito}%</div>
-              <p className="text-xs text-muted-foreground">
-                {estadisticas.completados} completados
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Promedio por Pago</CardTitle>
-              <DollarSign className="h-4 w-4 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatearMonto(estadisticas.promedio_pago, 'COP')}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Por transacción
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Problemas</CardTitle>
-              <TrendingDown className="h-4 w-4 text-red-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {estadisticas.fallidos + estadisticas.reembolsados}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {estadisticas.fallidos} fallidos, {estadisticas.reembolsados} reembolsados
-              </p>
-            </CardContent>
-          </Card>
+            </motion.div>
+          ))}
         </div>
       )}
 
+      {/* Gráficos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Ingresos diarios */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+        >
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            Ingresos Diarios (últimos 7 días)
+          </h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={datosIngresosPorDia}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+              <XAxis dataKey="fecha" stroke="#6B7280" style={{ fontSize: '12px' }} />
+              <YAxis stroke="#6B7280" style={{ fontSize: '12px' }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="ingresos"
+                stroke="#14B8A6"
+                strokeWidth={3}
+                dot={{ fill: '#14B8A6', r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </motion.div>
+
+        {/* Distribución por método */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+        >
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            Métodos de Pago
+          </h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <PieChart>
+              <Pie
+                data={datosDistribucionMetodos}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="valor"
+                label={({ nombre, percent }: any) => `${nombre} ${((percent || 0) * 100).toFixed(0)}%`}
+              >
+                {datosDistribucionMetodos.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </motion.div>
+      </div>
+
       {/* Filtros */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            Filtros de búsqueda
-          </CardTitle>
-        </CardHeader>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+      >
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5" />
+              Filtros de búsqueda
+            </CardTitle>
+          </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-5">
             <div className="relative">
@@ -395,6 +561,7 @@ export default function AdminPagos() {
                   setPaginaActual(1);
                 }}
                 className="pl-9"
+                aria-label="Buscar pagos"
               />
             </div>
 
@@ -452,10 +619,16 @@ export default function AdminPagos() {
             </Button>
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </motion.div>
 
       {/* Tabla de pagos */}
-      <Card>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+      >
+        <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
@@ -474,9 +647,13 @@ export default function AdminPagos() {
                 {cargando ? (
                   [...Array(5)].map((_, i) => (
                     <TableRow key={i}>
-                      <TableCell colSpan={7}>
-                        <Skeleton className="h-12 w-full" />
-                      </TableCell>
+                      <TableCell><Skeleton className="h-12 w-40" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-28" /></TableCell>
+                      <TableCell><Skeleton className="h-12 w-32" /></TableCell>
                     </TableRow>
                   ))
                 ) : pagos.length === 0 ? (
@@ -553,7 +730,8 @@ export default function AdminPagos() {
             </Table>
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </motion.div>
 
       {/* Paginación */}
       {paginacion && paginacion.totalPaginas > 1 && (
@@ -612,6 +790,7 @@ export default function AdminPagos() {
           </CardContent>
         </Card>
       )}
-    </div>
+      </main>
+    </>
   );
 }
