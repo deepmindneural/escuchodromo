@@ -87,7 +87,7 @@ serve(async (req) => {
       severidad
     })
 
-    // 7. Generar interpretación con Gemini IA
+    // 7. Generar interpretación con IA
     const interpretacion = await generarInterpretacionIA(
       test.codigo,
       test.nombre,
@@ -201,7 +201,7 @@ function determinarSeveridad(puntuacion: number, codigoPrueba: string): string {
 }
 
 /**
- * Genera interpretación personalizada usando Gemini IA
+ * Genera interpretación personalizada usando IA
  */
 async function generarInterpretacionIA(
   codigoPrueba: string,
@@ -277,7 +277,7 @@ Genera la interpretación ahora:`
     const data = await response.json()
 
     if (!data.candidates || !data.candidates[0]) {
-      throw new Error('Respuesta inválida de Gemini')
+      throw new Error('Respuesta inválida de IA')
     }
 
     return data.candidates[0].content.parts[0].text.trim()
@@ -285,13 +285,13 @@ Genera la interpretación ahora:`
   } catch (error) {
     console.error('[generarInterpretacionIA] Error:', error)
 
-    // Fallback: interpretación genérica si falla Gemini
+    // Fallback: interpretación genérica si falla IA
     return generarInterpretacionFallback(codigoPrueba, puntuacion, severidad)
   }
 }
 
 /**
- * Genera interpretación de respaldo si falla Gemini
+ * Genera interpretación de respaldo si falla IA
  */
 function generarInterpretacionFallback(
   codigoPrueba: string,

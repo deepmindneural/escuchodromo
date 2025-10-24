@@ -1,7 +1,7 @@
 /**
- * CLIENTE REUTILIZABLE DE GEMINI API
+ * CLIENTE REUTILIZABLE DE IA
  *
- * Cliente centralizado para todas las llamadas a Gemini
+ * Cliente centralizado para todas las llamadas a la API de IA
  * Con retry logic, rate limiting, error handling y logging
  */
 
@@ -16,7 +16,7 @@ import {
 } from './config.ts'
 
 // ==========================================
-// CLIENTE DE GEMINI
+// CLIENTE DE IA
 // ==========================================
 
 export class GeminiClient {
@@ -28,12 +28,12 @@ export class GeminiClient {
     this.apiUrl = GEMINI_API_URL
 
     if (!this.apiKey) {
-      throw new Error('GEMINI_API_KEY no configurada. Obtén una en https://aistudio.google.com/apikey')
+      throw new Error('La API de IA no está configurada correctamente. Contacta al administrador.')
     }
   }
 
   /**
-   * Llamar a Gemini con retry logic y manejo de errores
+   * Llamar a la IA con retry logic y manejo de errores
    */
   async llamar(params: {
     prompt: string
@@ -50,7 +50,7 @@ export class GeminiClient {
       // Verificar rate limit
       const puedeHacerLlamada = await this.verificarRateLimit(tipo)
       if (!puedeHacerLlamada) {
-        throw new Error('Rate limit alcanzado. Límite diario de Gemini excedido.')
+        throw new Error('Límite de uso de IA alcanzado. Por favor, intenta más tarde.')
       }
 
       // Obtener configuración según tipo
@@ -101,7 +101,7 @@ export class GeminiClient {
         mensaje_error: error.message
       })
 
-      console.error('[GeminiClient] Error:', error)
+      console.error('[IAClient] Error:', error)
 
       return {
         respuesta: '',
@@ -148,19 +148,19 @@ export class GeminiClient {
         // Si es rate limit (429) y no hemos superado intentos, reintentar
         if (response.status === 429 && intentos < GEMINI_CONFIG.retryAttempts) {
           const delay = GEMINI_CONFIG.retryDelay * Math.pow(2, intentos)
-          console.log(`[GeminiClient] Rate limit alcanzado. Reintentando en ${delay}ms...`)
+          console.log(`[IAClient] Rate limit alcanzado. Reintentando en ${delay}ms...`)
           await this.sleep(delay)
           return this.llamarConRetry(prompt, config, intentos + 1)
         }
 
-        throw new Error(`Gemini API error ${response.status}: ${errorText}`)
+        throw new Error(`Error de la API de IA (${response.status}). Por favor, intenta nuevamente.`)
       }
 
       const data = await response.json()
 
       // Validar respuesta
       if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-        throw new Error('Respuesta inválida de Gemini API')
+        throw new Error('Respuesta inválida del sistema de IA')
       }
 
       const respuesta = data.candidates[0].content.parts[0].text.trim()
@@ -172,7 +172,7 @@ export class GeminiClient {
       // Si es error de red y no hemos superado intentos, reintentar
       if ((error.name === 'TypeError' || error.name === 'AbortError') && intentos < GEMINI_CONFIG.retryAttempts) {
         const delay = GEMINI_CONFIG.retryDelay * Math.pow(2, intentos)
-        console.log(`[GeminiClient] Error de red. Reintentando en ${delay}ms...`)
+        console.log(`[IAClient] Error de red. Reintentando en ${delay}ms...`)
         await this.sleep(delay)
         return this.llamarConRetry(prompt, config, intentos + 1)
       }
@@ -196,7 +196,7 @@ export class GeminiClient {
         .rpc('obtener_llamadas_gemini_hoy')
 
       if (error) {
-        console.error('[GeminiClient] Error al verificar rate limit:', error)
+        console.error('[IAClient] Error al verificar rate limit:', error)
         // Si hay error, permitir la llamada (fail open)
         return true
       }
@@ -215,7 +215,7 @@ export class GeminiClient {
       return llamadas_hoy < limite_efectivo
 
     } catch (error) {
-      console.error('[GeminiClient] Error al verificar rate limit:', error)
+      console.error('[IAClient] Error al verificar rate limit:', error)
       // Fail open: permitir la llamada si hay error
       return true
     }
@@ -243,13 +243,13 @@ export class GeminiClient {
         })
 
     } catch (error) {
-      console.error('[GeminiClient] Error al registrar log:', error)
+      console.error('[IAClient] Error al registrar log:', error)
       // No lanzar error, solo loguear
     }
   }
 
   /**
-   * Parsear respuesta JSON de Gemini
+   * Parsear respuesta JSON de la IA
    */
   parsearJSON<T>(respuesta: string): T | null {
     try {
@@ -338,7 +338,7 @@ export async function obtenerEstadisticasGemini(): Promise<{
     }
 
   } catch (error) {
-    console.error('[GeminiClient] Error al obtener estadísticas:', error)
+    console.error('[IAClient] Error al obtener estadísticas:', error)
     return {
       llamadas_hoy: 0,
       limite_diario: RATE_LIMIT.maxCalls,
@@ -349,7 +349,7 @@ export async function obtenerEstadisticasGemini(): Promise<{
 }
 
 /**
- * Verificar si el sistema puede hacer llamadas a Gemini
+ * Verificar si el sistema puede hacer llamadas a la IA
  */
 export async function puedeUsarGemini(): Promise<{ puede: boolean; razon?: string }> {
   const stats = await obtenerEstadisticasGemini()

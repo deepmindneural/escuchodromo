@@ -1,17 +1,17 @@
 /**
- * Edge Function: Chat con IA usando Google Gemini - MEJORADO
+ * Edge Function: Chat con IA avanzada - MEJORADO
  *
  * NUEVAS FUNCIONALIDADES:
  * - Memoria avanzada con contexto de evaluaciones PHQ-9/GAD-7
  * - Detección profunda de crisis en paralelo
  * - Historial ampliado (20 mensajes)
  * - Personalización según rol de usuario
- * - Cliente Gemini reutilizable con retry logic
+ * - Cliente de IA reutilizable con retry logic
  * - Rate limiting inteligente
  *
- * Google Gemini 2.0 Flash ofrece:
- * - 1,000 requests por día (GRATIS)
- * - Sin tarjeta de crédito requerida
+ * Sistema de IA ofrece:
+ * - Respuestas rápidas y contextuales
+ * - Análisis emocional avanzado
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
@@ -176,7 +176,7 @@ serve(async (req) => {
           evaluaciones
         })
 
-        // Llamar a Gemini para análisis de crisis
+        // Llamar a la IA para análisis de crisis
         const respuestaCrisis = await geminiCliente.llamar({
           prompt: promptCrisis,
           tipo: 'crisis',
@@ -229,7 +229,7 @@ serve(async (req) => {
     }
 
     // ==========================================
-    // PASO 4: GENERAR RESPUESTA CON GEMINI
+    // PASO 4: GENERAR RESPUESTA CON IA
     // ==========================================
 
     const geminiCliente = new GeminiClient()
@@ -247,7 +247,7 @@ serve(async (req) => {
       ultimaSesion
     })
 
-    // Llamar a Gemini
+    // Llamar a la IA
     const respuestaGemini = await geminiCliente.llamar({
       prompt,
       tipo: 'chat',
@@ -302,7 +302,7 @@ Por favor, considera contactar a un profesional de salud mental lo antes posible
 
     const response: ChatIAResponse = {
       respuesta: respuestaFinal,
-      modelo: 'gemini-2.0-flash-exp',
+      modelo: 'ia-avanzada',
       tokens_usados: respuestaGemini.tokens_usados,
       alerta_crisis: alertaCrisis ? {
         detectada: alertaCrisis.detectada,
@@ -330,7 +330,7 @@ Por favor, considera contactar a un profesional de salud mental lo antes posible
       JSON.stringify({
         error: error.message || 'Error procesando solicitud',
         respuesta: 'Lo siento, estoy experimentando dificultades técnicas. Por favor, intenta de nuevo en un momento. Si necesitas ayuda urgente, contacta con un profesional de salud mental.',
-        modelo: 'gemini-2.0-flash-exp',
+        modelo: 'ia-avanzada',
         tokens_usados: 0
       }),
       {

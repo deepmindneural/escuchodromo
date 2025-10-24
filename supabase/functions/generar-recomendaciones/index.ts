@@ -125,7 +125,7 @@ serve(async (req) => {
       sentimientoPromedio = sentimientoPromedio / totalMensajes
     }
 
-    // 7. Generar recomendaciones con Gemini
+    // 7. Generar recomendaciones con IA
     const recomendaciones = await generarRecomendacionesIA(
       contextoEvaluaciones,
       emocionesAgregadas,
@@ -281,7 +281,7 @@ ${evaluaciones.length > 0 ? evaluaciones.map(e =>
     const data = await response.json()
 
     if (!data.candidates || !data.candidates[0]) {
-      throw new Error('Respuesta inválida de Gemini')
+      throw new Error('Respuesta inválida de IA')
     }
 
     let textoRespuesta = data.candidates[0].content.parts[0].text.trim()
@@ -302,7 +302,7 @@ ${evaluaciones.length > 0 ? evaluaciones.map(e =>
 }
 
 /**
- * Genera recomendaciones genéricas si falla Gemini
+ * Genera recomendaciones genéricas si falla IA
  */
 function generarRecomendacionesFallback(evaluaciones: Evaluacion[]): Recomendacion[] {
   const tieneSeveridadAlta = evaluaciones.some(e =>

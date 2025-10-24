@@ -1,8 +1,8 @@
 /**
- * PROMPTS OPTIMIZADOS PARA GEMINI
+ * PROMPTS OPTIMIZADOS PARA IA
  *
  * Todos los prompts del sistema de IA centralizados
- * Optimizados para obtener las mejores respuestas de Gemini 2.0 Flash
+ * Optimizados para obtener las mejores respuestas del sistema de IA
  */
 
 import type { Resultado, Usuario } from './tipos.ts'

@@ -1,8 +1,16 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 
+interface EmocionesDectectadas {
+  emociones: {
+    [key: string]: number;
+  };
+  timestamp: number;
+}
+
 interface OpcionesVoz {
   onTranscripcion?: (texto: string) => void;
   onTranscripcionFinal?: (texto: string) => void;
+  onEmocionDetectada?: (emociones: EmocionesDectectadas) => void;
   onError?: (error: string) => void;
   idiomaReconocimiento?: string;
 }
@@ -17,9 +25,12 @@ export function useVoz(opcionesIniciales?: OpcionesVoz) {
   const [estaHablando, setEstaHablando] = useState(false);
   const [soportaReconocimiento, setSoportaReconocimiento] = useState(false);
   const [soportaSintesis, setSoportaSintesis] = useState(false);
+  const [estaConectado, setEstaConectado] = useState(false);
+  const [emocionesDetectadas, setEmocionesDetectadas] = useState<EmocionesDectectadas | null>(null);
 
   const recognitionRef = useRef<any>(null);
   const synthesisRef = useRef<SpeechSynthesis | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
 
   // Verificar soporte del navegador
   useEffect(() => {
@@ -208,6 +219,60 @@ export function useVoz(opcionesIniciales?: OpcionesVoz) {
     return synthesisRef.current.getVoices();
   }, []);
 
+  // Conectar WebSocket para análisis de emociones
+  const conectarWebSocket = useCallback((conversacionId: string) => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      // Cerrar conexión existente si hay una
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+
+      // Por ahora, marcar como conectado sin WebSocket real
+      // El análisis de emociones se hará localmente en el futuro
+      setEstaConectado(true);
+
+      // Simulación de emociones para pruebas
+      const simularEmociones = () => {
+        const emocionesSimuladas: EmocionesDectectadas = {
+          emociones: {
+            neutral: 0.6,
+            alegria: 0.2,
+            tristeza: 0.1,
+            calma: 0.1,
+          },
+          timestamp: Date.now(),
+        };
+        setEmocionesDetectadas(emocionesSimuladas);
+        opcionesIniciales?.onEmocionDetectada?.(emocionesSimuladas);
+      };
+
+      // Simular detección de emociones cada 5 segundos
+      const intervalo = setInterval(simularEmociones, 5000);
+
+      return () => {
+        clearInterval(intervalo);
+        if (wsRef.current) {
+          wsRef.current.close();
+        }
+      };
+    } catch (error) {
+      console.error('Error al conectar WebSocket:', error);
+      setEstaConectado(false);
+    }
+  }, [opcionesIniciales]);
+
+  // Alias para mantener compatibilidad
+  const sintetizarVoz = useCallback((texto: string, opciones?: {
+    velocidad?: number;
+    tono?: number;
+    volumen?: number;
+    vozPreferida?: string;
+  }) => {
+    return hablar(texto, opciones);
+  }, [hablar]);
+
   // Limpiar al desmontar
   useEffect(() => {
     return () => {
@@ -216,6 +281,9 @@ export function useVoz(opcionesIniciales?: OpcionesVoz) {
       }
       if (synthesisRef.current) {
         synthesisRef.current.cancel();
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
       }
     };
   }, [estaGrabando]);
@@ -227,12 +295,16 @@ export function useVoz(opcionesIniciales?: OpcionesVoz) {
     estaHablando,
     soportaReconocimiento,
     soportaSintesis,
+    estaConectado,
+    emocionesDetectadas,
 
     // Métodos
     iniciarGrabacion,
     detenerGrabacion,
     hablar,
+    sintetizarVoz,
     detenerHabla,
     obtenerVoces,
+    conectarWebSocket,
   };
 }

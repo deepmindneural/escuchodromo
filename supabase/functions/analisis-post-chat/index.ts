@@ -1,7 +1,7 @@
 /**
  * Edge Function: Análisis Post-Chat
  *
- * Analiza conversaciones completas usando Gemini para:
+ * Analiza conversaciones completas usando IA para:
  * - Extraer emociones dominantes
  * - Calcular score de bienestar
  * - Detectar riesgo suicida
@@ -157,7 +157,7 @@ serve(async (req) => {
       evaluaciones
     })
 
-    // Llamar a Gemini
+    // Llamar a la IA
     const geminiCliente = new GeminiClient()
     const respuesta = await geminiCliente.llamar({
       prompt,
@@ -175,7 +175,7 @@ serve(async (req) => {
     const analisisIA = geminiCliente.parsearJSON<AnalisisPostChatGemini>(respuesta.respuesta)
 
     if (!analisisIA) {
-      throw new Error('No se pudo parsear respuesta de Gemini')
+      throw new Error('No se pudo parsear respuesta de IA')
     }
 
     // Crear objeto de análisis para guardar

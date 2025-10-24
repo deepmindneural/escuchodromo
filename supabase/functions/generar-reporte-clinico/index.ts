@@ -1,7 +1,7 @@
 /**
  * Edge Function: Generar Reporte Clínico
  *
- * Genera reportes clínicos automáticos usando Gemini:
+ * Genera reportes clínicos automáticos usando IA:
  * - Reportes semanales (últimos 7 días)
  * - Reportes mensuales (últimos 30 días)
  * - Reportes pre-cita (desde última cita)
@@ -258,7 +258,7 @@ serve(async (req) => {
     const reporteIA = geminiCliente.parsearJSON<ReporteGemini>(respuestaGemini.respuesta)
 
     if (!reporteIA) {
-      throw new Error('No se pudo parsear respuesta de Gemini')
+      throw new Error('No se pudo parsear respuesta de IA')
     }
 
     // ==========================================
