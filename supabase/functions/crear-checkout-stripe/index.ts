@@ -2,10 +2,21 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@14.10.0?target=deno'
 
+interface DatosFacturacion {
+  nombre: string
+  email: string
+  telefono?: string
+  pais: string
+  ciudad: string
+  direccion: string
+  codigoPostal?: string
+}
+
 interface RequestBody {
   plan: 'basico' | 'premium' | 'profesional'
   periodo: 'mensual' | 'anual'
   moneda?: 'COP' | 'USD'
+  datosFacturacion?: DatosFacturacion
 }
 
 // Precios por plan
@@ -85,13 +96,14 @@ serve(async (req) => {
 
     // Parsear request
     const body: RequestBody = await req.json()
-    const { plan, periodo, moneda = 'COP' } = body
+    const { plan, periodo, moneda = 'COP', datosFacturacion } = body
 
     console.log('[crear-checkout-stripe] Creando sesión:', {
       usuario_id: usuarioData.id,
       plan,
       periodo,
-      moneda
+      moneda,
+      tiene_datos_facturacion: !!datosFacturacion
     })
 
     // Validar plan
@@ -131,13 +143,29 @@ serve(async (req) => {
     if (suscripcionExistente?.stripe_cliente_id) {
       stripeClienteId = suscripcionExistente.stripe_cliente_id
     } else {
-      const customer = await stripe.customers.create({
-        email: usuarioData.email,
-        name: usuarioData.nombre,
+      // Crear cliente de Stripe con datos de facturación completos
+      const customerData: Stripe.CustomerCreateParams = {
+        email: datosFacturacion?.email || usuarioData.email,
+        name: datosFacturacion?.nombre || usuarioData.nombre,
         metadata: {
           usuario_id: usuarioData.id
         }
-      })
+      }
+
+      // Agregar dirección de facturación si está disponible
+      if (datosFacturacion) {
+        customerData.address = {
+          line1: datosFacturacion.direccion,
+          city: datosFacturacion.ciudad,
+          postal_code: datosFacturacion.codigoPostal || '',
+          country: datosFacturacion.pais
+        }
+        if (datosFacturacion.telefono) {
+          customerData.phone = datosFacturacion.telefono
+        }
+      }
+
+      const customer = await stripe.customers.create(customerData)
       stripeClienteId = customer.id
     }
 
@@ -173,17 +201,24 @@ serve(async (req) => {
       }
     })
 
-    // Guardar registro pendiente en la base de datos
+    // Guardar registro pendiente en la base de datos con datos de facturación
     await supabase
       .from('Pago')
       .insert({
         usuario_id: usuarioData.id,
         stripe_sesion_id: session.id,
+        stripe_pago_id: null, // Se actualizará en el webhook
         monto: precio,
         moneda,
         estado: 'pendiente',
         metodo_pago: 'tarjeta',
-        descripcion: `Pago de suscripción ${plan} ${periodo}`
+        descripcion: `Pago de suscripción ${plan} ${periodo}`,
+        metadata: {
+          plan,
+          periodo,
+          stripe_customer_id: stripeClienteId,
+          datos_facturacion: datosFacturacion || null
+        }
       })
 
     console.log('[crear-checkout-stripe] Sesión creada:', session.id)

@@ -169,7 +169,16 @@ export default function PaginaPagoStripe() {
         body: {
           plan: plan.id,
           periodo: plan.periodo,
-          moneda: plan.moneda
+          moneda: plan.moneda,
+          datosFacturacion: {
+            nombre: datosFacturacion.nombre,
+            email: datosFacturacion.email,
+            telefono: datosFacturacion.telefono || undefined,
+            pais: datosFacturacion.pais,
+            ciudad: datosFacturacion.ciudad,
+            direccion: datosFacturacion.direccion,
+            codigoPostal: datosFacturacion.codigoPostal || undefined
+          }
         },
         headers: {
           Authorization: `Bearer ${session.access_token}`

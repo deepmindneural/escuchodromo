@@ -138,15 +138,16 @@ serve(async (req) => {
             .from('Suscripcion')
             .insert({
               usuario_id: usuarioId,
-              stripe_suscripcion_id: subscriptionId,
-              stripe_cliente_id: session.customer as string,
+              stripe_subscription_id: subscriptionId,
+              stripe_customer_id: session.customer as string,
               plan,
               estado: 'activa',
               precio: session.amount_total! / 100,
               moneda,
               periodo,
               fecha_inicio: new Date(subscription.current_period_start * 1000).toISOString(),
-              fecha_renovacion: new Date(subscription.current_period_end * 1000).toISOString()
+              fecha_fin: new Date(subscription.current_period_end * 1000).toISOString(),
+              fecha_proximo_pago: new Date(subscription.current_period_end * 1000).toISOString()
             })
 
           if (suscripcionError) {
@@ -179,9 +180,10 @@ serve(async (req) => {
             estado: subscription.status === 'active' ? 'activa' :
                    subscription.status === 'canceled' ? 'cancelada' :
                    subscription.status === 'past_due' ? 'vencida' : 'pausada',
-            fecha_renovacion: new Date(subscription.current_period_end * 1000).toISOString()
+            fecha_fin: new Date(subscription.current_period_end * 1000).toISOString(),
+            fecha_proximo_pago: new Date(subscription.current_period_end * 1000).toISOString()
           })
-          .eq('stripe_suscripcion_id', subscription.id)
+          .eq('stripe_subscription_id', subscription.id)
 
         break
       }
@@ -197,7 +199,7 @@ serve(async (req) => {
             cancelada_en: new Date().toISOString(),
             fecha_fin: new Date().toISOString()
           })
-          .eq('stripe_suscripcion_id', subscription.id)
+          .eq('stripe_subscription_id', subscription.id)
 
         break
       }
@@ -212,7 +214,7 @@ serve(async (req) => {
         const { data: suscripcion } = await supabase
           .from('Suscripcion')
           .select('usuario_id, plan, periodo, moneda')
-          .eq('stripe_suscripcion_id', subscriptionId)
+          .eq('stripe_subscription_id', subscriptionId)
           .single()
 
         if (suscripcion) {
@@ -248,7 +250,7 @@ serve(async (req) => {
           .update({
             estado: 'vencida'
           })
-          .eq('stripe_suscripcion_id', subscriptionId)
+          .eq('stripe_subscription_id', subscriptionId)
 
         break
       }
