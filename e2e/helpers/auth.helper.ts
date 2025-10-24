@@ -22,6 +22,11 @@ export const CREDENCIALES_PRUEBA = {
   admin: {
     email: 'admin@escuchodromo.com',
     password: '123456'
+  },
+  // TODO: Crear en seed de base de datos
+  profesional: {
+    email: 'profesional@escuchodromo.com',
+    password: '123456'
   }
 };
 

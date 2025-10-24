@@ -81,14 +81,11 @@ export default function PaginaConfirmacionPago() {
         throw new Error('Usuario no encontrado en BD');
       }
 
-      // Obtener la última suscripción del usuario
-      const { data: suscripcion, error: suscripcionError } = await supabase
-        .from('Suscripcion')
-        .select('*')
-        .eq('usuario_id', usuarioData.id)
-        .order('creado_en', { ascending: false })
-        .limit(1)
-        .single();
+      // Obtener la última suscripción del usuario usando RPC (evita error 406)
+      const { data: suscripcionArray, error: suscripcionError } = await supabase
+        .rpc('obtener_suscripcion_usuario');
+
+      const suscripcion = suscripcionArray && suscripcionArray.length > 0 ? suscripcionArray[0] : null;
 
       if (suscripcionError || !suscripcion) {
         console.error('Error obteniendo suscripción:', suscripcionError);

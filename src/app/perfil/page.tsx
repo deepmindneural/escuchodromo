@@ -129,18 +129,14 @@ export default function PaginaPerfil() {
         idioma_preferido: usuarioData.idioma_preferido || 'es'
       });
 
-      // Obtener suscripción activa
-      const { data: suscripcionData } = await supabase
-        .from('Suscripcion')
-        .select('*')
-        .eq('usuario_id', usuarioData.id)
-        .in('estado', ['activa', 'cancelada'])
-        .order('creado_en', { ascending: false })
-        .limit(1)
-        .single();
+      // Obtener suscripción activa usando RPC (evita error 406)
+      const { data: suscripcionArray } = await supabase
+        .rpc('obtener_suscripcion_usuario');
+
+      const suscripcionData = suscripcionArray && suscripcionArray.length > 0 ? suscripcionArray[0] : null;
 
       if (suscripcionData) {
-        setSuscripcion(suscripcionData);
+        setSuscripcion(suscripcionData as any);
       }
 
       // Obtener historial de pagos

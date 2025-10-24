@@ -102,15 +102,11 @@ export default function CambiarPlanPage() {
         return;
       }
 
-      // Obtener suscripción activa
-      const { data: suscripcion, error: errorSuscripcion } = await supabase
-        .from('Suscripcion')
-        .select('id, plan_id, plan, precio, moneda, periodo, fecha_fin')
-        .eq('usuario_id', usuarioData.id)
-        .eq('estado', 'activa')
-        .order('creado_en', { ascending: false })
-        .limit(1)
-        .single();
+      // Obtener suscripción activa usando RPC (evita error 406)
+      const { data: suscripcionArray, error: errorSuscripcion } = await supabase
+        .rpc('obtener_suscripcion_usuario');
+
+      const suscripcion = suscripcionArray && suscripcionArray.length > 0 ? suscripcionArray[0] : null;
 
       if (errorSuscripcion || !suscripcion) {
         toast.error('No tienes una suscripción activa');
@@ -118,7 +114,7 @@ export default function CambiarPlanPage() {
         return;
       }
 
-      setSuscripcionActual(suscripcion);
+      setSuscripcionActual(suscripcion as any);
 
       // Cargar planes disponibles
       const { data: planesDB, error: errorPlanes } = await supabase.rpc('obtener_planes_publico', {

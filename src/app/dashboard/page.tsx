@@ -120,17 +120,16 @@ export default function PaginaDashboard() {
       const { obtenerClienteNavegador } = await import('../../lib/supabase/cliente');
       const supabase = obtenerClienteNavegador();
 
-      // 1. Obtener suscripción activa del usuario
-      const { data: suscripcion, error: errorSuscripcion } = await supabase
-        .from('Suscripcion')
-        .select('plan, periodo, estado, fecha_fin')
-        .eq('usuario_id', usuario.id)
-        .eq('estado', 'activa')
-        .single();
+      // 1. Obtener suscripción activa del usuario usando RPC (evita error 406)
+      const { data: suscripcionArray, error: errorSuscripcion } = await supabase
+        .rpc('obtener_suscripcion_usuario');
 
-      if (errorSuscripcion && errorSuscripcion.code !== 'PGRST116') {
+      if (errorSuscripcion) {
         console.error('Error al obtener suscripción:', errorSuscripcion);
       }
+
+      // La función RPC retorna un array, tomamos el primer elemento o null
+      const suscripcion = suscripcionArray && suscripcionArray.length > 0 ? suscripcionArray[0] : null;
 
       // 2. Obtener detalles del plan basado en el código de la suscripción usando RPC
       let codigoPlan = suscripcion?.plan || 'basico';

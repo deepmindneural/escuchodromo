@@ -100,14 +100,11 @@ export default function DashboardProfesional() {
       setProfesionalId(usuarioData.id);
       setNombreProfesional(usuarioData.nombre || 'Profesional');
 
-      // Verificar suscripción activa (estados válidos: activa, cancelada, pausada, vencida)
-      const { data: suscripcionData } = await supabase
-        .from('Suscripcion')
-        .select('estado')
-        .eq('usuario_id', usuarioData.id)
-        .eq('estado', 'activa')
-        .single();
+      // Verificar suscripción activa usando RPC (evita error 406)
+      const { data: suscripcionArray } = await supabase
+        .rpc('obtener_suscripcion_usuario');
 
+      const suscripcionData = suscripcionArray && suscripcionArray.length > 0 ? suscripcionArray[0] : null;
       setTieneSuscripcionActiva(!!suscripcionData);
 
       // Cargar citas de hoy

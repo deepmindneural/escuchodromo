@@ -70,18 +70,14 @@ export default function PaginaSuscripcion() {
         return;
       }
 
-      // Obtener suscripción activa
-      const { data: suscripcion, error } = await supabase
-        .from('Suscripcion')
-        .select('*')
-        .eq('usuario_id', usuarioData.id)
-        .in('estado', ['activa', 'cancelada'])
-        .order('creado_en', { ascending: false })
-        .limit(1)
-        .single();
+      // Obtener suscripción activa usando RPC (evita error 406)
+      const { data: suscripcionArray } = await supabase
+        .rpc('obtener_suscripcion_usuario');
+
+      const suscripcion = suscripcionArray && suscripcionArray.length > 0 ? suscripcionArray[0] : null;
 
       if (suscripcion) {
-        setSuscripcionActiva(suscripcion);
+        setSuscripcionActiva(suscripcion as any);
       } else {
         // Si no hay suscripción activa, redirigir a precios
         router.push('/precios');
