@@ -100,12 +100,12 @@ export default function DashboardProfesional() {
       setProfesionalId(usuarioData.id);
       setNombreProfesional(usuarioData.nombre || 'Profesional');
 
-      // Verificar suscripción activa
+      // Verificar suscripción activa (estados válidos: activa, cancelada, pausada, vencida)
       const { data: suscripcionData } = await supabase
         .from('Suscripcion')
         .select('estado')
         .eq('usuario_id', usuarioData.id)
-        .in('estado', ['activa', 'trial'])
+        .eq('estado', 'activa')
         .single();
 
       setTieneSuscripcionActiva(!!suscripcionData);

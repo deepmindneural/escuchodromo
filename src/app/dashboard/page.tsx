@@ -132,25 +132,27 @@ export default function PaginaDashboard() {
         console.error('Error al obtener suscripción:', errorSuscripcion);
       }
 
-      // 2. Obtener detalles del plan basado en el código de la suscripción
+      // 2. Obtener detalles del plan basado en el código de la suscripción usando RPC
       let codigoPlan = suscripcion?.plan || 'basico';
 
-      const { data: planDetalle, error: errorPlan } = await supabase
-        .from('Plan')
-        .select('codigo, nombre, descripcion, limite_conversaciones, limite_evaluaciones, caracteristicas')
-        .eq('codigo', codigoPlan)
-        .eq('tipo_usuario', 'paciente')
-        .single();
+      // Usar la función RPC para obtener planes (evita problemas de RLS)
+      const { data: planesDisponibles, error: errorPlanes } = await supabase
+        .rpc('obtener_planes_publico', {
+          p_tipo_usuario: 'paciente',
+          p_moneda: 'COP'
+        });
 
-      if (errorPlan) {
-        console.error('Error al obtener plan:', errorPlan);
-        // Si falla, intentar con plan básico
-        const { data: planBasico } = await supabase
-          .from('Plan')
-          .select('codigo, nombre, descripcion, limite_conversaciones, limite_evaluaciones, caracteristicas')
-          .eq('codigo', 'basico')
-          .eq('tipo_usuario', 'paciente')
-          .single();
+      if (errorPlanes) {
+        console.error('Error al obtener planes:', errorPlanes);
+      }
+
+      // Buscar el plan específico del usuario en los planes disponibles
+      const planDetalle = planesDisponibles?.find((p: any) => p.codigo === codigoPlan);
+
+      if (!planDetalle) {
+        console.error('Plan no encontrado:', codigoPlan);
+        // Si falla, usar plan básico como fallback
+        const planBasico = planesDisponibles?.find((p: any) => p.codigo === 'basico');
 
         if (planBasico) {
           setSuscripcionDetalle({
