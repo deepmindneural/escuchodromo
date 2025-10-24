@@ -51,7 +51,7 @@ const customJestConfig = {
   ],
 
   // Umbrales de cobertura
-  coverageThresholds: {
+  coverageThreshold: {
     // Umbral global (todo el proyecto)
     global: {
       branches: 80,
@@ -131,7 +131,7 @@ const customJestConfig = {
   coverageDirectory: 'coverage',
 
   // Configuración de timers (para tests que usan setInterval, setTimeout)
-  timers: 'real',
+  fakeTimers: { enableGlobally: false },
 
   // Timeout global para tests (10 segundos)
   testTimeout: 10000,

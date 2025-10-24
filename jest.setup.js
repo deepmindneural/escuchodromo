@@ -88,6 +88,9 @@ global.ResizeObserver = class ResizeObserver {
   unobserve() {}
 };
 
+// Polyfill de fetch, Request, Response para Edge Functions
+import 'whatwg-fetch';
+
 // Mock de fetch global (para tests de Edge Functions)
 global.fetch = jest.fn();
 
