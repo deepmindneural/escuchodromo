@@ -26,6 +26,7 @@ export async function middleware(request: NextRequest) {
     '/servicios',
     '/contacto',
     '/precios',
+    '/profesional/planes', // Planes profesionales (público)
     '/profesionales', // Lista pública de profesionales
     '/ayuda',
     '/terminos',
@@ -39,7 +40,7 @@ export async function middleware(request: NextRequest) {
   // Si es ruta pública pero el usuario está autenticado, redirigir a su dashboard
   if (esRutaPublica && user) {
     // Permitir solo ciertas rutas públicas incluso autenticado
-    const rutasPermitidasAutenticado = ['/confirmar-email', '/profesionales']
+    const rutasPermitidasAutenticado = ['/confirmar-email', '/profesionales', '/profesional/planes']
     const permitida = rutasPermitidasAutenticado.some(ruta => pathname.startsWith(ruta))
 
     if (!permitida) {
@@ -85,7 +86,12 @@ export async function middleware(request: NextRequest) {
 
   // 3.2 TERAPEUTA - Solo puede acceder a /profesional/*
   if (rol === 'TERAPEUTA') {
-    const rutasPermitidas = ['/profesional', '/pacientes'] // Pacientes para ver progreso
+    const rutasPermitidas = [
+      '/profesional',
+      '/pacientes', // Pacientes para ver progreso
+      '/pago', // Proceso de pago para suscripciones profesionales
+      '/suscripcion' // Gestión de suscripción
+    ]
     const tieneAcceso = rutasPermitidas.some(ruta => pathname.startsWith(ruta))
 
     if (!tieneAcceso) {
