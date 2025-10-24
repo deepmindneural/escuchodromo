@@ -102,7 +102,7 @@ export default function PaginaResultados() {
     <div className="min-h-screen bg-gray-50">
       <Navegacion />
 
-      <header className="bg-white shadow mt-20">
+      <header className="bg-white shadow pt-24 mt-0">
         <div className="container mx-auto px-4 py-6">
           <div className="text-center">
             <h1 className="text-3xl font-bold text-gray-900">Resultados de {resultado.test.nombre}</h1>

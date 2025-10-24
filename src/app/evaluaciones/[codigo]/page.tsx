@@ -163,7 +163,7 @@ export default function PaginaTestIndividual() {
     <div className="min-h-screen bg-gray-50">
       <Navegacion />
 
-      <header className="bg-white shadow mt-20">
+      <header className="bg-white shadow pt-24 mt-0">
         <div className="container mx-auto px-4 py-6">
           <div className="flex justify-between items-center">
             <div>
