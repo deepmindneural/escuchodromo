@@ -142,7 +142,7 @@ export default function PlanesProfesionales() {
       <Toaster position="top-center" />
 
       {/* Header con paleta terapéutica mejorada */}
-      <section className="pt-28 pb-20 px-4 relative z-10" role="main" aria-label="Planes profesionales">
+      <section className="pt-28 pb-20 px-4 sm:px-6 lg:px-8 relative z-10" role="main" aria-label="Planes profesionales">
         <div className="container mx-auto max-w-7xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -187,7 +187,7 @@ export default function PlanesProfesionales() {
       </section>
 
       {/* Toggle Mensual/Anual con mejor accesibilidad y diseño mejorado */}
-      <section className="pb-16 px-4 relative z-10" aria-label="Selector de periodo de facturación">
+      <section className="pb-16 px-4 sm:px-6 lg:px-8 relative z-10" aria-label="Selector de periodo de facturación">
         <div className="container mx-auto max-w-7xl">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -233,7 +233,7 @@ export default function PlanesProfesionales() {
           </motion.div>
 
           {/* Tarjetas de planes con mejor espaciado */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {planes.map((plan, index) => (
               <TarjetaPlanProfesional
                 key={plan.id}
@@ -248,15 +248,15 @@ export default function PlanesProfesionales() {
       </section>
 
       {/* Tabla de comparación */}
-      <section className="py-16 px-4 bg-white/50">
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white/50">
         <div className="container mx-auto max-w-7xl">
           <TablaComparacionProfesionales planes={planes} periodo={periodo} />
         </div>
       </section>
 
       {/* FAQ y Soporte mejorado */}
-      <section className="py-20 px-4 relative z-10">
-        <div className="container mx-auto max-w-5xl">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="container mx-auto max-w-6xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -278,7 +278,7 @@ export default function PlanesProfesionales() {
             </div>
 
             {/* Grid de opciones de contacto */}
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-8">
               {/* Contactar ventas */}
               <motion.div
                 whileHover={{ scale: 1.02, y: -4 }}
@@ -337,7 +337,7 @@ export default function PlanesProfesionales() {
             </div>
 
             {/* Trust badges */}
-            <div className="grid grid-cols-3 gap-4 pt-8 border-t-2 border-gray-200">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 pt-8 border-t-2 border-gray-200">
               <div className="text-center">
                 <div className="flex justify-center mb-2">
                   <div className="rounded-full bg-green-100 p-3">
