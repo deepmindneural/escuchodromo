@@ -121,6 +121,14 @@ export default function AdminUsuarios() {
       // Construir filtros para RPC
       const filtroEstadoBool = filtroEstado === 'activo' ? true : filtroEstado === 'inactivo' ? false : null;
 
+      console.log('🔍 Cargando usuarios con parámetros:', {
+        limite,
+        offset,
+        busqueda: busqueda || null,
+        filtroRol: filtroRol || null,
+        filtroEstado: filtroEstadoBool,
+      });
+
       // Usar RPC optimizado - obtiene usuarios con estadísticas en 1 query
       const { data: usuariosData, error: usuariosError } = await supabase
         .rpc('obtener_usuarios_con_estadisticas', {
@@ -132,10 +140,18 @@ export default function AdminUsuarios() {
         });
 
       if (usuariosError) {
-        console.error('Error al cargar usuarios:', usuariosError);
-        toast.error('Error al cargar usuarios');
+        console.error('❌ Error al cargar usuarios:', {
+          code: usuariosError.code,
+          message: usuariosError.message,
+          details: usuariosError.details,
+          hint: usuariosError.hint,
+        });
+        toast.error(`Error al cargar usuarios: ${usuariosError.message}`);
+        setCargando(false);
         return;
       }
+
+      console.log('✅ Usuarios cargados:', usuariosData?.length || 0);
 
       // Obtener total de registros
       const { data: totalData, error: totalError } = await supabase
@@ -146,8 +162,15 @@ export default function AdminUsuarios() {
         });
 
       if (totalError) {
-        console.error('Error al contar usuarios:', totalError);
+        console.error('❌ Error al contar usuarios:', {
+          code: totalError.code,
+          message: totalError.message,
+          details: totalError.details,
+        });
+        toast.error(`Error al contar usuarios: ${totalError.message}`);
       }
+
+      console.log('📊 Total de usuarios:', totalData);
 
       setUsuarios(usuariosData || []);
 

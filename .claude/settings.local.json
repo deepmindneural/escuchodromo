@@ -92,7 +92,11 @@
       "Read(//private/tmp/**)",
       "Bash(npx next build)",
       "Bash(git remote get-url:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=\"https://cvezncgcdsjntzrzztrj.supabase.co\" NEXT_PUBLIC_SUPABASE_ANON_KEY=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2ZXpuY2djZHNqbnR6cnp6dHJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0NjY2NjcsImV4cCI6MjA3NjA0MjY2N30.CddHpq9maykqCT9AfBAGRzidelWwdcYcWQ7pKm_81Q4\" npx tsx scripts/diagnostico-rpc.ts)",
+      "Bash(npx nx build:*)",
+      "Bash(timeout 120 npm run build)",
+      "Bash(npx next lint:*)"
     ],
     "deny": []
   }
