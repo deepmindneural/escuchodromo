@@ -182,38 +182,44 @@ export default function PaginaSuscripcion() {
 
   if (cargando) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
-        <div className="text-center">
-          <FaSpinner className="h-12 w-12 text-blue-500 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Cargando suscripción...</p>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center">
+        <div className="text-center" role="status" aria-live="polite">
+          <div className="flex items-center justify-center gap-2 mb-6">
+            <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse" style={{ animationDelay: '0ms' }} />
+            <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" style={{ animationDelay: '150ms' }} />
+            <div className="w-3 h-3 rounded-full bg-blue-400 animate-pulse" style={{ animationDelay: '300ms' }} />
+          </div>
+          <p className="text-gray-700 text-lg font-medium">Cargando tu suscripción...</p>
+          <span className="sr-only">Cargando información de suscripción</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
-      <div className="container mx-auto px-4 py-8">
-        <Link href="/dashboard">
-          <Boton variante="fantasma" className="mb-4">
-            <FaArrowLeft className="h-4 w-4 mr-2" />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+      <main className="container mx-auto px-4 py-8" role="main" aria-label="Gestión de suscripción">
+        <Link href="/dashboard" aria-label="Volver al dashboard">
+          <Boton variante="fantasma" className="mb-6 hover:bg-blue-100 transition-colors duration-300">
+            <FaArrowLeft className="h-4 w-4 mr-2" aria-hidden="true" />
             Volver al dashboard
           </Boton>
         </Link>
 
         <div className="max-w-3xl mx-auto">
-          {/* Header */}
+          {/* Header mejorado */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-8"
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            className="text-center mb-10"
           >
-            <FaCrown className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
-            <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <FaCrown className="h-20 w-20 text-yellow-500 mx-auto mb-6 drop-shadow-lg" aria-hidden="true" />
+            <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
               Mi Suscripción
             </h1>
-            <p className="text-xl text-gray-600">
-              Gestiona tu plan y facturación
+            <p className="text-xl text-gray-700 font-medium">
+              Gestiona tu plan y facturación de manera fácil
             </p>
           </motion.div>
 
@@ -221,31 +227,31 @@ export default function PaginaSuscripcion() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
+              transition={{ delay: 0.2, duration: 0.5, ease: 'easeOut' }}
             >
-              {/* Estado de la suscripción */}
-              <Card className="mb-6">
-                <CardHeader>
+              {/* Estado de la suscripción mejorado */}
+              <Card className="mb-8 border-2 border-blue-100 shadow-xl">
+                <CardHeader className="bg-gradient-to-r from-blue-50 to-green-50">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-3 text-xl">
                       {suscripcionActiva.estado === 'activa' ? (
                         <>
-                          <FaCheckCircle className="text-green-500" />
-                          Suscripción Activa
+                          <FaCheckCircle className="text-green-600 text-2xl" aria-hidden="true" />
+                          <span className="text-gray-900">Suscripción Activa</span>
                         </>
                       ) : (
                         <>
-                          <FaExclamationCircle className="text-orange-500" />
-                          Suscripción Cancelada
+                          <FaExclamationCircle className="text-orange-600 text-2xl" aria-hidden="true" />
+                          <span className="text-gray-900">Suscripción Cancelada</span>
                         </>
                       )}
                     </CardTitle>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    <span className={`px-4 py-2 rounded-full text-sm font-bold shadow-md ${
                       suscripcionActiva.estado === 'activa'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-orange-100 text-orange-700'
+                        ? 'bg-green-500 text-white'
+                        : 'bg-orange-500 text-white'
                     }`}>
-                      {suscripcionActiva.estado === 'activa' ? 'Activa' : 'Cancelada'}
+                      {suscripcionActiva.estado === 'activa' ? '✓ Activa' : '⚠ Cancelada'}
                     </span>
                   </div>
                   {suscripcionActiva.cancelar_al_final && (
@@ -300,16 +306,16 @@ export default function PaginaSuscripcion() {
                 </CardContent>
               </Card>
 
-              {/* Acciones */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Gestionar Suscripción</CardTitle>
-                  <CardDescription>
-                    Controla tu suscripción y facturación
+              {/* Acciones mejoradas */}
+              <Card className="border-2 border-gray-100 shadow-xl">
+                <CardHeader className="bg-gradient-to-r from-gray-50 to-blue-50">
+                  <CardTitle className="text-2xl text-gray-900">Gestionar Suscripción</CardTitle>
+                  <CardDescription className="text-gray-700 text-base">
+                    Controla tu suscripción y facturación de forma sencilla
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
+                <CardContent className="pt-6">
+                  <div className="space-y-5">
                     {suscripcionActiva.estado === 'activa' && !suscripcionActiva.cancelar_al_final && (
                       <div className="flex items-start gap-4 p-4 bg-blue-50 rounded-lg">
                         <div className="flex-1">
@@ -403,15 +409,24 @@ export default function PaginaSuscripcion() {
             </motion.div>
           )}
 
-          {/* Información de seguridad */}
-          <div className="mt-8 text-center text-sm text-gray-500">
-            <p>🔒 Todos los pagos son procesados de forma segura por Stripe</p>
-            <p className="mt-2">
-              ¿Necesitas ayuda? <Link href="/contacto" className="text-blue-500 hover:underline">Contáctanos</Link>
+          {/* Información de seguridad mejorada */}
+          <div className="mt-10 p-6 bg-green-50 border-2 border-green-200 rounded-xl text-center">
+            <p className="text-green-800 font-semibold text-lg mb-3">
+              🔒 Todos los pagos son procesados de forma segura por Stripe
+            </p>
+            <p className="text-green-700">
+              ¿Necesitas ayuda?{' '}
+              <Link
+                href="/contacto"
+                className="text-blue-600 hover:text-blue-700 font-bold underline transition-colors duration-300"
+                aria-label="Ir a página de contacto"
+              >
+                Contáctanos
+              </Link>
             </p>
           </div>
         </div>
-      </div>
+      </main>
       <Footer />
     </div>
   );

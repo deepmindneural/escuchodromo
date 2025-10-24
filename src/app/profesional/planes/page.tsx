@@ -116,66 +116,89 @@ export default function PlanesProfesionales() {
 
   if (cargando) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center">
         <Toaster position="top-center" />
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 text-lg">Cargando planes profesionales...</p>
+        <div className="text-center" role="status" aria-live="polite">
+          <div className="flex items-center justify-center gap-2 mb-6">
+            <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse" style={{ animationDelay: '0ms' }} />
+            <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" style={{ animationDelay: '150ms' }} />
+            <div className="w-3 h-3 rounded-full bg-blue-400 animate-pulse" style={{ animationDelay: '300ms' }} />
+          </div>
+          <p className="text-gray-700 text-lg font-medium">Cargando planes profesionales...</p>
+          <span className="sr-only">Cargando información de planes</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
       <Toaster position="top-center" />
 
-      {/* Header */}
-      <section className="pt-24 pb-16 px-4">
+      {/* Header con paleta terapéutica */}
+      <section className="pt-24 pb-16 px-4" role="main" aria-label="Planes profesionales">
         <div className="container mx-auto max-w-7xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
             className="text-center"
           >
-            <Badge className="mb-4 bg-blue-600 text-white px-4 py-1.5 text-sm">
+            <Badge className="mb-6 bg-gradient-to-r from-blue-500 to-green-500 text-white px-6 py-2 text-sm font-medium shadow-md">
               Planes Profesionales
             </Badge>
-            <h1 className="text-5xl md:text-6xl font-bold text-slate-900 mb-6">
+            <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
               Crece tu práctica terapéutica
             </h1>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-4">
+            <p className="text-xl text-gray-700 max-w-3xl mx-auto mb-6 leading-relaxed">
               Gestiona pacientes, análisis con IA y herramientas profesionales.
               Todo lo que necesitas para ofrecer el mejor servicio.
             </p>
-            <div className="flex items-center justify-center gap-2 text-sm text-slate-500">
-              <Shield className="w-4 h-4" />
+            <div className="flex items-center justify-center gap-3 text-sm text-gray-600 bg-green-50 rounded-full px-6 py-3 inline-flex border border-green-200">
+              <Shield className="w-5 h-5 text-green-600" aria-hidden="true" />
               <span>Prueba gratuita de 14 días · Cancela cuando quieras</span>
             </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Toggle Mensual/Anual */}
-      <section className="pb-12 px-4">
+      {/* Toggle Mensual/Anual con mejor accesibilidad */}
+      <section className="pb-12 px-4" aria-label="Selector de periodo de facturación">
         <div className="container mx-auto max-w-7xl">
           <div className="flex justify-center mb-12">
-            <div className="bg-white rounded-full p-1.5 shadow-lg border border-slate-200">
+            <div
+              className="bg-white rounded-full p-2 shadow-lg border-2 border-blue-200"
+              role="group"
+              aria-label="Período de facturación"
+            >
               <Button
                 variant={periodo === 'mensual' ? 'default' : 'ghost'}
                 onClick={() => setPeriodo('mensual')}
-                className="rounded-full px-6"
+                className={`rounded-full px-8 py-3 transition-all duration-300 ${
+                  periodo === 'mensual'
+                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
+                    : 'text-gray-700 hover:bg-blue-50'
+                }`}
+                aria-pressed={periodo === 'mensual'}
+                aria-label="Facturación mensual"
               >
                 Mensual
               </Button>
               <Button
                 variant={periodo === 'anual' ? 'default' : 'ghost'}
                 onClick={() => setPeriodo('anual')}
-                className="rounded-full px-6"
+                className={`rounded-full px-8 py-3 transition-all duration-300 ${
+                  periodo === 'anual'
+                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
+                    : 'text-gray-700 hover:bg-blue-50'
+                }`}
+                aria-pressed={periodo === 'anual'}
+                aria-label="Facturación anual con 20% de descuento"
               >
                 Anual
-                <Badge className="ml-2 bg-green-600 text-white">-20%</Badge>
+                <Badge className="ml-2 bg-green-500 text-white text-xs px-2 py-0.5 font-semibold">
+                  -20%
+                </Badge>
               </Button>
             </div>
           </div>
@@ -255,19 +278,24 @@ function TarjetaPlanProfesional({
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1, duration: 0.5 }}
+      transition={{ delay: index * 0.1, duration: 0.5, ease: 'easeOut' }}
       className="h-full"
     >
       <Card
-        className={`h-full flex flex-col relative overflow-hidden transition-all duration-300 hover:shadow-2xl ${
+        className={`h-full flex flex-col relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-102 ${
           plan.destacado
-            ? 'border-2 border-blue-500 shadow-xl scale-105'
-            : 'border border-slate-200'
+            ? 'border-2 border-blue-500 shadow-xl ring-2 ring-blue-200 ring-offset-2'
+            : 'border-2 border-gray-200 hover:border-blue-300'
         }`}
+        role="article"
+        aria-label={`Plan ${plan.nombre}`}
       >
         {plan.destacado && (
-          <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-500 text-white text-center py-2 text-sm font-bold">
-            MÁS POPULAR
+          <div
+            className="absolute top-0 left-0 right-0 bg-gradient-to-r from-blue-500 to-green-500 text-white text-center py-2.5 text-sm font-bold tracking-wide shadow-md"
+            aria-label="Plan más popular"
+          >
+            ⭐ MÁS POPULAR
           </div>
         )}
 
@@ -359,17 +387,18 @@ function TarjetaPlanProfesional({
           </ul>
         </CardContent>
 
-        <CardFooter>
+        <CardFooter className="pt-6">
           <Button
             onClick={() => onSeleccionar(plan.codigo)}
-            className={`w-full ${
+            className={`w-full font-semibold text-lg py-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl ${
               plan.destacado
-                ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600'
-                : ''
+                ? 'bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600 text-white transform hover:scale-105'
+                : 'bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white'
             }`}
             size="lg"
+            aria-label={`${esGratis ? 'Comenzar prueba gratuita' : 'Suscribirse'} al plan ${plan.nombre}`}
           >
-            {esGratis ? 'Comenzar prueba' : 'Suscribirme'}
+            {esGratis ? '✨ Comenzar Prueba Gratuita' : '🚀 Suscribirme Ahora'}
           </Button>
         </CardFooter>
       </Card>

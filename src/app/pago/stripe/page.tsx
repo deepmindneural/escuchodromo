@@ -197,14 +197,15 @@ export default function PaginaPagoStripe() {
         return;
       }
 
-      // Obtener tipo de plan desde URL
+      // Obtener código del plan y tipo desde URL
       const searchParams = new URLSearchParams(window.location.search);
+      const planCodigo = searchParams.get('plan') || plan.id;
       const tipoPlan = searchParams.get('tipo') || 'usuario';
 
       // Llamar al Edge Function para crear sesión de Stripe
       const { data, error } = await supabase.functions.invoke('crear-checkout-stripe', {
         body: {
-          plan: plan.id,
+          plan: planCodigo, // ✅ CORRECCIÓN: Enviar código del plan, no ID
           periodo: plan.periodo,
           moneda: plan.moneda,
           tipo_usuario: tipoPlan, // Agregar tipo de usuario
@@ -255,12 +256,17 @@ export default function PaginaPagoStripe() {
 
   if (cargando) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
         <Navegacion />
         <div className="pt-32 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-gray-600">Cargando información del plan...</p>
+          <div className="text-center" role="status" aria-live="polite">
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse" style={{ animationDelay: '0ms' }} />
+              <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" style={{ animationDelay: '150ms' }} />
+              <div className="w-3 h-3 rounded-full bg-blue-400 animate-pulse" style={{ animationDelay: '300ms' }} />
+            </div>
+            <p className="text-gray-700 text-lg font-medium">Cargando información del plan...</p>
+            <span className="sr-only">Cargando detalles de tu plan seleccionado</span>
           </div>
         </div>
       </div>
@@ -292,103 +298,112 @@ export default function PaginaPagoStripe() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
       <Toaster position="top-center" />
       <Navegacion />
-      
-      <div className="pt-28 pb-12 px-4">
+
+      <main className="pt-28 pb-12 px-4" role="main" aria-label="Página de procesamiento de pago">
         <div className="max-w-6xl mx-auto">
-          {/* Header */}
-          <div className="flex items-center gap-4 mb-8">
-            <Link href="/suscripcion">
+          {/* Header mejorado con accesibilidad */}
+          <div className="flex items-center gap-4 mb-10">
+            <Link href="/suscripcion" aria-label="Volver a suscripción">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="p-3 bg-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200"
+                className="p-3 bg-white rounded-full shadow-md hover:shadow-lg transition-all duration-300 border-2 border-blue-200"
+                aria-label="Volver a la página anterior"
               >
-                <FaArrowLeft className="text-blue-600" />
+                <FaArrowLeft className="text-blue-600" aria-hidden="true" />
               </motion.button>
             </Link>
             <div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">Procesamiento de Pago</h1>
-              <p className="text-gray-600 text-lg">Completa tu suscripción de forma segura</p>
+              <h1 className="text-4xl font-bold text-gray-900 mb-2">Procesamiento de Pago Seguro</h1>
+              <p className="text-gray-700 text-lg">Completa tu suscripción de forma protegida y encriptada</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Resumen del plan */}
-            <div className="lg:col-span-1">
-              <div className="bg-white rounded-2xl shadow-xl p-8 sticky top-8">
-                <h3 className="text-2xl font-bold text-gray-900 mb-6">Resumen del Pedido</h3>
-                
-                <div className="border border-gray-200 rounded-xl p-6 mb-6">
-                  <h4 className="text-xl font-bold text-blue-600 mb-2">{plan.nombre}</h4>
-                  <p className="text-gray-600 mb-4">Suscripción {plan.periodo}</p>
-                  
-                  <div className="space-y-2 mb-4">
+            {/* Resumen del plan mejorado */}
+            <aside className="lg:col-span-1" aria-label="Resumen del pedido">
+              <div className="bg-white rounded-2xl shadow-xl p-8 sticky top-8 border-2 border-blue-100">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Resumen del Pedido</h2>
+
+                <div className="bg-gradient-to-br from-blue-50 to-green-50 border-2 border-blue-200 rounded-xl p-6 mb-6">
+                  <h3 className="text-xl font-bold text-blue-700 mb-2">{plan.nombre}</h3>
+                  <p className="text-gray-700 mb-4 font-medium">Suscripción {plan.periodo}</p>
+
+                  <div className="space-y-3 mb-4">
                     {plan.caracteristicas.slice(0, 3).map((caracteristica, index) => (
-                      <div key={index} className="flex items-center gap-2 text-sm text-gray-700">
-                        <FaCheckCircle className="text-green-500" />
+                      <div key={index} className="flex items-center gap-3 text-sm text-gray-800">
+                        <FaCheckCircle className="text-green-600 flex-shrink-0" aria-hidden="true" />
                         <span>{caracteristica}</span>
                       </div>
                     ))}
                   </div>
-                  
-                  <div className="border-t pt-4">
-                    <div className="flex items-center justify-between text-2xl font-bold text-gray-900">
-                      <span>Total:</span>
-                      <span>{plan.precio.toLocaleString()} {plan.moneda}</span>
+
+                  <div className="border-t-2 border-blue-300 pt-4 mt-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-lg font-semibold text-gray-700">Total a pagar:</span>
+                      <span className="text-3xl font-bold text-gray-900">
+                        {plan.precio.toLocaleString()} {plan.moneda}
+                      </span>
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">Facturado {plan.periodo}</p>
+                    <p className="text-sm text-gray-600 mt-2">Facturado {plan.periodo}mente</p>
                   </div>
                 </div>
 
-                {/* Seguridad */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center gap-3 mb-2">
-                    <FaShieldAlt className="text-green-600" />
-                    <h4 className="font-semibold text-green-800">Pago 100% Seguro</h4>
+                {/* Seguridad mejorada */}
+                <div className="bg-green-50 border-2 border-green-300 rounded-xl p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <FaShieldAlt className="text-green-600 text-xl" aria-hidden="true" />
+                    <h3 className="font-bold text-green-800 text-lg">Pago 100% Seguro</h3>
                   </div>
-                  <p className="text-green-700 text-sm">
-                    Procesado por Stripe con encriptación SSL de 256 bits
+                  <p className="text-green-800 text-sm leading-relaxed">
+                    Procesado por Stripe con encriptación SSL de 256 bits. Tus datos están completamente protegidos.
                   </p>
                 </div>
               </div>
-            </div>
+            </aside>
 
-            {/* Formulario de pago */}
+            {/* Formulario de pago mejorado */}
             <div className="lg:col-span-2">
-              <form onSubmit={procesarPago} className="space-y-8">
+              <form onSubmit={procesarPago} className="space-y-8" noValidate>
                 {/* Información de facturación */}
-                <div className="bg-white rounded-2xl shadow-xl p-8">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-6">Información de Facturación</h3>
+                <section className="bg-white rounded-2xl shadow-xl p-8 border-2 border-gray-100" aria-labelledby="facturacion-heading">
+                  <h2 id="facturacion-heading" className="text-2xl font-bold text-gray-900 mb-6">
+                    Información de Facturación
+                  </h2>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Nombre completo *
+                      <label htmlFor="nombre" className="block text-sm font-semibold text-gray-800 mb-2">
+                        Nombre completo <span className="text-red-500" aria-label="requerido">*</span>
                       </label>
                       <input
+                        id="nombre"
                         type="text"
                         required
                         value={datosFacturacion.nombre}
                         onChange={(e) => setDatosFacturacion(prev => ({ ...prev, nombre: e.target.value }))}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
                         placeholder="Juan Pérez"
+                        aria-required="true"
                       />
                     </div>
-                    
+
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Email *
+                      <label htmlFor="email" className="block text-sm font-semibold text-gray-800 mb-2">
+                        Email <span className="text-red-500" aria-label="requerido">*</span>
                       </label>
                       <input
+                        id="email"
                         type="email"
                         required
                         value={datosFacturacion.email}
                         onChange={(e) => setDatosFacturacion(prev => ({ ...prev, email: e.target.value }))}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
                         placeholder="juan@email.com"
+                        aria-required="true"
                       />
                     </div>
                     
@@ -517,27 +532,29 @@ export default function PaginaPagoStripe() {
                   </div>
                 </div>
 
-                {/* Botón de pago */}
+                {/* Botón de pago mejorado */}
                 <motion.button
                   type="submit"
                   disabled={procesando || !aceptaTerminos}
                   whileHover={{ scale: procesando ? 1 : 1.02 }}
                   whileTap={{ scale: procesando ? 1 : 0.98 }}
-                  className={`w-full py-4 text-white font-bold text-lg rounded-xl shadow-lg transition-all duration-200 ${
+                  className={`w-full py-5 text-white font-bold text-xl rounded-xl shadow-lg transition-all duration-300 ${
                     procesando || !aceptaTerminos
-                      ? 'bg-gray-400 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:shadow-xl'
+                      ? 'bg-gray-400 cursor-not-allowed opacity-60'
+                      : 'bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600 hover:shadow-2xl'
                   }`}
+                  aria-label={procesando ? 'Procesando pago' : 'Continuar al pago seguro'}
+                  aria-disabled={procesando || !aceptaTerminos}
                 >
                   {procesando ? (
                     <div className="flex items-center justify-center gap-3">
-                      <FaSpinner className="animate-spin" />
-                      Procesando pago...
+                      <FaSpinner className="animate-spin" aria-hidden="true" />
+                      <span>Procesando pago seguro...</span>
                     </div>
                   ) : (
                     <div className="flex items-center justify-center gap-3">
-                      <FaLock />
-                      Continuar al Pago Seguro
+                      <FaLock aria-hidden="true" />
+                      <span>🚀 Continuar al Pago Seguro</span>
                     </div>
                   )}
                 </motion.button>
@@ -545,7 +562,7 @@ export default function PaginaPagoStripe() {
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

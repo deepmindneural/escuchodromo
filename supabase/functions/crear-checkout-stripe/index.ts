@@ -13,27 +13,11 @@ interface DatosFacturacion {
 }
 
 interface RequestBody {
-  plan: 'basico' | 'premium' | 'profesional'
+  plan: string // Código del plan (basico, premium, terapeuta_inicial, etc.)
   periodo: 'mensual' | 'anual'
   moneda?: 'COP' | 'USD'
-  tipo_usuario?: 'usuario' | 'profesional'
+  tipo_usuario?: 'paciente' | 'profesional'
   datosFacturacion?: DatosFacturacion
-}
-
-// Precios por plan
-const PRECIOS = {
-  basico: {
-    mensual: { COP: 0, USD: 0 },
-    anual: { COP: 0, USD: 0 }
-  },
-  premium: {
-    mensual: { COP: 49900, USD: 12 },
-    anual: { COP: 479000, USD: 115 } // 20% descuento
-  },
-  profesional: {
-    mensual: { COP: 99900, USD: 24 },
-    anual: { COP: 959000, USD: 230 } // 20% descuento
-  }
 }
 
 serve(async (req) => {
@@ -97,39 +81,80 @@ serve(async (req) => {
 
     // Parsear request
     const body: RequestBody = await req.json()
-    const { plan, periodo, moneda = 'COP', tipo_usuario = 'usuario', datosFacturacion } = body
+    const { plan: planCodigo, periodo, moneda = 'COP', tipo_usuario = 'paciente', datosFacturacion } = body
 
     console.log('[crear-checkout-stripe] Creando sesión:', {
       usuario_id: usuarioData.id,
-      plan,
+      plan: planCodigo,
       periodo,
       moneda,
       tipo_usuario,
       tiene_datos_facturacion: !!datosFacturacion
     })
 
-    // Validar plan
-    if (!['basico', 'premium', 'profesional'].includes(plan)) {
+    // Buscar plan en la base de datos
+    const { data: planData, error: planError } = await supabase
+      .from('Plan')
+      .select('*')
+      .eq('codigo', planCodigo)
+      .eq('esta_activo', true)
+      .single()
+
+    if (planError || !planData) {
+      console.error('[crear-checkout-stripe] Plan no encontrado:', planError)
       return new Response(
-        JSON.stringify({ error: 'Plan inválido' }),
-        { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+        JSON.stringify({
+          error: 'Plan no encontrado',
+          codigo: planCodigo,
+          detalles: planError?.message
+        }),
+        { status: 404, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
       )
     }
 
-    // Plan básico es gratis
-    if (plan === 'basico') {
+    // Obtener precio según periodo
+    const precio = periodo === 'mensual' ? planData.precio_mensual : planData.precio_anual
+
+    // Plan gratuito
+    if (precio === 0) {
+      // Crear suscripción gratuita directamente
+      const fechaInicio = new Date()
+      const fechaFin = new Date()
+      fechaFin.setFullYear(fechaFin.getFullYear() + 10) // 10 años de acceso
+
+      await supabase.from('Suscripcion').insert({
+        usuario_id: usuarioData.id,
+        plan: planCodigo,
+        periodo: periodo,
+        estado: 'activa',
+        precio: 0,
+        moneda: moneda,
+        fecha_inicio: fechaInicio.toISOString(),
+        fecha_fin: fechaFin.toISOString(),
+        cancelar_al_final: false,
+      })
+
       return new Response(
         JSON.stringify({
           success: true,
-          message: 'El plan básico es gratuito',
-          redirect_url: '/dashboard'
+          message: 'Plan gratuito activado',
+          redirect_url: tipo_usuario === 'profesional' ? '/profesional/dashboard' : '/dashboard'
         }),
         { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
       )
     }
 
-    // Obtener precio
-    const precio = PRECIOS[plan][periodo][moneda]
+    // Verificar que el precio sea válido
+    if (!precio || precio <= 0) {
+      return new Response(
+        JSON.stringify({
+          error: 'Precio inválido para el plan seleccionado',
+          plan: planCodigo,
+          periodo
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      )
+    }
 
     // Crear o recuperar cliente de Stripe
     let stripeClienteId: string
@@ -180,10 +205,10 @@ serve(async (req) => {
           price_data: {
             currency: moneda.toLowerCase(),
             product_data: {
-              name: `Plan ${plan.charAt(0).toUpperCase() + plan.slice(1)}`,
-              description: `Suscripción ${periodo} a Escuchodromo`,
+              name: planData.nombre,
+              description: `Suscripción ${periodo} - ${planData.descripcion || 'Escuchodromo'}`,
             },
-            unit_amount: precio * 100, // Stripe usa centavos
+            unit_amount: Math.round(precio * 100), // Stripe usa centavos
             recurring: {
               interval: periodo === 'mensual' ? 'month' : 'year',
               interval_count: 1,
@@ -194,10 +219,10 @@ serve(async (req) => {
       ],
       mode: 'subscription',
       success_url: `${req.headers.get('origin')}/pago/confirmacion?sesion_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.get('origin')}/precios`,
+      cancel_url: `${req.headers.get('origin')}/${tipo_usuario === 'profesional' ? 'profesional/planes' : 'precios'}`,
       metadata: {
         usuario_id: usuarioData.id,
-        plan,
+        plan: planCodigo,
         periodo,
         moneda,
         tipo_usuario
@@ -215,9 +240,9 @@ serve(async (req) => {
         moneda,
         estado: 'pendiente',
         metodo_pago: 'tarjeta',
-        descripcion: `Pago de suscripción ${plan} ${periodo}`,
+        descripcion: `Pago de suscripción ${planData.nombre} ${periodo}`,
         metadata: {
-          plan,
+          plan: planCodigo,
           periodo,
           tipo_usuario,
           stripe_customer_id: stripeClienteId,

@@ -226,110 +226,134 @@ export default function PaginaPrecios() {
   const [preguntaAbierta, setPreguntaAbierta] = useState<number | null>(null);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-green-50">
       <Navegacion />
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4">
+      {/* Hero Section mejorado */}
+      <section className="pt-32 pb-20 px-4" role="main" aria-label="Planes y precios">
         <div className="container mx-auto max-w-6xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
             className="text-center"
           >
-            <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
               Planes y Precios
             </h1>
-            <p className="text-xl text-gray-700 max-w-3xl mx-auto mb-8">
+            <p className="text-xl text-gray-800 max-w-3xl mx-auto mb-8 leading-relaxed">
               Elige el plan perfecto para tu viaje de bienestar emocional.
               Comienza gratis y escala cuando estés listo.
             </p>
 
-            {/* Toggle de facturación */}
-            <div className="flex items-center justify-center gap-4 mb-12">
-              <span className={`font-medium ${!facturacionAnual ? 'text-gray-900' : 'text-gray-500'}`}>
+            {/* Toggle de facturación mejorado */}
+            <div
+              className="flex items-center justify-center gap-4 mb-12"
+              role="group"
+              aria-label="Selector de período de facturación"
+            >
+              <span className={`font-semibold text-lg transition-colors duration-300 ${!facturacionAnual ? 'text-gray-900' : 'text-gray-500'}`}>
                 Mensual
               </span>
               <motion.button
                 onClick={() => setFacturacionAnual(!facturacionAnual)}
-                className={`relative w-14 h-8 rounded-full transition-colors ${
-                  facturacionAnual ? 'bg-blue-500' : 'bg-gray-300'
+                className={`relative w-16 h-8 rounded-full transition-all duration-300 ${
+                  facturacionAnual ? 'bg-gradient-to-r from-blue-500 to-green-500' : 'bg-gray-300'
                 }`}
+                aria-label={`Cambiar a facturación ${facturacionAnual ? 'mensual' : 'anual'}`}
+                aria-pressed={facturacionAnual}
               >
                 <motion.div
-                  animate={{ x: facturacionAnual ? 24 : 2 }}
+                  animate={{ x: facturacionAnual ? 30 : 2 }}
                   transition={{ type: "spring", stiffness: 500, damping: 30 }}
                   className="absolute top-1 w-6 h-6 bg-white rounded-full shadow-md"
                 />
               </motion.button>
-              <span className={`font-medium ${facturacionAnual ? 'text-gray-900' : 'text-gray-500'}`}>
+              <span className={`font-semibold text-lg transition-colors duration-300 ${facturacionAnual ? 'text-gray-900' : 'text-gray-500'}`}>
                 Anual
               </span>
               {facturacionAnual && (
-                <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">
-                  Ahorra 20%
-                </span>
+                <motion.span
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="bg-green-500 text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-md"
+                >
+                  ✨ Ahorra 20%
+                </motion.span>
               )}
             </div>
 
-            {/* Selector de moneda */}
-            <div className="flex items-center justify-center gap-2 mb-4">
+            {/* Selector de moneda mejorado */}
+            <div
+              className="flex items-center justify-center gap-3 mb-4"
+              role="group"
+              aria-label="Selector de moneda"
+            >
               <button
                 onClick={() => setMoneda('COP')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 shadow-md ${
                   moneda === 'COP'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-gradient-to-r from-blue-500 to-green-500 text-white scale-105'
+                    : 'bg-white text-gray-700 hover:bg-gray-100 hover:shadow-lg'
                 }`}
+                aria-pressed={moneda === 'COP'}
+                aria-label="Seleccionar pesos colombianos"
               >
-                COP (Colombia)
+                🇨🇴 COP (Colombia)
               </button>
               <button
                 onClick={() => setMoneda('USD')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 shadow-md ${
                   moneda === 'USD'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-gradient-to-r from-blue-500 to-green-500 text-white scale-105'
+                    : 'bg-white text-gray-700 hover:bg-gray-100 hover:shadow-lg'
                 }`}
+                aria-pressed={moneda === 'USD'}
+                aria-label="Seleccionar dólares estadounidenses"
               >
-                USD (Internacional)
+                🌎 USD (Internacional)
               </button>
             </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Planes */}
-      <section className="py-20 px-4">
+      {/* Planes mejorados */}
+      <section className="py-20 px-4" aria-label="Planes disponibles">
         <div className="container mx-auto max-w-7xl">
           {cargando ? (
-            <div className="flex justify-center items-center py-20">
-              <FaSpinner className="h-12 w-12 text-blue-500 animate-spin" />
+            <div className="flex justify-center items-center py-20" role="status" aria-live="polite">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse" style={{ animationDelay: '0ms' }} />
+                <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" style={{ animationDelay: '150ms' }} />
+                <div className="w-3 h-3 rounded-full bg-blue-400 animate-pulse" style={{ animationDelay: '300ms' }} />
+              </div>
+              <span className="sr-only">Cargando planes disponibles</span>
             </div>
           ) : (
             <div className="grid md:grid-cols-3 gap-8">
               {planes.map((plan, index) => (
-                <motion.div
+                <motion.article
                   key={plan.id}
                   initial={{ opacity: 0, y: 50 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: index * 0.2 }}
+                  transition={{ delay: index * 0.15, duration: 0.5, ease: 'easeOut' }}
                   className={`relative ${plan.popular ? 'scale-105 z-10' : ''}`}
+                  aria-label={`Plan ${plan.nombre}`}
                 >
                   {plan.popular && (
                     <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-20">
-                      <span className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-4 py-1 rounded-full text-sm font-bold">
-                        MÁS POPULAR
+                      <span className="bg-gradient-to-r from-blue-500 to-green-500 text-white px-5 py-2 rounded-full text-sm font-bold shadow-lg">
+                        ⭐ MÁS POPULAR
                       </span>
                     </div>
                   )}
 
-                  <div className={`bg-white rounded-2xl shadow-xl overflow-hidden ${
-                    plan.popular ? 'ring-2 ring-blue-500' : ''
+                  <div className={`bg-white rounded-2xl shadow-xl overflow-hidden transition-all duration-300 hover:shadow-2xl ${
+                    plan.popular ? 'ring-2 ring-blue-500 ring-offset-2' : 'hover:ring-2 hover:ring-blue-300'
                   }`}>
-                    <div className={`h-2 bg-gradient-to-r ${plan.color}`} />
+                    <div className={`h-3 bg-gradient-to-r ${plan.color}`} aria-hidden="true" />
 
                     <div className="p-8">
                       {/* Header del plan */}
@@ -381,22 +405,25 @@ export default function PaginaPrecios() {
                         ))}
                       </ul>
 
-                      {/* Botón CTA */}
+                      {/* Botón CTA mejorado */}
                       <Link href={
                         plan.precio === 'Gratis'
                           ? '/registrar'
                           : `/pago/stripe?plan=${plan.id}&periodo=${facturacionAnual ? 'anual' : 'mensual'}`
                       }>
                         <motion.button
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          className={`w-full py-3 rounded-lg font-bold transition-all duration-300 ${
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.97 }}
+                          className={`w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 shadow-lg hover:shadow-xl ${
                             plan.popular
-                              ? `bg-gradient-to-r ${plan.color} text-white shadow-lg hover:shadow-xl`
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              ? 'bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600 text-white'
+                              : plan.precio === 'Gratis'
+                              ? 'bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white'
+                              : 'bg-white border-2 border-gray-300 text-gray-800 hover:border-blue-500 hover:bg-blue-50'
                           }`}
+                          aria-label={`${plan.precio === 'Gratis' ? 'Comenzar gratis' : 'Elegir'} plan ${plan.nombre}`}
                         >
-                          {plan.precio === 'Gratis' ? 'Comenzar Gratis' : 'Elegir Plan'}
+                          {plan.precio === 'Gratis' ? '✨ Comenzar Gratis' : '🚀 Elegir Plan'}
                         </motion.button>
                       </Link>
                     </div>
