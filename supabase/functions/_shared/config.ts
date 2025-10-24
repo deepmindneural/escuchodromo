@@ -8,7 +8,7 @@
 import type { RateLimitConfig, GeminiConfig } from './tipos.ts'
 
 // ==========================================
-// CONFIGURACIÓN DE API DE IA
+// CONFIGURACIÓN DE API DE GPT OSS
 // ==========================================
 
 export const GEMINI_CONFIG: GeminiConfig = {
@@ -28,7 +28,7 @@ export const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/
 // ==========================================
 
 export const RATE_LIMIT: RateLimitConfig = {
-  maxCalls: 1000,      // Límite diario de IA (tier gratuito)
+  maxCalls: 1000,      // Límite diario de GPT OSS
   window: 86400000,    // 24 horas en milisegundos
   reserva: 100,        // Reservar para emergencias y crisis
   prioridad: {
@@ -215,7 +215,7 @@ export const SUPABASE_CONFIG = {
 }
 
 // ==========================================
-// SAFETY SETTINGS PARA IA
+// SAFETY SETTINGS PARA GPT OSS
 // ==========================================
 
 export const GEMINI_SAFETY_SETTINGS = [

@@ -441,8 +441,8 @@ CREATE OR REPLACE FUNCTION puede_llamar_gemini()
 RETURNS BOOLEAN AS $$
 DECLARE
   llamadas_hoy INTEGER;
-  limite_diario INTEGER := 1000;
-  reserva_emergencia INTEGER := 100;
+  limite_diario INTEGER := 1000; -- Límite diario de GPT OSS
+  reserva_emergencia INTEGER := 100; -- Reserva para emergencias
 BEGIN
   llamadas_hoy := obtener_llamadas_gemini_hoy();
   RETURN llamadas_hoy < (limite_diario - reserva_emergencia);

@@ -150,12 +150,9 @@ export default function DetallesUsuario() {
     try {
       const supabase = obtenerClienteNavegador();
 
-      // Cargar información básica del usuario
+      // Cargar información básica del usuario usando RPC
       const { data: usuarioData, error: usuarioError } = await supabase
-        .from('Usuario')
-        .select('*')
-        .eq('id', usuarioId)
-        .single();
+        .rpc('obtener_usuario_completo', { p_usuario_id: usuarioId });
 
       if (usuarioError) {
         console.error('Error al cargar usuario:', usuarioError);
@@ -163,83 +160,95 @@ export default function DetallesUsuario() {
         return;
       }
 
-      setUsuario(usuarioData);
-
-      // Cargar conversaciones (últimas 20)
-      const { data: conversacionesData, error: conversacionesError } = await supabase
-        .from('Conversacion')
-        .select('id, tipo, emocion, duracion, creado_en')
-        .eq('usuario_id', usuarioId)
-        .order('creado_en', { ascending: false })
-        .limit(20);
-
-      if (!conversacionesError && conversacionesData) {
-        setConversaciones(conversacionesData);
+      if (!usuarioData || usuarioData.length === 0) {
+        toast.error('Usuario no encontrado');
+        return;
       }
 
-      // Cargar evaluaciones
+      // La función RPC devuelve un array, tomamos el primer elemento
+      const usuarioInfo = usuarioData[0];
+      setUsuario({
+        id: usuarioInfo.id,
+        email: usuarioInfo.email,
+        nombre: usuarioInfo.nombre,
+        apellido: usuarioInfo.apellido,
+        telefono: usuarioInfo.telefono,
+        imagen_url: usuarioInfo.imagen,
+        rol: usuarioInfo.rol,
+        esta_activo: usuarioInfo.esta_activo,
+        creado_en: usuarioInfo.creado_en,
+        actualizado_en: usuarioInfo.actualizado_en,
+      });
+
+      // Cargar conversaciones usando RPC
+      const { data: conversacionesData, error: conversacionesError } = await supabase
+        .rpc('obtener_conversaciones_usuario', { p_usuario_id: usuarioId });
+
+      if (!conversacionesError && conversacionesData) {
+        // Transformar los datos al formato esperado
+        const conversacionesFormateadas = conversacionesData.slice(0, 20).map((conv: any) => ({
+          id: conv.id,
+          tipo: conv.tipo,
+          emocion: conv.emocion_detectada,
+          duracion: conv.duracion_segundos,
+          creado_en: conv.creado_en,
+        }));
+        setConversaciones(conversacionesFormateadas);
+      }
+
+      // Cargar evaluaciones usando RPC
       const { data: evaluacionesData, error: evaluacionesError } = await supabase
-        .from('Evaluacion')
-        .select('id, tipo, puntaje_total, severidad, creado_en')
-        .eq('usuario_id', usuarioId)
-        .order('creado_en', { ascending: false });
+        .rpc('obtener_evaluaciones_usuario', { p_usuario_id: usuarioId });
 
       if (!evaluacionesError && evaluacionesData) {
         setEvaluaciones(evaluacionesData);
       }
 
-      // Cargar pagos
+      // Cargar pagos usando RPC
       const { data: pagosData, error: pagosError } = await supabase
-        .from('Pago')
-        .select('id, monto, moneda, estado, metodo_pago, creado_en')
-        .eq('usuario_id', usuarioId)
-        .order('creado_en', { ascending: false });
+        .rpc('obtener_pagos_usuario', { p_usuario_id: usuarioId });
 
       if (!pagosError && pagosData) {
         setPagos(pagosData);
       }
 
-      // Cargar suscripción activa
+      // Cargar suscripción activa usando RPC
       const { data: suscripcionData, error: suscripcionError } = await supabase
-        .from('Suscripcion')
-        .select(`
-          id,
-          estado,
-          fecha_inicio,
-          fecha_fin,
-          Plan (
-            nombre,
-            precio,
-            moneda
-          )
-        `)
-        .eq('usuario_id', usuarioId)
-        .eq('estado', 'activa')
-        .single();
+        .rpc('obtener_suscripcion_activa_usuario', { p_usuario_id: usuarioId });
 
-      if (!suscripcionError && suscripcionData) {
-        setSuscripcion(suscripcionData as any);
+      if (!suscripcionError && suscripcionData && suscripcionData.length > 0) {
+        const suscInfo = suscripcionData[0];
+        setSuscripcion({
+          id: suscInfo.id,
+          estado: suscInfo.estado,
+          fecha_inicio: suscInfo.fecha_inicio,
+          fecha_fin: suscInfo.fecha_fin,
+          Plan: {
+            nombre: suscInfo.plan_nombre,
+            precio: suscInfo.plan_precio,
+            moneda: suscInfo.plan_moneda,
+          },
+        });
       }
 
-      // Cargar citas
+      // Cargar citas usando RPC
       const { data: citasData, error: citasError } = await supabase
-        .from('Cita')
-        .select(`
-          id,
-          fecha_hora,
-          estado,
-          PerfilProfesional (
-            Usuario (
-              nombre,
-              apellido
-            )
-          )
-        `)
-        .eq('paciente_id', usuarioId)
-        .order('fecha_hora', { ascending: false });
+        .rpc('obtener_citas_usuario', { p_usuario_id: usuarioId });
 
       if (!citasError && citasData) {
-        setCitas(citasData as any);
+        // Transformar al formato esperado
+        const citasFormateadas = citasData.map((cita: any) => ({
+          id: cita.id,
+          fecha_hora: cita.fecha_hora,
+          estado: cita.estado,
+          PerfilProfesional: {
+            Usuario: {
+              nombre: cita.profesional_nombre,
+              apellido: cita.profesional_apellido,
+            },
+          },
+        }));
+        setCitas(citasFormateadas);
       }
 
       // Calcular estadísticas
@@ -250,24 +259,23 @@ export default function DetallesUsuario() {
         totalCitas: citasData?.length || 0,
       });
 
-      // Calcular métricas de uso de la plataforma
-      // Contar total de mensajes del usuario
-      const { count: totalMensajes } = await supabase
-        .from('Mensaje')
-        .select('*', { count: 'exact', head: true })
-        .eq('usuario_id', usuarioId);
+      // Contar total de mensajes usando RPC
+      const { data: totalMensajesData, error: mensajesError } = await supabase
+        .rpc('contar_mensajes_usuario', { p_usuario_id: usuarioId });
+
+      const totalMensajes = mensajesError ? 0 : (totalMensajesData || 0);
 
       // Calcular tiempo total en plataforma (suma de duraciones de conversaciones)
       const tiempoTotal = (conversacionesData || []).reduce(
-        (acc, conv) => acc + (conv.duracion || 0),
+        (acc: number, conv: any) => acc + (conv.duracion_segundos || 0),
         0
       );
 
       // Encontrar última actividad
       const todasLasFechas = [
-        ...(conversacionesData || []).map((c) => c.creado_en),
-        ...(evaluacionesData || []).map((e) => e.creado_en),
-        ...(pagosData || []).map((p) => p.creado_en),
+        ...(conversacionesData || []).map((c: any) => c.creado_en),
+        ...(evaluacionesData || []).map((e: any) => e.creado_en),
+        ...(pagosData || []).map((p: any) => p.creado_en),
       ];
       const ultimaActividad =
         todasLasFechas.length > 0
@@ -277,20 +285,20 @@ export default function DetallesUsuario() {
       // Calcular promedio de mensajes por conversación
       const promedioMensajes =
         conversacionesData && conversacionesData.length > 0
-          ? (totalMensajes || 0) / conversacionesData.length
+          ? totalMensajes / conversacionesData.length
           : 0;
 
       // Calcular funcionalidades más usadas
       const funcionalidades = [
-        { nombre: 'Chat de Texto', cantidad: conversacionesData?.filter((c) => c.tipo === 'chat')?.length || 0 },
-        { nombre: 'Chat de Voz', cantidad: conversacionesData?.filter((c) => c.tipo === 'voz')?.length || 0 },
-        { nombre: 'Evaluaciones PHQ-9', cantidad: evaluacionesData?.filter((e) => e.tipo === 'PHQ-9')?.length || 0 },
-        { nombre: 'Evaluaciones GAD-7', cantidad: evaluacionesData?.filter((e) => e.tipo === 'GAD-7')?.length || 0 },
+        { nombre: 'Chat de Texto', cantidad: conversacionesData?.filter((c: any) => c.tipo === 'chat')?.length || 0 },
+        { nombre: 'Chat de Voz', cantidad: conversacionesData?.filter((c: any) => c.tipo === 'voz')?.length || 0 },
+        { nombre: 'Evaluaciones PHQ-9', cantidad: evaluacionesData?.filter((e: any) => e.tipo === 'PHQ-9')?.length || 0 },
+        { nombre: 'Evaluaciones GAD-7', cantidad: evaluacionesData?.filter((e: any) => e.tipo === 'GAD-7')?.length || 0 },
         { nombre: 'Citas Programadas', cantidad: citasData?.length || 0 },
       ].sort((a, b) => b.cantidad - a.cantidad);
 
       setMetricsUso({
-        totalMensajes: totalMensajes || 0,
+        totalMensajes,
         tiempoTotalMinutos: Math.round(tiempoTotal / 60),
         ultimaActividad,
         promedioMensajesPorConversacion: Math.round(promedioMensajes * 10) / 10,

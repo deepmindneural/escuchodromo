@@ -1,8 +1,9 @@
 /**
- * CLIENTE REUTILIZABLE DE IA
+ * CLIENTE REUTILIZABLE DE GPT OSS (Legacy)
  *
- * Cliente centralizado para todas las llamadas a la API de IA
+ * Cliente centralizado para todas las llamadas a la API de GPT OSS
  * Con retry logic, rate limiting, error handling y logging
+ * NOTA: Este archivo se mantiene por compatibilidad, usar gptoss-client.ts para nuevas implementaciones
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -16,7 +17,7 @@ import {
 } from './config.ts'
 
 // ==========================================
-// CLIENTE DE IA
+// CLIENTE DE GPT OSS
 // ==========================================
 
 export class GeminiClient {
@@ -28,12 +29,12 @@ export class GeminiClient {
     this.apiUrl = GEMINI_API_URL
 
     if (!this.apiKey) {
-      throw new Error('La API de IA no está configurada correctamente. Contacta al administrador.')
+      throw new Error('La API de GPT OSS no está configurada correctamente. Contacta al administrador.')
     }
   }
 
   /**
-   * Llamar a la IA con retry logic y manejo de errores
+   * Llamar a GPT OSS con retry logic y manejo de errores
    */
   async llamar(params: {
     prompt: string
@@ -50,7 +51,7 @@ export class GeminiClient {
       // Verificar rate limit
       const puedeHacerLlamada = await this.verificarRateLimit(tipo)
       if (!puedeHacerLlamada) {
-        throw new Error('Límite de uso de IA alcanzado. Por favor, intenta más tarde.')
+        throw new Error('Límite de uso de GPT OSS alcanzado. Por favor, intenta más tarde.')
       }
 
       // Obtener configuración según tipo
@@ -153,14 +154,14 @@ export class GeminiClient {
           return this.llamarConRetry(prompt, config, intentos + 1)
         }
 
-        throw new Error(`Error de la API de IA (${response.status}). Por favor, intenta nuevamente.`)
+        throw new Error(`Error de la API de GPT OSS (${response.status}). Por favor, intenta nuevamente.`)
       }
 
       const data = await response.json()
 
       // Validar respuesta
       if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-        throw new Error('Respuesta inválida del sistema de IA')
+        throw new Error('Respuesta inválida del sistema de GPT OSS')
       }
 
       const respuesta = data.candidates[0].content.parts[0].text.trim()
@@ -249,7 +250,7 @@ export class GeminiClient {
   }
 
   /**
-   * Parsear respuesta JSON de la IA
+   * Parsear respuesta JSON de GPT OSS
    */
   parsearJSON<T>(respuesta: string): T | null {
     try {
@@ -349,7 +350,7 @@ export async function obtenerEstadisticasGemini(): Promise<{
 }
 
 /**
- * Verificar si el sistema puede hacer llamadas a la IA
+ * Verificar si el sistema puede hacer llamadas a GPT OSS
  */
 export async function puedeUsarGemini(): Promise<{ puede: boolean; razon?: string }> {
   const stats = await obtenerEstadisticasGemini()

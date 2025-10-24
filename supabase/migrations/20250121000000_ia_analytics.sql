@@ -303,7 +303,7 @@ CREATE TRIGGER alerta_urgente_actualizado_en
 
 -- ==========================================
 -- TABLA: LogGeminiAPI
--- Para monitorear uso de Gemini API
+-- Para monitorear uso de GPT OSS API
 -- ==========================================
 CREATE TABLE IF NOT EXISTS "LogGeminiAPI" (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -496,7 +496,7 @@ USING (
 -- FUNCIONES AUXILIARES
 -- ==========================================
 
--- Función: Obtener contador de llamadas Gemini del día
+-- Función: Obtener contador de llamadas GPT OSS del día
 CREATE OR REPLACE FUNCTION obtener_llamadas_gemini_hoy()
 RETURNS INTEGER AS $$
 BEGIN
@@ -509,7 +509,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Función: Verificar si se puede hacer llamada a Gemini
+-- Función: Verificar si se puede hacer llamada a GPT OSS
 CREATE OR REPLACE FUNCTION puede_llamar_gemini()
 RETURNS BOOLEAN AS $$
 DECLARE
@@ -544,7 +544,7 @@ COMMENT ON TABLE "ReporteSemanal" IS 'Reportes semanales automáticos generados 
 COMMENT ON TABLE "ReporteMensual" IS 'Reportes mensuales completos con evolución y análisis profundo';
 COMMENT ON TABLE "InsightDashboard" IS 'Snapshots de insights en tiempo real con TTL para dashboard';
 COMMENT ON TABLE "AlertaUrgente" IS 'Alertas de crisis para profesionales cuando se detecta riesgo suicida o deterioro';
-COMMENT ON TABLE "LogGeminiAPI" IS 'Log de todas las llamadas a Gemini API para monitoreo y rate limiting';
+COMMENT ON TABLE "LogGeminiAPI" IS 'Log de todas las llamadas a GPT OSS API para monitoreo y rate limiting';
 
 COMMENT ON COLUMN "AnalisisConversacion"."score_bienestar" IS '0-25: Crisis, 26-50: Bajo, 51-75: Moderado, 76-100: Bueno';
 COMMENT ON COLUMN "AnalisisConversacion"."nivel_urgencia" IS 'bajo: seguimiento regular, medio: atención pronta, alto: intervención, critico: crisis activa';

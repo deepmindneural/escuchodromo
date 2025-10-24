@@ -68,7 +68,7 @@ interface ConversacionIA {
   };
 }
 
-interface LogGemini {
+interface LogGPTOSS {
   id: string;
   modelo: string;
   prompt_tokens: number;
@@ -85,8 +85,8 @@ interface EstadisticasIA {
   totalAnalisisVoz: number;
   promedioEmocionesDetectadas: number;
   tiempoPromedioRespuesta: number;
-  llamadasGeminiHoy: number;
-  llamadasGeminiMes: number;
+  llamadasGPTOSSHoy: number;
+  llamadasGPTOSSMes: number;
   costoEstimadoHoy: number;
   costoEstimadoMes: number;
   tokensTotalesHoy: number;
@@ -147,8 +147,8 @@ export default function AdminAnalisisIA() {
     totalAnalisisVoz: 0,
     promedioEmocionesDetectadas: 0,
     tiempoPromedioRespuesta: 0,
-    llamadasGeminiHoy: 0,
-    llamadasGeminiMes: 0,
+    llamadasGPTOSSHoy: 0,
+    llamadasGPTOSSMes: 0,
     costoEstimadoHoy: 0,
     costoEstimadoMes: 0,
     tokensTotalesHoy: 0,
@@ -156,7 +156,7 @@ export default function AdminAnalisisIA() {
     tasaExito: 0,
   });
   const [conversaciones, setConversaciones] = useState<ConversacionIA[]>([]);
-  const [logsGemini, setLogsGemini] = useState<LogGemini[]>([]);
+  const [logsGPTOSS, setLogsGPTOSS] = useState<LogGPTOSS[]>([]);
   const [datosUsoPorTipo, setDatosUsoPorTipo] = useState<any[]>([]);
   const [datosEmociones, setDatosEmociones] = useState<any[]>([]);
   const [datosTokensPorDia, setDatosTokensPorDia] = useState<any[]>([]);
@@ -168,7 +168,7 @@ export default function AdminAnalisisIA() {
     limiteMensual: 25000,
     alertaCosto: 100,
     alertaUso: 80,
-    modeloPrincipal: 'gemini-1.5-flash',
+    modeloPrincipal: 'gpt-4o-mini',
     temperaturaDefault: 0.7,
   });
   const [editandoConfig, setEditandoConfig] = useState(false);
@@ -225,7 +225,7 @@ export default function AdminAnalisisIA() {
 
       setConversaciones(conversacionesFormateadas.slice(0, 20));
 
-      // Cargar logs de Gemini API
+      // Cargar logs de GPT OSS API
       const { data: logsData, error: logsError } = await supabase
         .from('LogGeminiAPI')
         .select('*')
@@ -234,17 +234,17 @@ export default function AdminAnalisisIA() {
         .limit(100);
 
       if (logsError) {
-        console.error('Error al cargar logs de Gemini:', logsError);
+        console.error('Error al cargar logs de GPT OSS:', logsError);
       }
 
-      setLogsGemini(logsData || []);
+      setLogsGPTOSS(logsData || []);
 
       // Obtener llamadas de hoy usando RPC
       const { data: llamadasHoy, error: llamadasError } = await supabase
         .rpc('obtener_llamadas_gemini_hoy');
 
       if (llamadasError) {
-        console.error('Error al obtener llamadas Gemini hoy:', llamadasError);
+        console.error('Error al obtener llamadas GPT OSS hoy:', llamadasError);
       }
 
       // Calcular estadísticas
@@ -260,7 +260,7 @@ export default function AdminAnalisisIA() {
         ? (emocionesDetectadas / totalConversaciones) * 100
         : 0;
 
-      // Calcular estadísticas de Gemini
+      // Calcular estadísticas de GPT OSS
       const logsHoy = (logsData || []).filter((log: any) => {
         const fechaLog = new Date(log.creado_en);
         fechaLog.setHours(0, 0, 0, 0);
@@ -287,8 +287,8 @@ export default function AdminAnalisisIA() {
         totalAnalisisVoz: totalVoz,
         promedioEmocionesDetectadas: Math.round(promedioEmociones),
         tiempoPromedioRespuesta: Number(tiempoPromedio.toFixed(2)),
-        llamadasGeminiHoy: llamadasHoy || logsHoy.length,
-        llamadasGeminiMes: logsMes.length,
+        llamadasGPTOSSHoy: llamadasHoy || logsHoy.length,
+        llamadasGPTOSSMes: logsMes.length,
         costoEstimadoHoy: Number(costoHoy.toFixed(2)),
         costoEstimadoMes: Number(costoMes.toFixed(2)),
         tokensTotalesHoy: tokensHoy,
@@ -429,8 +429,8 @@ export default function AdminAnalisisIA() {
     }
   };
 
-  const porcentajeUsoHoy = (estadisticas.llamadasGeminiHoy / configuracion.limiteDiario) * 100;
-  const porcentajeUsoMes = (estadisticas.llamadasGeminiMes / configuracion.limiteMensual) * 100;
+  const porcentajeUsoHoy = (estadisticas.llamadasGPTOSSHoy / configuracion.limiteDiario) * 100;
+  const porcentajeUsoMes = (estadisticas.llamadasGPTOSSMes / configuracion.limiteMensual) * 100;
 
   if (cargando) {
     return (
@@ -474,7 +474,7 @@ export default function AdminAnalisisIA() {
 
       <AdminHeader
         titulo="Análisis de Inteligencia Artificial"
-        descripcion="Monitoreo en tiempo real de Gemini AI, análisis emocional y uso de recursos"
+        descripcion="Monitoreo en tiempo real de GPT OSS, análisis emocional y uso de recursos"
         gradiente={COLORES_IA.gradientes.header}
         icono={<Sparkles className="w-12 h-12" aria-hidden="true" />}
       />
@@ -522,14 +522,14 @@ export default function AdminAnalisisIA() {
             >
               {[
                 {
-                  titulo: 'Llamadas API Hoy',
-                  valor: estadisticas.llamadasGeminiHoy,
+                  titulo: 'Llamadas GPT OSS Hoy',
+                  valor: estadisticas.llamadasGPTOSSHoy,
                   icono: Zap,
                   color: COLORES_IA.gradientes.card3,
                   cambio: porcentajeUsoHoy,
                   tendencia: 'up' as const,
                   sufijo: ` / ${configuracion.limiteDiario}`,
-                  ariaLabel: `Llamadas API hoy: ${estadisticas.llamadasGeminiHoy} de ${configuracion.limiteDiario}`,
+                  ariaLabel: `Llamadas GPT OSS hoy: ${estadisticas.llamadasGPTOSSHoy} de ${configuracion.limiteDiario}`,
                 },
                 {
                   titulo: 'Costo Estimado Hoy',
@@ -641,7 +641,7 @@ export default function AdminAnalisisIA() {
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Llamadas totales</span>
                     <span className="font-semibold text-gray-900">
-                      {estadisticas.llamadasGeminiMes.toLocaleString('es-CO')}
+                      {estadisticas.llamadasGPTOSSMes.toLocaleString('es-CO')}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
@@ -741,7 +741,7 @@ export default function AdminAnalisisIA() {
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Modelo principal</span>
                     <span className="font-semibold text-gray-900 text-xs">
-                      {configuracion.modeloPrincipal.replace('gemini-', '')}
+                      {configuracion.modeloPrincipal.replace('gpt-', '').replace('gemini-', '')}
                     </span>
                   </div>
                   <Button
@@ -969,14 +969,14 @@ export default function AdminAnalisisIA() {
 
           {/* Tab: Logs Detallados */}
           <TabsContent value="logs" className="space-y-6">
-            {/* Tabla de logs de Gemini */}
+            {/* Tabla de logs de GPT OSS */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
               <AdminCard
-                titulo="Logs Recientes de Gemini API"
+                titulo="Logs Recientes de GPT OSS API"
                 icono={<Activity className="w-5 h-5" />}
                 delay={0}
               >
@@ -993,14 +993,14 @@ export default function AdminAnalisisIA() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {logsGemini.length === 0 ? (
+                      {logsGPTOSS.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                            No se encontraron logs de Gemini API
+                            No se encontraron logs de GPT OSS API
                           </TableCell>
                         </TableRow>
                       ) : (
-                        logsGemini.slice(0, 50).map((log, index) => (
+                        logsGPTOSS.slice(0, 50).map((log, index) => (
                           <motion.tr
                             key={log.id}
                             initial={{ opacity: 0, x: -10 }}
@@ -1018,7 +1018,7 @@ export default function AdminAnalisisIA() {
                                 variant="outline"
                                 className="bg-purple-50 text-purple-700 border-purple-200"
                               >
-                                {log.modelo?.replace('gemini-', '') || 'N/A'}
+                                {log.modelo?.replace('gpt-', '').replace('gemini-', '') || 'N/A'}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-sm font-medium text-gray-700">
@@ -1304,7 +1304,7 @@ export default function AdminAnalisisIA() {
                         aria-label="Modelo de IA principal a utilizar"
                       />
                       <p className="text-xs text-gray-500">
-                        Modelo de Gemini utilizado por defecto
+                        Modelo de GPT OSS utilizado por defecto
                       </p>
                     </div>
 

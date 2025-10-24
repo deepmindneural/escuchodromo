@@ -231,7 +231,7 @@ serve(async (req) => {
     }
 
     // ==========================================
-    // 7. GENERAR REPORTE CON GEMINI
+    // 7. GENERAR REPORTE CON GPT OSS
     // ==========================================
 
     const geminiCliente = new GeminiClient()

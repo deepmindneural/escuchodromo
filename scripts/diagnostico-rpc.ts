@@ -55,7 +55,7 @@ async function diagnosticar() {
       params: {},
     },
     {
-      nombre: 'obtener_llamadas_gemini_hoy',
+      nombre: 'obtener_llamadas_gemini_hoy', // Cuenta llamadas a GPT OSS API
       params: {},
     },
   ];

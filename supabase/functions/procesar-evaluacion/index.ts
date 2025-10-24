@@ -31,7 +31,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
     if (!GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY no configurada')
+      throw new Error('GEMINI_API_KEY no configurada (GPT OSS)')
     }
 
     // 2. Crear cliente de Supabase
@@ -201,7 +201,7 @@ function determinarSeveridad(puntuacion: number, codigoPrueba: string): string {
 }
 
 /**
- * Genera interpretación personalizada usando IA
+ * Genera interpretación personalizada usando GPT OSS
  */
 async function generarInterpretacionIA(
   codigoPrueba: string,
@@ -277,7 +277,7 @@ Genera la interpretación ahora:`
     const data = await response.json()
 
     if (!data.candidates || !data.candidates[0]) {
-      throw new Error('Respuesta inválida de IA')
+      throw new Error('Respuesta inválida de GPT OSS')
     }
 
     return data.candidates[0].content.parts[0].text.trim()
@@ -285,13 +285,13 @@ Genera la interpretación ahora:`
   } catch (error) {
     console.error('[generarInterpretacionIA] Error:', error)
 
-    // Fallback: interpretación genérica si falla IA
+    // Fallback: interpretación genérica si falla GPT OSS
     return generarInterpretacionFallback(codigoPrueba, puntuacion, severidad)
   }
 }
 
 /**
- * Genera interpretación de respaldo si falla IA
+ * Genera interpretación de respaldo si falla GPT OSS
  */
 function generarInterpretacionFallback(
   codigoPrueba: string,
