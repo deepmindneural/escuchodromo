@@ -16,6 +16,7 @@ interface RequestBody {
   plan: 'basico' | 'premium' | 'profesional'
   periodo: 'mensual' | 'anual'
   moneda?: 'COP' | 'USD'
+  tipo_usuario?: 'usuario' | 'profesional'
   datosFacturacion?: DatosFacturacion
 }
 
@@ -96,13 +97,14 @@ serve(async (req) => {
 
     // Parsear request
     const body: RequestBody = await req.json()
-    const { plan, periodo, moneda = 'COP', datosFacturacion } = body
+    const { plan, periodo, moneda = 'COP', tipo_usuario = 'usuario', datosFacturacion } = body
 
     console.log('[crear-checkout-stripe] Creando sesión:', {
       usuario_id: usuarioData.id,
       plan,
       periodo,
       moneda,
+      tipo_usuario,
       tiene_datos_facturacion: !!datosFacturacion
     })
 
@@ -197,7 +199,8 @@ serve(async (req) => {
         usuario_id: usuarioData.id,
         plan,
         periodo,
-        moneda
+        moneda,
+        tipo_usuario
       }
     })
 
@@ -216,6 +219,7 @@ serve(async (req) => {
         metadata: {
           plan,
           periodo,
+          tipo_usuario,
           stripe_customer_id: stripeClienteId,
           datos_facturacion: datosFacturacion || null
         }

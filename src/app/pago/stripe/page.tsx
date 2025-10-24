@@ -52,85 +52,118 @@ export default function PaginaPagoStripe() {
   };
 
   const cargarPlan = async () => {
-    // Obtener plan de query params o usar default
-    const searchParams = new URLSearchParams(window.location.search);
-    const planId = searchParams.get('plan') || 'premium';
-    const periodo = searchParams.get('periodo') || 'mensual';
+    try {
+      // Obtener plan de query params o usar default
+      const searchParams = new URLSearchParams(window.location.search);
+      const planCodigo = searchParams.get('plan') || 'premium';
+      const periodo = searchParams.get('periodo') || 'mensual';
+      const tipoPlan = searchParams.get('tipo') || 'usuario'; // 'usuario' o 'profesional'
 
-    // Usar datos del plan
-    const planesDisponibles: Record<string, PlanSuscripcion> = {
-      premium_mensual: {
-        id: 'premium',
-        nombre: 'Plan Premium',
-        precio: 49900,
-        moneda: 'COP',
-        periodo: 'mensual',
-        caracteristicas: [
-          'Chat ilimitado con IA',
-          'Evaluaciones psicológicas ilimitadas',
-          'Sesiones de voz con IA',
-          'Reportes detallados',
-          'Soporte prioritario'
-        ]
-      },
-      premium_anual: {
-        id: 'premium',
-        nombre: 'Plan Premium',
-        precio: 479000,
-        moneda: 'COP',
-        periodo: 'anual',
-        caracteristicas: [
-          'Chat ilimitado con IA',
-          'Evaluaciones psicológicas ilimitadas',
-          'Sesiones de voz con IA',
-          'Reportes detallados',
-          'Soporte prioritario',
-          '20% de descuento'
-        ]
-      },
-      profesional_mensual: {
-        id: 'profesional',
-        nombre: 'Plan Profesional',
-        precio: 99900,
-        moneda: 'COP',
-        periodo: 'mensual',
-        caracteristicas: [
-          'Todo del plan Premium',
-          'Dashboard para pacientes (50)',
-          'Integración con consulta',
-          'Reportes profesionales',
-          'API personalizada',
-          'Soporte dedicado 24/7'
-        ]
-      },
-      profesional_anual: {
-        id: 'profesional',
-        nombre: 'Plan Profesional',
-        precio: 959000,
-        moneda: 'COP',
-        periodo: 'anual',
-        caracteristicas: [
-          'Todo del plan Premium',
-          'Dashboard para pacientes (50)',
-          'Integración con consulta',
-          'Reportes profesionales',
-          'API personalizada',
-          'Soporte dedicado 24/7',
-          '20% de descuento'
-        ]
+      // Intentar cargar plan desde Supabase
+      const { data: planData, error } = await supabase.rpc('obtener_planes_publico', {
+        p_tipo_usuario: tipoPlan,
+        p_moneda: 'COP',
+      });
+
+      if (!error && planData && planData.length > 0) {
+        // Buscar el plan específico por código
+        const planEncontrado = planData.find((p: any) => p.codigo === planCodigo);
+
+        if (planEncontrado) {
+          const precio = periodo === 'mensual' ? planEncontrado.precio_mensual : planEncontrado.precio_anual;
+
+          setPlan({
+            id: planEncontrado.codigo,
+            nombre: planEncontrado.nombre,
+            precio: precio,
+            moneda: planEncontrado.moneda,
+            periodo: periodo,
+            caracteristicas: planEncontrado.caracteristicas?.map((c: any) => c.nombre).slice(0, 5) || [],
+          });
+          setCargando(false);
+          return;
+        }
       }
-    };
 
-    const planKey = `${planId}_${periodo}` as keyof typeof planesDisponibles;
-    const planSeleccionado = planesDisponibles[planKey];
+      // Fallback: usar datos hardcodeados si falla la BD
+      const planesDisponibles: Record<string, PlanSuscripcion> = {
+        premium_mensual: {
+          id: 'premium',
+          nombre: 'Plan Premium',
+          precio: 49900,
+          moneda: 'COP',
+          periodo: 'mensual',
+          caracteristicas: [
+            'Chat ilimitado con IA',
+            'Evaluaciones psicológicas ilimitadas',
+            'Sesiones de voz con IA',
+            'Reportes detallados',
+            'Soporte prioritario'
+          ]
+        },
+        premium_anual: {
+          id: 'premium',
+          nombre: 'Plan Premium',
+          precio: 479000,
+          moneda: 'COP',
+          periodo: 'anual',
+          caracteristicas: [
+            'Chat ilimitado con IA',
+            'Evaluaciones psicológicas ilimitadas',
+            'Sesiones de voz con IA',
+            'Reportes detallados',
+            'Soporte prioritario',
+            '20% de descuento'
+          ]
+        },
+        profesional_mensual: {
+          id: 'profesional',
+          nombre: 'Plan Profesional',
+          precio: 99900,
+          moneda: 'COP',
+          periodo: 'mensual',
+          caracteristicas: [
+            'Todo del plan Premium',
+            'Dashboard para pacientes (50)',
+            'Integración con consulta',
+            'Reportes profesionales',
+            'API personalizada',
+            'Soporte dedicado 24/7'
+          ]
+        },
+        profesional_anual: {
+          id: 'profesional',
+          nombre: 'Plan Profesional',
+          precio: 959000,
+          moneda: 'COP',
+          periodo: 'anual',
+          caracteristicas: [
+            'Todo del plan Premium',
+            'Dashboard para pacientes (50)',
+            'Integración con consulta',
+            'Reportes profesionales',
+            'API personalizada',
+            'Soporte dedicado 24/7',
+            '20% de descuento'
+          ]
+        }
+      };
 
-    if (planSeleccionado) {
-      setPlan(planSeleccionado);
-    } else {
-      router.push('/precios');
+      const planKey = `${planCodigo}_${periodo}` as keyof typeof planesDisponibles;
+      const planSeleccionado = planesDisponibles[planKey];
+
+      if (planSeleccionado) {
+        setPlan(planSeleccionado);
+      } else {
+        const rutaVolver = tipoPlan === 'profesional' ? '/profesional/planes' : '/precios';
+        router.push(rutaVolver);
+      }
+    } catch (error) {
+      console.error('Error cargando plan:', error);
+      toast.error('Error al cargar información del plan');
+    } finally {
+      setCargando(false);
     }
-
-    setCargando(false);
   };
 
   const procesarPago = async (e: React.FormEvent) => {
@@ -164,12 +197,17 @@ export default function PaginaPagoStripe() {
         return;
       }
 
+      // Obtener tipo de plan desde URL
+      const searchParams = new URLSearchParams(window.location.search);
+      const tipoPlan = searchParams.get('tipo') || 'usuario';
+
       // Llamar al Edge Function para crear sesión de Stripe
       const { data, error } = await supabase.functions.invoke('crear-checkout-stripe', {
         body: {
           plan: plan.id,
           periodo: plan.periodo,
           moneda: plan.moneda,
+          tipo_usuario: tipoPlan, // Agregar tipo de usuario
           datosFacturacion: {
             nombre: datosFacturacion.nombre,
             email: datosFacturacion.email,

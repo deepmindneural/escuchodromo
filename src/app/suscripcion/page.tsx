@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../../lib/componentes/ui/card';
 import { Boton } from '../../lib/componentes/ui/boton';
 import Footer from '../../lib/componentes/layout/Footer';
-import { FaArrowLeft, FaSpinner, FaCrown, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
+import { FaArrowLeft, FaSpinner, FaCrown, FaCheckCircle, FaExclamationCircle, FaExchangeAlt } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
@@ -324,9 +324,10 @@ export default function PaginaSuscripcion() {
                             Actualiza o reduce tu plan según tus necesidades
                           </p>
                         </div>
-                        <Link href="/precios">
-                          <Boton variante="contorno">
-                            Ver planes
+                        <Link href="/suscripcion/cambiar-plan">
+                          <Boton variante="contorno" className="flex items-center gap-2">
+                            <FaExchangeAlt className="h-4 w-4" />
+                            Cambiar Plan
                           </Boton>
                         </Link>
                       </div>

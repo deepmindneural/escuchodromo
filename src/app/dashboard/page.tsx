@@ -7,13 +7,43 @@ import { motion } from 'framer-motion';
 import {
   FaChartLine, FaComments, FaCrown, FaTrophy, FaRobot, FaMicrophone,
   FaClipboardList, FaChartBar, FaBullseye, FaUser, FaTasks, FaCreditCard,
-  FaHistory, FaUserMd, FaCalendar, FaFileAlt, FaUsers, FaHeart
+  FaHistory, FaUserMd, FaCalendar, FaFileAlt, FaUsers, FaHeart,
+  FaExclamationTriangle, FaArrowUp, FaCheckCircle, FaInfinity
 } from 'react-icons/fa';
 import { Boton } from '../../lib/componentes/ui/boton';
+import { Progress } from '../../lib/componentes/ui/progress';
 import Navegacion from '../../lib/componentes/layout/Navegacion';
 import Footer from '../../lib/componentes/layout/Footer';
 import { useUsuario, usePerfilUsuario } from '../../lib/supabase/hooks';
 import { cerrarSesion as cerrarSesionSupabase } from '../../lib/supabase/auth';
+
+// Interfaces para tipar los datos del plan
+interface CaracteristicaPlan {
+  nombre: string;
+  incluido: boolean;
+}
+
+interface PlanDetalle {
+  codigo: string;
+  nombre: string;
+  descripcion: string;
+  limite_conversaciones: number | null;
+  limite_evaluaciones: number | null;
+  caracteristicas: CaracteristicaPlan[];
+}
+
+interface SuscripcionDetalle {
+  plan: string;
+  periodo: string;
+  estado: string;
+  fecha_fin: string;
+  Plan?: PlanDetalle;
+}
+
+interface UsoActual {
+  mensajesUsados: number;
+  evaluacionesUsadas: number;
+}
 
 export default function PaginaDashboard() {
   const router = useRouter();
@@ -26,6 +56,11 @@ export default function PaginaDashboard() {
     planActual: 'Gratis' as string,
   });
 
+  // Estado para datos del plan
+  const [suscripcionDetalle, setSuscripcionDetalle] = useState<SuscripcionDetalle | null>(null);
+  const [usoActual, setUsoActual] = useState<UsoActual>({ mensajesUsados: 0, evaluacionesUsadas: 0 });
+  const [cargandoPlan, setCargandoPlan] = useState(true);
+
   const cargando = cargandoAuth || cargandoPerfil;
   const usuario = perfil;
 
@@ -35,6 +70,7 @@ export default function PaginaDashboard() {
   useEffect(() => {
     if (usuario?.id) {
       cargarEstadisticas();
+      cargarDatosPlan();
     }
   }, [usuario?.id]);
 
@@ -76,6 +112,107 @@ export default function PaginaDashboard() {
     }
   };
 
+  const cargarDatosPlan = async () => {
+    if (!usuario?.id || !authUsuario?.id) return;
+
+    setCargandoPlan(true);
+    try {
+      const { obtenerClienteNavegador } = await import('../../lib/supabase/cliente');
+      const supabase = obtenerClienteNavegador();
+
+      // 1. Obtener suscripción activa del usuario
+      const { data: suscripcion, error: errorSuscripcion } = await supabase
+        .from('Suscripcion')
+        .select('plan, periodo, estado, fecha_fin')
+        .eq('usuario_id', usuario.id)
+        .eq('estado', 'activa')
+        .single();
+
+      if (errorSuscripcion && errorSuscripcion.code !== 'PGRST116') {
+        console.error('Error al obtener suscripción:', errorSuscripcion);
+      }
+
+      // 2. Obtener detalles del plan basado en el código de la suscripción
+      let codigoPlan = suscripcion?.plan || 'basico';
+
+      const { data: planDetalle, error: errorPlan } = await supabase
+        .from('Plan')
+        .select('codigo, nombre, descripcion, limite_conversaciones, limite_evaluaciones, caracteristicas')
+        .eq('codigo', codigoPlan)
+        .eq('tipo_usuario', 'paciente')
+        .single();
+
+      if (errorPlan) {
+        console.error('Error al obtener plan:', errorPlan);
+        // Si falla, intentar con plan básico
+        const { data: planBasico } = await supabase
+          .from('Plan')
+          .select('codigo, nombre, descripcion, limite_conversaciones, limite_evaluaciones, caracteristicas')
+          .eq('codigo', 'basico')
+          .eq('tipo_usuario', 'paciente')
+          .single();
+
+        if (planBasico) {
+          setSuscripcionDetalle({
+            plan: 'basico',
+            periodo: 'mensual',
+            estado: 'activa',
+            fecha_fin: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+            Plan: planBasico as PlanDetalle
+          });
+        }
+      } else if (planDetalle) {
+        // Combinar datos de suscripción y plan
+        setSuscripcionDetalle({
+          plan: suscripcion?.plan || 'basico',
+          periodo: suscripcion?.periodo || 'mensual',
+          estado: suscripcion?.estado || 'activa',
+          fecha_fin: suscripcion?.fecha_fin || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+          Plan: planDetalle as PlanDetalle
+        });
+      }
+
+      // 3. Calcular uso del mes actual
+      const inicioMes = new Date();
+      inicioMes.setDate(1);
+      inicioMes.setHours(0, 0, 0, 0);
+
+      // Contar mensajes del mes (rol 'usuario')
+      // Primero obtenemos las IDs de las conversaciones del usuario
+      const { data: conversaciones } = await supabase
+        .from('Conversacion')
+        .select('id')
+        .eq('usuario_id', usuario.id);
+
+      const conversacionIds = conversaciones?.map(c => c.id) || [];
+
+      // Luego contamos los mensajes del usuario en esas conversaciones
+      const { count: mensajesUsados } = await supabase
+        .from('Mensaje')
+        .select('id', { count: 'exact', head: true })
+        .in('conversacion_id', conversacionIds.length > 0 ? conversacionIds : ['00000000-0000-0000-0000-000000000000'])
+        .eq('rol', 'usuario')
+        .gte('creado_en', inicioMes.toISOString());
+
+      // Contar evaluaciones completadas del mes
+      const { count: evaluacionesUsadas } = await supabase
+        .from('Resultado')
+        .select('id', { count: 'exact', head: true })
+        .eq('usuario_id', usuario.id)
+        .gte('creado_en', inicioMes.toISOString());
+
+      setUsoActual({
+        mensajesUsados: mensajesUsados || 0,
+        evaluacionesUsadas: evaluacionesUsadas || 0
+      });
+
+    } catch (error) {
+      console.error('Error al cargar datos del plan:', error);
+    } finally {
+      setCargandoPlan(false);
+    }
+  };
+
   const handleCerrarSesion = async () => {
     try {
       // cerrarSesionSupabase ya maneja la redirección automáticamente
@@ -83,6 +220,17 @@ export default function PaginaDashboard() {
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
     }
+  };
+
+  // Cálculos para alertas de límite
+  const calcularPorcentajeUso = (usado: number, limite: number | null): number => {
+    if (limite === null || limite === 0) return 0;
+    return Math.min((usado / limite) * 100, 100);
+  };
+
+  const estaProximoAlLimite = (usado: number, limite: number | null): boolean => {
+    if (limite === null) return false;
+    return calcularPorcentajeUso(usado, limite) >= 80;
   };
 
   // Mostrar loading mientras carga O si no hay usuario (el middleware redirigirá)
@@ -108,6 +256,15 @@ export default function PaginaDashboard() {
       </div>
     );
   }
+
+  const planDetalle = suscripcionDetalle?.Plan;
+  const limiteMensajes = planDetalle?.limite_conversaciones;
+  const limiteEvaluaciones = planDetalle?.limite_evaluaciones;
+  const porcentajeMensajes = calcularPorcentajeUso(usoActual.mensajesUsados, limiteMensajes);
+  const porcentajeEvaluaciones = calcularPorcentajeUso(usoActual.evaluacionesUsadas, limiteEvaluaciones);
+  const proximoLimiteMensajes = estaProximoAlLimite(usoActual.mensajesUsados, limiteMensajes);
+  const proximoLimiteEvaluaciones = estaProximoAlLimite(usoActual.evaluacionesUsadas, limiteEvaluaciones);
+  const algunLimiteProximo = proximoLimiteMensajes || proximoLimiteEvaluaciones;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -144,6 +301,182 @@ export default function PaginaDashboard() {
             </Link>
           </div>
         </div>
+
+        {/* SECCIÓN: MI PLAN ACTUAL */}
+        {!cargandoPlan && planDetalle && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="mb-8 rounded-2xl border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 p-8 shadow-lg"
+            role="region"
+            aria-label="Información de tu plan actual"
+          >
+            {/* Header del Plan */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
+              <div>
+                <h2 className="text-3xl font-bold text-green-900 mb-1 flex items-center gap-2">
+                  <FaCrown className="text-yellow-500" aria-hidden="true" />
+                  Mi Plan: {planDetalle.nombre}
+                </h2>
+                <p className="text-sm text-green-700">
+                  {suscripcionDetalle?.periodo === 'mensual'
+                    ? 'Facturación mensual'
+                    : 'Facturación anual (20% de descuento)'
+                  }
+                </p>
+              </div>
+              <Link href="/precios" className="focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 rounded-xl">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                  aria-label="Cambiar o mejorar plan de suscripción"
+                >
+                  <FaArrowUp aria-hidden="true" />
+                  {planDetalle.codigo === 'basico' ? 'Actualizar Plan' : 'Cambiar Plan'}
+                </motion.button>
+              </Link>
+            </div>
+
+            {/* Descripción del Plan */}
+            <p className="text-green-800 mb-6 text-sm leading-relaxed">
+              {planDetalle.descripcion}
+            </p>
+
+            {/* Límites de Uso */}
+            <div className="space-y-6">
+              {/* Mensajes con IA */}
+              <div className="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-green-100">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
+                  <div className="flex items-center gap-2">
+                    <FaComments className="text-green-700 text-xl" aria-hidden="true" />
+                    <span className="text-base font-semibold text-green-900">
+                      Mensajes con IA
+                    </span>
+                  </div>
+                  <span className="text-lg font-bold text-green-800" aria-live="polite">
+                    {usoActual.mensajesUsados}
+                    <span className="text-green-600 mx-1">/</span>
+                    {limiteMensajes !== null ? limiteMensajes.toLocaleString() : (
+                      <FaInfinity className="inline-block ml-1 text-green-600" aria-label="ilimitado" />
+                    )}
+                  </span>
+                </div>
+
+                {limiteMensajes !== null ? (
+                  <>
+                    <Progress
+                      value={porcentajeMensajes}
+                      className="h-3 bg-green-100"
+                      aria-label={`Has usado ${porcentajeMensajes.toFixed(0)}% de tus mensajes disponibles`}
+                      aria-valuenow={porcentajeMensajes}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                    />
+                    <p className="text-xs text-green-700 mt-2">
+                      {limiteMensajes - usoActual.mensajesUsados > 0
+                        ? `Te quedan ${limiteMensajes - usoActual.mensajesUsados} mensajes este mes`
+                        : 'Has alcanzado el límite de mensajes'
+                      }
+                    </p>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2 text-green-700 bg-green-100 px-4 py-2 rounded-lg">
+                    <FaCheckCircle aria-hidden="true" />
+                    <span className="text-sm font-medium">Mensajes ilimitados</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Evaluaciones Psicológicas */}
+              <div className="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-green-100">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
+                  <div className="flex items-center gap-2">
+                    <FaClipboardList className="text-green-700 text-xl" aria-hidden="true" />
+                    <span className="text-base font-semibold text-green-900">
+                      Evaluaciones psicológicas
+                    </span>
+                  </div>
+                  <span className="text-lg font-bold text-green-800" aria-live="polite">
+                    {usoActual.evaluacionesUsadas}
+                    <span className="text-green-600 mx-1">/</span>
+                    {limiteEvaluaciones !== null ? limiteEvaluaciones : (
+                      <FaInfinity className="inline-block ml-1 text-green-600" aria-label="ilimitado" />
+                    )}
+                  </span>
+                </div>
+
+                {limiteEvaluaciones !== null ? (
+                  <>
+                    <Progress
+                      value={porcentajeEvaluaciones}
+                      className="h-3 bg-green-100"
+                      aria-label={`Has usado ${porcentajeEvaluaciones.toFixed(0)}% de tus evaluaciones disponibles`}
+                      aria-valuenow={porcentajeEvaluaciones}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                    />
+                    <p className="text-xs text-green-700 mt-2">
+                      {limiteEvaluaciones - usoActual.evaluacionesUsadas > 0
+                        ? `Te quedan ${limiteEvaluaciones - usoActual.evaluacionesUsadas} evaluaciones este mes`
+                        : 'Has alcanzado el límite de evaluaciones'
+                      }
+                    </p>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2 text-green-700 bg-green-100 px-4 py-2 rounded-lg">
+                    <FaCheckCircle aria-hidden="true" />
+                    <span className="text-sm font-medium">Evaluaciones ilimitadas</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Banner de upgrade si está cerca del límite */}
+            {algunLimiteProximo && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3 }}
+                className="mt-6 border-2 border-orange-300 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl p-5 shadow-md"
+                role="alert"
+                aria-live="polite"
+              >
+                <div className="flex items-start gap-3">
+                  <FaExclamationTriangle
+                    className="text-orange-600 text-2xl mt-1 flex-shrink-0"
+                    aria-hidden="true"
+                  />
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-orange-900 mb-1">
+                      Estás cerca del límite
+                    </h3>
+                    <p className="text-orange-800 text-sm mb-3">
+                      Has usado más del 80% de {proximoLimiteMensajes && proximoLimiteEvaluaciones
+                        ? 'tus mensajes y evaluaciones'
+                        : proximoLimiteMensajes
+                          ? 'tus mensajes'
+                          : 'tus evaluaciones'
+                      }.
+                      {' '}Considera actualizar tu plan para seguir disfrutando sin interrupciones.
+                    </p>
+                    <Link href="/precios" className="focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 rounded-lg">
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="px-5 py-2 bg-gradient-to-r from-orange-600 to-red-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all inline-flex items-center gap-2"
+                      >
+                        <FaTrophy aria-hidden="true" />
+                        Actualizar ahora
+                      </motion.button>
+                    </Link>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </motion.div>
+        )}
 
         {/* Estadísticas rápidas */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

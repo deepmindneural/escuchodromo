@@ -13,7 +13,9 @@ import {
   TrophyIcon,
   SparklesIcon,
   ArrowTrendingUpIcon,
+  ShieldCheckIcon as Shield,
 } from '@heroicons/react/24/outline';
+import { Zap } from 'lucide-react';
 import { GridMetricas, type Metrica } from '@/lib/componentes/GridMetricas';
 import { TablaPacientes, type Paciente } from '@/lib/componentes/TablaPacientes';
 import { ProximasCitas, type Cita } from '@/lib/componentes/ProximasCitas';
@@ -44,6 +46,7 @@ export default function DashboardProfesional() {
   const [cargando, setCargando] = useState(true);
   const [profesionalId, setProfesionalId] = useState<string | null>(null);
   const [nombreProfesional, setNombreProfesional] = useState<string>('');
+  const [tieneSuscripcionActiva, setTieneSuscripcionActiva] = useState(true);
 
   // Estados de datos
   const [metricas, setMetricas] = useState<Metrica[]>([]);
@@ -96,6 +99,16 @@ export default function DashboardProfesional() {
 
       setProfesionalId(usuarioData.id);
       setNombreProfesional(usuarioData.nombre || 'Profesional');
+
+      // Verificar suscripción activa
+      const { data: suscripcionData } = await supabase
+        .from('Suscripcion')
+        .select('estado')
+        .eq('usuario_id', usuarioData.id)
+        .in('estado', ['activa', 'trial'])
+        .single();
+
+      setTieneSuscripcionActiva(!!suscripcionData);
 
       // Cargar citas de hoy
       const { data: citasHoyData, error: errorCitasHoy } = await obtenerCitasHoy(usuarioData.id);
@@ -475,6 +488,59 @@ export default function DashboardProfesional() {
         className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
       >
         <div className="space-y-8">
+          {/* Banner de Suscripción (si no tiene plan activo) */}
+          {!tieneSuscripcionActiva && (
+            <motion.div variants={itemVariants}>
+              <div className="relative bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 rounded-2xl shadow-2xl overflow-hidden">
+                {/* Patrón decorativo */}
+                <div className="absolute inset-0 opacity-10">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full mix-blend-overlay filter blur-3xl"></div>
+                  <div className="absolute bottom-0 left-0 w-96 h-96 bg-white rounded-full mix-blend-overlay filter blur-3xl"></div>
+                </div>
+
+                <div className="relative px-6 py-8 md:px-10 md:py-10">
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-12 h-12 bg-yellow-400 rounded-xl flex items-center justify-center shadow-lg">
+                          <Zap className="w-7 h-7 text-yellow-900" />
+                        </div>
+                        <h3 className="text-2xl md:text-3xl font-bold text-white">
+                          Activa tu plan profesional
+                        </h3>
+                      </div>
+                      <p className="text-blue-100 text-base md:text-lg leading-relaxed max-w-2xl">
+                        Para comenzar a atender pacientes y acceder a todas las herramientas profesionales,
+                        necesitas activar un plan de suscripción. Prueba gratis durante 14 días.
+                      </p>
+                      <div className="flex items-center gap-2 mt-4">
+                        <Shield className="w-5 h-5 text-blue-200" />
+                        <span className="text-sm text-blue-200">
+                          Sin compromiso · Cancela cuando quieras
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-3 w-full md:w-auto">
+                      <motion.button
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => router.push('/profesional/planes')}
+                        className="px-8 py-4 bg-white text-blue-700 rounded-xl font-bold shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2 group"
+                      >
+                        <span>Ver planes disponibles</span>
+                        <ArrowTrendingUpIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                      </motion.button>
+                      <p className="text-center text-blue-100 text-sm">
+                        Desde $99.900 COP/mes
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           {/* Citas de Hoy - Banner prominente */}
           {citasHoy.length > 0 && (
             <motion.div variants={itemVariants}>
