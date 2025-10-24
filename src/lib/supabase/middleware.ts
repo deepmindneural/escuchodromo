@@ -8,6 +8,16 @@ import { NextResponse, type NextRequest } from 'next/server'
 import type { Database } from './tipos'
 
 export async function actualizarSesion(request: NextRequest) {
+  // 🔍 DIAGNÓSTICO: Logging de cookies disponibles
+  const todasLasCookies = request.cookies.getAll()
+  const cookiesSupabase = todasLasCookies.filter(c => c.name.includes('sb-'))
+
+  console.log('🍪 [Middleware] Cookies en request:', {
+    total: todasLasCookies.length,
+    supabase: cookiesSupabase.length,
+    nombres: cookiesSupabase.map(c => c.name),
+  })
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -60,10 +70,23 @@ export async function actualizarSesion(request: NextRequest) {
     }
   )
 
-  // Refrescar sesión si existe
+  // 🔥 FIX: Usar getSession() en lugar de getUser()
+  // getSession() automáticamente refresca tokens expirados usando el refresh token
+  // getUser() solo valida el JWT sin refrescar
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  const user = session?.user ?? null
+
+  // 🔍 DIAGNÓSTICO: Logging de resultado de getSession
+  console.log('👤 [Middleware] getSession() resultado:', {
+    autenticado: !!user,
+    user_id: user?.id,
+    email: user?.email,
+    expires_at: session?.expires_at,
+    token_expirado: session ? new Date(session.expires_at * 1000) < new Date() : null,
+  })
 
   // Obtener rol del usuario si está autenticado
   let rol: string | null = null
