@@ -478,7 +478,7 @@ export default function PaginaPagoStripe() {
                       placeholder="Calle 123 #45-67"
                     />
                   </div>
-                </div>
+                </section>
 
                 {/* Nota sobre procesamiento seguro */}
                 <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">

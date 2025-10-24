@@ -428,7 +428,7 @@ export default function PaginaPrecios() {
                       </Link>
                     </div>
                   </div>
-                </motion.div>
+                </motion.article>
               ))}
             </div>
           )}
