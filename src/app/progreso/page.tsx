@@ -82,11 +82,12 @@ export default function PaginaProgreso() {
       }
 
       // Cargar evaluaciones
+      // FIX: Usar Test!inner para forzar INNER JOIN y evitar errores 406
       const { data: evaluacionesData } = await supabase
         .from('Resultado')
         .select(`
           *,
-          Test (
+          Test!inner (
             nombre,
             codigo
           )

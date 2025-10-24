@@ -68,11 +68,12 @@ export default function PaginaHistorialEvaluaciones() {
     try {
       setCargando(true);
 
+      // FIX: Usar Test!inner para forzar INNER JOIN y evitar errores 406
       const { data, error } = await supabase
         .from('Resultado')
         .select(`
           *,
-          Test (
+          Test!inner (
             id,
             codigo,
             nombre,
@@ -82,7 +83,7 @@ export default function PaginaHistorialEvaluaciones() {
           )
         `)
         .eq('usuario_id', perfil.id)
-        .order('creado_en', { ascending: false });
+        .order('creado_en', { ascending: false});
 
       if (error) throw error;
 

@@ -85,11 +85,13 @@ export default function PaginaPlanAccion() {
       toast.loading('Generando plan personalizado con IA...', { id: 'generando' });
 
       // Obtener última evaluación del usuario
-      const { data: ultimaEvaluacion } = await supabase
+      // FIX: Usar Test!inner para forzar INNER JOIN y evitar NULLs
+      // FIX: No usar .single() para manejar el caso de 0 resultados
+      const { data: ultimasEvaluaciones, error: errorEval } = await supabase
         .from('Resultado')
         .select(`
           *,
-          Test (
+          Test!inner (
             codigo,
             nombre,
             categoria
@@ -97,14 +99,28 @@ export default function PaginaPlanAccion() {
         `)
         .eq('usuario_id', perfil.id)
         .order('creado_en', { ascending: false })
-        .limit(1)
-        .single();
+        .limit(1);
+
+      // Manejo seguro de errores
+      if (errorEval) {
+        console.error('Error al obtener evaluación:', errorEval);
+        toast.error('Error al cargar tu historial de evaluaciones', { id: 'generando' });
+        return;
+      }
+
+      const ultimaEvaluacion = ultimasEvaluaciones?.[0] || null;
+
+      // Validar que el usuario tenga al menos una evaluación
+      if (!ultimaEvaluacion) {
+        toast.error('Necesitas completar al menos una evaluación primero', { id: 'generando' });
+        return;
+      }
 
       // Generar recomendaciones basadas en la evaluación
       const recomendacionesNuevas = generarRecomendacionesIA(ultimaEvaluacion);
 
       // Insertar recomendaciones en la base de datos
-      const { error } = await supabase
+      const { error: errorInsert } = await supabase
         .from('Recomendacion')
         .insert(
           recomendacionesNuevas.map(rec => ({
@@ -118,13 +134,17 @@ export default function PaginaPlanAccion() {
           }))
         );
 
-      if (error) throw error;
+      if (errorInsert) {
+        console.error('Error al insertar recomendaciones:', errorInsert);
+        toast.error('Error al guardar el plan de acción', { id: 'generando' });
+        return;
+      }
 
       toast.success('¡Plan de acción generado exitosamente!', { id: 'generando' });
       await cargarPlanAccion();
     } catch (error) {
-      console.error('Error al generar plan:', error);
-      toast.error('Error al generar el plan de acción', { id: 'generando' });
+      console.error('Error inesperado al generar plan:', error);
+      toast.error('Error inesperado. Intenta nuevamente.', { id: 'generando' });
     } finally {
       setGenerandoPlan(false);
     }
