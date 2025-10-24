@@ -18,10 +18,11 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 // Importar utilidades compartidas
-import { GeminiClient } from '../_shared/gemini-client.ts'
-import { construirPromptChatConMemoria, construirPromptDeteccionCrisis } from '../_shared/prompts.ts'
+import { GPTOSSClient } from '../_shared/gptoss-client.ts'
+import { construirPromptChatPsicologo, construirPromptDeteccionCrisis } from '../_shared/prompts-psicologo.ts'
 import { CORS_HEADERS, ALERTAS_CONFIG, EVALUACIONES_CONFIG, ANALISIS_CONFIG } from '../_shared/config.ts'
 import type { ChatIARequest, ChatIAResponse, DeteccionCrisis } from '../_shared/tipos.ts'
+import { analizarMensajeUsuario } from '../_shared/filtros-respuesta.ts'
 
 serve(async (req) => {
   // Manejo de CORS preflight
@@ -168,7 +169,7 @@ serve(async (req) => {
 
       try {
         // Análisis profundo de crisis en paralelo (no bloquea la respuesta)
-        const geminiCliente = new GeminiClient()
+        const gptossCliente = new GPTOSSClient()
 
         const promptCrisis = construirPromptDeteccionCrisis({
           mensaje,
@@ -176,8 +177,8 @@ serve(async (req) => {
           evaluaciones
         })
 
-        // Llamar a la IA para análisis de crisis
-        const respuestaCrisis = await geminiCliente.llamar({
+        // Llamar a GPT OSS para análisis de crisis
+        const respuestaCrisis = await gptossCliente.llamar({
           prompt: promptCrisis,
           tipo: 'crisis',
           sesion_publica_id: sesion_id,
@@ -185,7 +186,7 @@ serve(async (req) => {
         })
 
         if (respuestaCrisis.exitoso) {
-          const deteccion = geminiCliente.parsearJSON<DeteccionCrisis>(respuestaCrisis.respuesta)
+          const deteccion = gptossCliente.parsearJSON<DeteccionCrisis>(respuestaCrisis.respuesta)
 
           if (deteccion && deteccion.hay_crisis) {
             alertaCrisis = {
@@ -229,38 +230,45 @@ serve(async (req) => {
     }
 
     // ==========================================
-    // PASO 4: GENERAR RESPUESTA CON IA
+    // PASO 4: GENERAR RESPUESTA CON GPT OSS + RAG
     // ==========================================
 
-    const geminiCliente = new GeminiClient()
+    const gptossCliente = new GPTOSSClient()
 
-    // Construir prompt con memoria mejorada
+    // Construir prompt con memoria mejorada y estilo psicólogo
     const historialAmpliado = historial.slice(-ANALISIS_CONFIG.maxMensajesHistorial) // Últimos 20
 
-    const prompt = construirPromptChatConMemoria({
+    const prompt = construirPromptChatPsicologo({
       usuario,
       mensaje,
       historial: historialAmpliado,
       evaluaciones,
+      conocimientoRAG: undefined, // Se agregará automáticamente en el cliente
       resumenEmocional,
-      numeroSesiones,
-      ultimaSesion
+      numeroSesiones
     })
 
-    // Llamar a la IA
-    const respuestaGemini = await geminiCliente.llamar({
+    // Llamar a GPT OSS con RAG activado
+    const respuestaGPTOSS = await gptossCliente.llamar({
       prompt,
       tipo: 'chat',
       usuario_id: usuario?.id,
       sesion_publica_id: sesion_id,
-      funcion_origen: 'chat-ia'
+      funcion_origen: 'chat-ia',
+      usar_rag: true, // Activar búsqueda RAG
+      mensaje_usuario: mensaje // Para generar embedding
     })
 
-    if (!respuestaGemini.exitoso) {
-      throw new Error(respuestaGemini.error || 'Error al generar respuesta')
+    if (!respuestaGPTOSS.exitoso) {
+      throw new Error(respuestaGPTOSS.error || 'Error al generar respuesta')
     }
 
-    let respuestaFinal = respuestaGemini.respuesta
+    let respuestaFinal = respuestaGPTOSS.respuesta
+
+    // Log de conocimiento RAG usado (si aplica)
+    if (respuestaGPTOSS.conocimiento_usado && respuestaGPTOSS.conocimiento_usado.length > 0) {
+      console.log(`[chat-ia] RAG: ${respuestaGPTOSS.conocimiento_usado.length} documentos clínicos utilizados`)
+    }
 
     // Si hay alerta de crisis, agregar mensaje de recursos
     if (alertaCrisis && alertaCrisis.detectada) {
@@ -302,8 +310,8 @@ Por favor, considera contactar a un profesional de salud mental lo antes posible
 
     const response: ChatIAResponse = {
       respuesta: respuestaFinal,
-      modelo: 'ia-avanzada',
-      tokens_usados: respuestaGemini.tokens_usados,
+      modelo: 'gpt-oss',
+      tokens_usados: respuestaGPTOSS.tokens_usados,
       alerta_crisis: alertaCrisis ? {
         detectada: alertaCrisis.detectada,
         nivel: alertaCrisis.nivel,
@@ -330,7 +338,7 @@ Por favor, considera contactar a un profesional de salud mental lo antes posible
       JSON.stringify({
         error: error.message || 'Error procesando solicitud',
         respuesta: 'Lo siento, estoy experimentando dificultades técnicas. Por favor, intenta de nuevo en un momento. Si necesitas ayuda urgente, contacta con un profesional de salud mental.',
-        modelo: 'ia-avanzada',
+        modelo: 'gpt-oss',
         tokens_usados: 0
       }),
       {

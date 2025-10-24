@@ -13,8 +13,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-import { GeminiClient } from '../_shared/gemini-client.ts'
-import { construirPromptAnalisisPostChat } from '../_shared/prompts.ts'
+import { GPTOSSClient } from '../_shared/gptoss-client.ts'
+import { construirPromptAnalisisPostChat } from '../_shared/prompts-psicologo.ts'
 import { CORS_HEADERS, ANALISIS_CONFIG, EVALUACIONES_CONFIG } from '../_shared/config.ts'
 import type {
   AnalisisPostChatRequest,
@@ -157,9 +157,9 @@ serve(async (req) => {
       evaluaciones
     })
 
-    // Llamar a la IA
-    const geminiCliente = new GeminiClient()
-    const respuesta = await geminiCliente.llamar({
+    // Llamar a GPT OSS
+    const gptossCliente = new GPTOSSClient()
+    const respuesta = await gptossCliente.llamar({
       prompt,
       tipo: 'analisis',
       usuario_id,
@@ -172,7 +172,7 @@ serve(async (req) => {
     }
 
     // Parsear respuesta JSON
-    const analisisIA = geminiCliente.parsearJSON<AnalisisPostChatGemini>(respuesta.respuesta)
+    const analisisIA = gptossCliente.parsearJSON<AnalisisPostChatGemini>(respuesta.respuesta)
 
     if (!analisisIA) {
       throw new Error('No se pudo parsear respuesta de IA')
@@ -199,7 +199,7 @@ serve(async (req) => {
       recomendaciones_terapeuta: analisisIA.recomendaciones_terapeuta,
       total_mensajes_analizados: mensajes.length,
       analizado_con_ia: true,
-      modelo_usado: 'gemini-2.0-flash-exp',
+      modelo_usado: 'gpt-oss',
       tokens_consumidos: respuesta.tokens_usados
     }
 

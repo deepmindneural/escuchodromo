@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { GPTOSSClient } from '../_shared/gptoss-client.ts'
 
 interface RequestBody {
   usuario_id: string
@@ -18,18 +19,16 @@ serve(async (req) => {
 
   try {
     // 1. Obtener credenciales
-    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-
-    if (!GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY no configurada')
-    }
 
     // 2. Crear cliente de Supabase
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // 3. Parsear request
+    // 3. Crear cliente GPT OSS
+    const gptossCliente = new GPTOSSClient()
+
+    // 4. Parsear request
     const body: RequestBody = await req.json()
     const { usuario_id } = body
 
@@ -51,7 +50,7 @@ serve(async (req) => {
       )
     }
 
-    // 4. Obtener evaluaciones recientes del usuario (últimos 3 meses)
+    // 5. Obtener evaluaciones recientes del usuario (últimos 3 meses)
     const { data: evaluaciones, error: evaluacionesError } = await supabase
       .from('Evaluacion')
       .select(`
@@ -70,7 +69,7 @@ serve(async (req) => {
       console.error('[generar-recomendaciones] Error al obtener evaluaciones:', evaluacionesError)
     }
 
-    // 5. Obtener conversaciones recientes (últimos 7 días)
+    // 6. Obtener conversaciones recientes (últimos 7 días)
     const { data: conversaciones, error: conversacionesError } = await supabase
       .from('Conversacion')
       .select(`
@@ -92,7 +91,7 @@ serve(async (req) => {
       console.error('[generar-recomendaciones] Error al obtener conversaciones:', conversacionesError)
     }
 
-    // 6. Analizar datos y preparar contexto para Gemini
+    // 7. Analizar datos y preparar contexto para GPT OSS
     const contextoEvaluaciones = (evaluaciones || []).map(ev => ({
       test: ev.Test?.nombre || 'Desconocido',
       puntuacion: ev.puntuacion,
@@ -125,15 +124,15 @@ serve(async (req) => {
       sentimientoPromedio = sentimientoPromedio / totalMensajes
     }
 
-    // 7. Generar recomendaciones con IA
+    // 8. Generar recomendaciones con GPT OSS
     const recomendaciones = await generarRecomendacionesIA(
       contextoEvaluaciones,
       emocionesAgregadas,
       sentimientoPromedio,
-      GEMINI_API_KEY
+      gptossCliente
     )
 
-    // 8. Guardar recomendaciones en la base de datos
+    // 9. Guardar recomendaciones en la base de datos
     const recomendacionesGuardadas = []
     for (const rec of recomendaciones) {
       const { data, error } = await supabase
@@ -156,7 +155,7 @@ serve(async (req) => {
       }
     }
 
-    // 9. Retornar resultado
+    // 10. Retornar resultado
     return new Response(
       JSON.stringify({
         recomendaciones: recomendacionesGuardadas,
@@ -218,9 +217,9 @@ async function generarRecomendacionesIA(
   evaluaciones: Evaluacion[],
   emociones: Record<string, number>,
   sentimiento: number,
-  apiKey: string
+  gptossCliente: GPTOSSClient
 ): Promise<Recomendacion[]> {
-  const prompt = `Eres un asistente especializado en bienestar emocional y salud mental.
+  const prompt = `Eres GPT OSS, un sistema de apoyo emocional especializado en bienestar mental.
 
 Analiza la siguiente información de un usuario y genera 5 recomendaciones personalizadas y prácticas:
 
@@ -259,37 +258,23 @@ ${evaluaciones.length > 0 ? evaluaciones.map(e =>
 ]`
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: prompt }]
-          }],
-          generationConfig: {
-            temperature: 0.8,
-            maxOutputTokens: 1500,
-            topP: 0.95,
-            topK: 40
-          }
-        })
-      }
-    )
+    // Llamar a GPT OSS
+    const respuesta = await gptossCliente.llamar({
+      prompt,
+      tipo: 'reporte',
+      funcion_origen: 'generar-recomendaciones'
+    })
 
-    const data = await response.json()
-
-    if (!data.candidates || !data.candidates[0]) {
-      throw new Error('Respuesta inválida de IA')
+    if (!respuesta.exitoso) {
+      throw new Error('Error al generar recomendaciones con GPT OSS')
     }
 
-    let textoRespuesta = data.candidates[0].content.parts[0].text.trim()
+    // Parsear respuesta JSON
+    const recomendaciones = gptossCliente.parsearJSON<Recomendacion[]>(respuesta.respuesta)
 
-    // Limpiar markdown code blocks si existen
-    textoRespuesta = textoRespuesta.replace(/```json\n?/g, '').replace(/```\n?/g, '')
-
-    const recomendaciones: Recomendacion[] = JSON.parse(textoRespuesta)
+    if (!recomendaciones) {
+      throw new Error('No se pudo parsear respuesta de GPT OSS')
+    }
 
     return recomendaciones
 
