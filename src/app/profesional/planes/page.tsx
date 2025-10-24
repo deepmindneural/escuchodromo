@@ -132,52 +132,81 @@ export default function PlanesProfesionales() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-teal-50 to-green-50 relative overflow-hidden">
+      {/* Decorative background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-200/30 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-green-200/30 rounded-full blur-3xl" />
+      </div>
+
       <Toaster position="top-center" />
 
-      {/* Header con paleta terapéutica */}
-      <section className="pt-24 pb-16 px-4" role="main" aria-label="Planes profesionales">
+      {/* Header con paleta terapéutica mejorada */}
+      <section className="pt-28 pb-20 px-4 relative z-10" role="main" aria-label="Planes profesionales">
         <div className="container mx-auto max-w-7xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: 'easeOut' }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
             className="text-center"
           >
-            <Badge className="mb-6 bg-gradient-to-r from-blue-500 to-green-500 text-white px-6 py-2 text-sm font-medium shadow-md">
-              Planes Profesionales
-            </Badge>
-            <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.1, duration: 0.5 }}
+            >
+              <Badge className="mb-8 bg-gradient-to-r from-blue-500 via-teal-500 to-green-500 text-white px-8 py-3 text-base font-semibold shadow-lg hover:shadow-xl transition-shadow rounded-full">
+                <Star className="w-4 h-4 inline mr-2" aria-hidden="true" />
+                Planes Profesionales
+              </Badge>
+            </motion.div>
+
+            <h1 className="text-5xl md:text-7xl font-extrabold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent mb-6 leading-tight">
               Crece tu práctica terapéutica
             </h1>
-            <p className="text-xl text-gray-700 max-w-3xl mx-auto mb-6 leading-relaxed">
+
+            <p className="text-xl md:text-2xl text-gray-700 max-w-4xl mx-auto mb-10 leading-relaxed font-light">
               Gestiona pacientes, análisis con IA y herramientas profesionales.
-              Todo lo que necesitas para ofrecer el mejor servicio.
+              <span className="block mt-2 font-medium text-gray-800">
+                Todo lo que necesitas para ofrecer el mejor servicio.
+              </span>
             </p>
-            <div className="flex items-center justify-center gap-3 text-sm text-gray-600 bg-green-50 rounded-full px-6 py-3 inline-flex border border-green-200">
-              <Shield className="w-5 h-5 text-green-600" aria-hidden="true" />
-              <span>Prueba gratuita de 14 días · Cancela cuando quieras</span>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-2xl mx-auto">
+              <div className="flex items-center gap-3 text-sm text-gray-700 bg-gradient-to-r from-green-50 to-emerald-50 rounded-full px-6 py-3.5 border border-green-200 shadow-sm">
+                <Shield className="w-5 h-5 text-green-600 flex-shrink-0" aria-hidden="true" />
+                <span className="font-medium">Prueba gratuita de 14 días</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-gray-700 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-full px-6 py-3.5 border border-blue-200 shadow-sm">
+                <Clock className="w-5 h-5 text-blue-600 flex-shrink-0" aria-hidden="true" />
+                <span className="font-medium">Cancela cuando quieras</span>
+              </div>
             </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Toggle Mensual/Anual con mejor accesibilidad */}
-      <section className="pb-12 px-4" aria-label="Selector de periodo de facturación">
+      {/* Toggle Mensual/Anual con mejor accesibilidad y diseño mejorado */}
+      <section className="pb-16 px-4 relative z-10" aria-label="Selector de periodo de facturación">
         <div className="container mx-auto max-w-7xl">
-          <div className="flex justify-center mb-12">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+            className="flex justify-center mb-16"
+          >
             <div
-              className="bg-white rounded-full p-2 shadow-lg border-2 border-blue-200"
+              className="bg-white/80 backdrop-blur-sm rounded-2xl p-2 shadow-xl border-2 border-blue-200/50"
               role="group"
               aria-label="Período de facturación"
             >
               <Button
                 variant={periodo === 'mensual' ? 'default' : 'ghost'}
                 onClick={() => setPeriodo('mensual')}
-                className={`rounded-full px-8 py-3 transition-all duration-300 ${
+                className={`rounded-xl px-10 py-4 text-base font-semibold transition-all duration-300 ${
                   periodo === 'mensual'
-                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
-                    : 'text-gray-700 hover:bg-blue-50'
+                    ? 'bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30'
+                    : 'text-gray-700 hover:bg-blue-50/50'
                 }`}
                 aria-pressed={periodo === 'mensual'}
                 aria-label="Facturación mensual"
@@ -187,24 +216,24 @@ export default function PlanesProfesionales() {
               <Button
                 variant={periodo === 'anual' ? 'default' : 'ghost'}
                 onClick={() => setPeriodo('anual')}
-                className={`rounded-full px-8 py-3 transition-all duration-300 ${
+                className={`rounded-xl px-10 py-4 text-base font-semibold transition-all duration-300 ${
                   periodo === 'anual'
-                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
-                    : 'text-gray-700 hover:bg-blue-50'
+                    ? 'bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30'
+                    : 'text-gray-700 hover:bg-blue-50/50'
                 }`}
                 aria-pressed={periodo === 'anual'}
                 aria-label="Facturación anual con 20% de descuento"
               >
                 Anual
-                <Badge className="ml-2 bg-green-500 text-white text-xs px-2 py-0.5 font-semibold">
-                  -20%
+                <Badge className="ml-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs px-2.5 py-1 font-bold shadow-sm">
+                  Ahorra 20%
                 </Badge>
               </Button>
             </div>
-          </div>
+          </motion.div>
 
-          {/* Tarjetas de planes */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+          {/* Tarjetas de planes con mejor espaciado */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-6">
             {planes.map((plan, index) => (
               <TarjetaPlanProfesional
                 key={plan.id}
@@ -225,29 +254,122 @@ export default function PlanesProfesionales() {
         </div>
       </section>
 
-      {/* FAQ y Soporte */}
-      <section className="py-16 px-4">
-        <div className="container mx-auto max-w-4xl text-center">
-          <h2 className="text-3xl font-bold text-slate-900 mb-4">
-            ¿Necesitas ayuda para elegir?
-          </h2>
-          <p className="text-lg text-slate-600 mb-8">
-            Nuestro equipo está aquí para ayudarte a encontrar el plan perfecto para tu práctica
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/contacto">
-              <Button size="lg" className="gap-2">
-                <MessageSquare className="w-5 h-5" />
-                Contactar ventas
-              </Button>
-            </Link>
-            <Link href="/preguntas-frecuentes">
-              <Button size="lg" variant="outline" className="gap-2">
-                <HeadphonesIcon className="w-5 h-5" />
-                Ver preguntas frecuentes
-              </Button>
-            </Link>
-          </div>
+      {/* FAQ y Soporte mejorado */}
+      <section className="py-20 px-4 relative z-10">
+        <div className="container mx-auto max-w-5xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="bg-gradient-to-br from-white to-blue-50/50 rounded-3xl p-12 shadow-2xl border-2 border-blue-100"
+          >
+            {/* Header */}
+            <div className="text-center mb-10">
+              <Badge className="mb-4 bg-gradient-to-r from-blue-500 to-green-500 text-white px-6 py-2 text-sm font-semibold shadow-md">
+                <HeadphonesIcon className="w-4 h-4 inline mr-2" aria-hidden="true" />
+                Estamos Aquí Para Ayudarte
+              </Badge>
+              <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-4">
+                ¿Necesitas ayuda para elegir?
+              </h2>
+              <p className="text-xl text-gray-700 max-w-2xl mx-auto leading-relaxed">
+                Nuestro equipo está aquí para ayudarte a encontrar el plan perfecto para tu práctica
+              </p>
+            </div>
+
+            {/* Grid de opciones de contacto */}
+            <div className="grid md:grid-cols-2 gap-6 mb-8">
+              {/* Contactar ventas */}
+              <motion.div
+                whileHover={{ scale: 1.02, y: -4 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Link href="/contacto" className="block h-full">
+                  <div className="h-full bg-gradient-to-br from-blue-50 to-teal-50 rounded-2xl p-6 border-2 border-blue-200 hover:border-blue-400 transition-all duration-300 shadow-lg hover:shadow-xl">
+                    <div className="flex items-start gap-4 mb-4">
+                      <div className="rounded-xl bg-blue-500 p-3 shadow-md">
+                        <MessageSquare className="w-6 h-6 text-white" aria-hidden="true" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">
+                          Contactar ventas
+                        </h3>
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          Habla con nuestro equipo para planes empresariales o preguntas específicas
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-blue-600 font-semibold text-sm">
+                      <span>Enviar mensaje</span>
+                      <TrendingUp className="w-4 h-4" aria-hidden="true" />
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
+
+              {/* FAQ */}
+              <motion.div
+                whileHover={{ scale: 1.02, y: -4 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Link href="/preguntas-frecuentes" className="block h-full">
+                  <div className="h-full bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 border-2 border-green-200 hover:border-green-400 transition-all duration-300 shadow-lg hover:shadow-xl">
+                    <div className="flex items-start gap-4 mb-4">
+                      <div className="rounded-xl bg-green-500 p-3 shadow-md">
+                        <HeadphonesIcon className="w-6 h-6 text-white" aria-hidden="true" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">
+                          Preguntas frecuentes
+                        </h3>
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          Encuentra respuestas rápidas a las dudas más comunes sobre nuestros planes
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-green-600 font-semibold text-sm">
+                      <span>Ver preguntas</span>
+                      <TrendingUp className="w-4 h-4" aria-hidden="true" />
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
+            </div>
+
+            {/* Trust badges */}
+            <div className="grid grid-cols-3 gap-4 pt-8 border-t-2 border-gray-200">
+              <div className="text-center">
+                <div className="flex justify-center mb-2">
+                  <div className="rounded-full bg-green-100 p-3">
+                    <Shield className="w-6 h-6 text-green-600" aria-hidden="true" />
+                  </div>
+                </div>
+                <p className="text-sm font-semibold text-gray-800">
+                  Garantía de satisfacción
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="flex justify-center mb-2">
+                  <div className="rounded-full bg-blue-100 p-3">
+                    <Clock className="w-6 h-6 text-blue-600" aria-hidden="true" />
+                  </div>
+                </div>
+                <p className="text-sm font-semibold text-gray-800">
+                  Soporte 24/7
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="flex justify-center mb-2">
+                  <div className="rounded-full bg-purple-100 p-3">
+                    <BadgeCheck className="w-6 h-6 text-purple-600" aria-hidden="true" />
+                  </div>
+                </div>
+                <p className="text-sm font-semibold text-gray-800">
+                  Datos seguros
+                </p>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
     </div>
@@ -279,127 +401,229 @@ function TarjetaPlanProfesional({
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1, duration: 0.5, ease: 'easeOut' }}
+      whileHover={{ y: -8, transition: { duration: 0.3 } }}
       className="h-full"
     >
       <Card
-        className={`h-full flex flex-col relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-102 ${
+        className={`h-full flex flex-col relative overflow-hidden transition-all duration-300 backdrop-blur-sm ${
           plan.destacado
-            ? 'border-2 border-blue-500 shadow-xl ring-2 ring-blue-200 ring-offset-2'
-            : 'border-2 border-gray-200 hover:border-blue-300'
+            ? 'border-2 border-blue-400 shadow-2xl shadow-blue-500/20 ring-4 ring-blue-100 bg-gradient-to-br from-white via-blue-50/30 to-green-50/30 scale-105 lg:scale-110'
+            : 'border-2 border-gray-200 hover:border-blue-300 shadow-lg hover:shadow-2xl bg-white/90'
         }`}
         role="article"
         aria-label={`Plan ${plan.nombre}`}
       >
         {plan.destacado && (
-          <div
-            className="absolute top-0 left-0 right-0 bg-gradient-to-r from-blue-500 to-green-500 text-white text-center py-2.5 text-sm font-bold tracking-wide shadow-md"
+          <motion.div
+            initial={{ y: -10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: index * 0.1 + 0.3 }}
+            className="absolute top-0 left-0 right-0 bg-gradient-to-r from-blue-500 via-teal-500 to-green-500 text-white text-center py-3 text-sm font-extrabold tracking-wide shadow-lg"
             aria-label="Plan más popular"
           >
-            ⭐ MÁS POPULAR
-          </div>
+            <div className="flex items-center justify-center gap-2">
+              <Star className="w-4 h-4 fill-current" aria-hidden="true" />
+              <span>MÁS POPULAR</span>
+              <Star className="w-4 h-4 fill-current" aria-hidden="true" />
+            </div>
+          </motion.div>
         )}
 
-        <CardHeader className={plan.destacado ? 'pt-12' : ''}>
-          <div className="mb-4">
-            <CardTitle className="text-2xl">{plan.nombre}</CardTitle>
-            <CardDescription className="mt-2">{plan.descripcion}</CardDescription>
+        <CardHeader className={plan.destacado ? 'pt-16 pb-6' : 'pt-6 pb-6'}>
+          <div className="mb-6">
+            <CardTitle className="text-2xl font-bold text-gray-900 mb-3">
+              {plan.nombre}
+            </CardTitle>
+            <CardDescription className="text-base text-gray-600 leading-relaxed">
+              {plan.descripcion}
+            </CardDescription>
           </div>
 
-          {/* Precio */}
-          <div className="mt-6">
+          {/* Precio mejorado */}
+          <div className="mt-4 mb-2">
             {esGratis ? (
-              <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-bold text-slate-900">GRATIS</span>
-                <span className="text-slate-600">14 días</span>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-semibold text-slate-900">$</span>
-                  <span className="text-5xl font-bold text-slate-900">
-                    {Math.floor(precio / 1000)}
-                  </span>
-                  <span className="text-2xl font-semibold text-slate-900">K</span>
-                  <span className="text-slate-600 ml-2">
-                    /{periodo === 'mensual' ? 'mes' : 'año'}
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border-2 border-green-200">
+                <div className="flex items-baseline justify-center gap-2">
+                  <span className="text-5xl font-extrabold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                    GRATIS
                   </span>
                 </div>
+                <p className="text-center text-green-700 font-medium mt-2">
+                  14 días de prueba
+                </p>
+              </div>
+            ) : (
+              <div className={`rounded-2xl p-6 ${
+                plan.destacado
+                  ? 'bg-gradient-to-br from-blue-50 via-teal-50 to-green-50 border-2 border-blue-200'
+                  : 'bg-gray-50 border-2 border-gray-200'
+              }`}>
+                <div className="flex items-start justify-center gap-1">
+                  <span className="text-3xl font-bold text-gray-700 mt-2">$</span>
+                  <span className={`text-6xl font-extrabold ${
+                    plan.destacado
+                      ? 'bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent'
+                      : 'text-gray-900'
+                  }`}>
+                    {Math.floor(precio / 1000)}
+                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-2xl font-bold text-gray-700">K</span>
+                    <span className="text-sm text-gray-500 font-medium">
+                      {plan.moneda}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-center text-gray-600 font-medium mt-2">
+                  por {periodo === 'mensual' ? 'mes' : 'año'}
+                </p>
                 {periodo === 'anual' && porcentajeAhorro > 0 && (
-                  <p className="text-sm text-green-600 font-medium mt-1">
-                    Ahorras ${(ahorroAnual / 1000).toFixed(0)}K al año ({porcentajeAhorro}%)
-                  </p>
+                  <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="mt-3 pt-3 border-t border-gray-300"
+                  >
+                    <div className="flex items-center justify-center gap-2 text-green-600">
+                      <TrendingUp className="w-4 h-4" aria-hidden="true" />
+                      <p className="text-sm font-bold">
+                        Ahorras ${(ahorroAnual / 1000).toFixed(0)}K ({porcentajeAhorro}%)
+                      </p>
+                    </div>
+                  </motion.div>
                 )}
-              </>
+              </div>
             )}
           </div>
         </CardHeader>
 
-        <CardContent className="flex-1">
-          <ul className="space-y-3">
-            {/* Límite de pacientes */}
-            <li className="flex items-start gap-3">
-              <Users className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <span className="text-sm text-slate-700">
-                {plan.limite_pacientes
-                  ? `Hasta ${plan.limite_pacientes} pacientes`
-                  : 'Pacientes ilimitados'}
-              </span>
-            </li>
-
-            {/* Verificado */}
-            {plan.verificado && (
+        <CardContent className="flex-1 px-6 pb-6">
+          <div className={`rounded-xl p-4 mb-4 ${
+            plan.destacado
+              ? 'bg-gradient-to-br from-blue-50/50 to-green-50/50 border border-blue-100'
+              : 'bg-gray-50/50 border border-gray-100'
+          }`}>
+            <ul className="space-y-3.5">
+              {/* Límite de pacientes */}
               <li className="flex items-start gap-3">
-                <BadgeCheck className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                <span className="text-sm text-slate-700">Insignia verificado</span>
-              </li>
-            )}
-
-            {/* Analytics */}
-            {plan.acceso_analytics && (
-              <li className="flex items-start gap-3">
-                <BarChart3 className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
-                <span className="text-sm text-slate-700">Analytics avanzado</span>
-              </li>
-            )}
-
-            {/* Características desde JSON */}
-            {plan.caracteristicas?.map((car, i) => (
-              <li key={i} className="flex items-start gap-3">
-                {car.incluido ? (
-                  <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                ) : (
-                  <X className="w-5 h-5 text-slate-300 flex-shrink-0 mt-0.5" />
-                )}
-                <div className="flex-1">
-                  <span
-                    className={`text-sm ${
-                      car.incluido ? 'text-slate-700' : 'text-slate-400'
-                    }`}
-                  >
-                    {car.nombre}
-                  </span>
-                  {car.limite && car.incluido && (
-                    <span className="block text-xs text-slate-500 mt-0.5">{car.limite}</span>
-                  )}
+                <div className={`rounded-lg p-1.5 ${
+                  plan.destacado ? 'bg-blue-100' : 'bg-blue-50'
+                }`}>
+                  <Users className="w-4 h-4 text-blue-600 flex-shrink-0" aria-hidden="true" />
                 </div>
+                <span className="text-sm font-medium text-gray-800 mt-1">
+                  {plan.limite_pacientes
+                    ? `Hasta ${plan.limite_pacientes} pacientes`
+                    : 'Pacientes ilimitados'}
+                </span>
               </li>
-            ))}
-          </ul>
+
+              {/* Verificado */}
+              {plan.verificado && (
+                <li className="flex items-start gap-3">
+                  <div className={`rounded-lg p-1.5 ${
+                    plan.destacado ? 'bg-green-100' : 'bg-green-50'
+                  }`}>
+                    <BadgeCheck className="w-4 h-4 text-green-600 flex-shrink-0" aria-hidden="true" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-800 mt-1">
+                    Insignia verificado
+                  </span>
+                </li>
+              )}
+
+              {/* Analytics */}
+              {plan.acceso_analytics && (
+                <li className="flex items-start gap-3">
+                  <div className={`rounded-lg p-1.5 ${
+                    plan.destacado ? 'bg-purple-100' : 'bg-purple-50'
+                  }`}>
+                    <BarChart3 className="w-4 h-4 text-purple-600 flex-shrink-0" aria-hidden="true" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-800 mt-1">
+                    Analytics avanzado
+                  </span>
+                </li>
+              )}
+
+              {/* Características desde JSON */}
+              {plan.caracteristicas?.map((car, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <div className={`rounded-lg p-1.5 ${
+                    car.incluido
+                      ? plan.destacado ? 'bg-green-100' : 'bg-green-50'
+                      : 'bg-gray-100'
+                  }`}>
+                    {car.incluido ? (
+                      <Check className="w-4 h-4 text-green-600 flex-shrink-0" aria-hidden="true" />
+                    ) : (
+                      <X className="w-4 h-4 text-gray-400 flex-shrink-0" aria-hidden="true" />
+                    )}
+                  </div>
+                  <div className="flex-1 mt-1">
+                    <span
+                      className={`text-sm font-medium ${
+                        car.incluido ? 'text-gray-800' : 'text-gray-400'
+                      }`}
+                    >
+                      {car.nombre}
+                    </span>
+                    {car.limite && car.incluido && (
+                      <span className="block text-xs text-gray-500 mt-1 font-normal">
+                        {car.limite}
+                      </span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
         </CardContent>
 
-        <CardFooter className="pt-6">
-          <Button
-            onClick={() => onSeleccionar(plan.codigo)}
-            className={`w-full font-semibold text-lg py-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl ${
-              plan.destacado
-                ? 'bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600 text-white transform hover:scale-105'
-                : 'bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white'
-            }`}
-            size="lg"
-            aria-label={`${esGratis ? 'Comenzar prueba gratuita' : 'Suscribirse'} al plan ${plan.nombre}`}
+        <CardFooter className="px-6 pb-6 pt-2">
+          <motion.div
+            className="w-full"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
-            {esGratis ? '✨ Comenzar Prueba Gratuita' : '🚀 Suscribirme Ahora'}
-          </Button>
+            <Button
+              onClick={() => onSeleccionar(plan.codigo)}
+              className={`w-full font-bold text-base py-7 rounded-xl transition-all duration-300 ${
+                plan.destacado
+                  ? 'bg-gradient-to-r from-blue-500 via-teal-500 to-green-500 hover:from-blue-600 hover:via-teal-600 hover:to-green-600 text-white shadow-xl shadow-blue-500/30 hover:shadow-2xl hover:shadow-blue-500/40'
+                  : 'bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-800 hover:to-gray-900 text-white shadow-lg hover:shadow-xl'
+              }`}
+              size="lg"
+              aria-label={`${esGratis ? 'Comenzar prueba gratuita' : 'Suscribirse'} al plan ${plan.nombre}`}
+            >
+              <span className="flex items-center justify-center gap-2">
+                {esGratis ? (
+                  <>
+                    <Zap className="w-5 h-5" aria-hidden="true" />
+                    Comenzar Prueba Gratuita
+                  </>
+                ) : (
+                  <>
+                    <TrendingUp className="w-5 h-5" aria-hidden="true" />
+                    Suscribirme Ahora
+                  </>
+                )}
+              </span>
+            </Button>
+          </motion.div>
+
+          {/* Trust signal */}
+          {plan.destacado && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="text-xs text-center text-gray-600 mt-3 flex items-center justify-center gap-1.5"
+            >
+              <Shield className="w-3.5 h-3.5 text-green-600" aria-hidden="true" />
+              Garantía de satisfacción
+            </motion.p>
+          )}
         </CardFooter>
       </Card>
     </motion.div>
@@ -429,33 +653,60 @@ function TablaComparacionProfesionales({ planes, periodo }: TablaComparacionProp
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.3 }}
+      transition={{ delay: 0.4, duration: 0.6 }}
+      className="relative"
     >
-      <h2 className="text-3xl font-bold text-slate-900 mb-8 text-center">
-        Comparación detallada de planes
-      </h2>
+      {/* Header de la sección */}
+      <div className="text-center mb-12">
+        <Badge className="mb-4 bg-gradient-to-r from-blue-500 to-teal-500 text-white px-6 py-2 text-sm font-semibold shadow-md">
+          <BarChart3 className="w-4 h-4 inline mr-2" aria-hidden="true" />
+          Comparación Completa
+        </Badge>
+        <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-4">
+          Comparación detallada de planes
+        </h2>
+        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          Revisa todas las características para encontrar el plan perfecto para tu práctica
+        </p>
+      </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+      {/* Tabla mejorada */}
+      <div className="overflow-x-auto rounded-2xl border-2 border-gray-200 bg-white shadow-2xl">
         <table className="w-full">
-          <thead className="bg-slate-50 border-b border-slate-200">
+          <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
             <tr>
-              <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+              <th className="px-6 py-5 text-left text-base font-bold text-gray-900 sticky left-0 bg-gradient-to-r from-gray-50 to-gray-100 z-10">
                 Característica
               </th>
               {planes.map((plan) => (
                 <th
                   key={plan.id}
-                  className="px-6 py-4 text-center text-sm font-semibold text-slate-900"
+                  className={`px-6 py-5 text-center text-base font-bold ${
+                    plan.destacado
+                      ? 'bg-gradient-to-b from-blue-50 to-teal-50 text-blue-900'
+                      : 'text-gray-900'
+                  }`}
                 >
-                  {plan.nombre}
+                  <div className="flex flex-col items-center gap-2">
+                    {plan.destacado && (
+                      <Star className="w-5 h-5 text-blue-500 fill-current" aria-hidden="true" />
+                    )}
+                    <span>{plan.nombre}</span>
+                  </div>
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-200">
+          <tbody className="divide-y divide-gray-200">
             {caracteristicasArray.map((nombreCaracteristica, index) => (
-              <tr key={index} className="hover:bg-slate-50 transition-colors">
-                <td className="px-6 py-4 text-sm text-slate-700 font-medium">
+              <motion.tr
+                key={index}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 + index * 0.05 }}
+                className="hover:bg-blue-50/30 transition-colors duration-200"
+              >
+                <td className="px-6 py-5 text-sm text-gray-800 font-semibold sticky left-0 bg-white hover:bg-blue-50/30 transition-colors">
                   {nombreCaracteristica}
                 </td>
                 {planes.map((plan) => {
@@ -484,24 +735,52 @@ function TablaComparacionProfesionales({ planes, periodo }: TablaComparacionProp
                   }
 
                   return (
-                    <td key={plan.id} className="px-6 py-4 text-center">
+                    <td
+                      key={plan.id}
+                      className={`px-6 py-5 text-center ${
+                        plan.destacado ? 'bg-blue-50/20' : ''
+                      }`}
+                    >
                       {typeof valor === 'boolean' ? (
                         valor ? (
-                          <Check className="w-5 h-5 text-green-600 mx-auto" />
+                          <div className="flex justify-center">
+                            <div className="rounded-full bg-green-100 p-1.5">
+                              <Check className="w-5 h-5 text-green-600" aria-hidden="true" />
+                            </div>
+                          </div>
                         ) : (
-                          <X className="w-5 h-5 text-slate-300 mx-auto" />
+                          <div className="flex justify-center">
+                            <div className="rounded-full bg-gray-100 p-1.5">
+                              <X className="w-5 h-5 text-gray-400" aria-hidden="true" />
+                            </div>
+                          </div>
                         )
                       ) : (
-                        <span className="text-sm text-slate-700">{valor}</span>
+                        <span className="text-sm font-medium text-gray-800 bg-gray-50 px-3 py-1.5 rounded-lg inline-block">
+                          {valor}
+                        </span>
                       )}
                     </td>
                   );
                 })}
-              </tr>
+              </motion.tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Nota adicional */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.8 }}
+        className="mt-8 text-center"
+      >
+        <p className="text-sm text-gray-600 flex items-center justify-center gap-2">
+          <Shield className="w-4 h-4 text-green-600" aria-hidden="true" />
+          Todos los planes incluyen prueba gratuita de 14 días sin tarjeta de crédito
+        </p>
+      </motion.div>
     </motion.div>
   );
 }
