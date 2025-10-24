@@ -765,7 +765,7 @@ export default function AdminUsuarios() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => toast.info('Vista de detalles en desarrollo')}
+                            onClick={() => window.location.href = `/admin/usuarios/${usuario.id}`}
                             className="hover:bg-purple-50 hover:text-purple-600 hover:border-purple-300"
                             title="Ver detalles"
                           >

@@ -16,6 +16,9 @@ import {
   Video,
   Edit2,
   Activity,
+  BarChart3,
+  Clock,
+  TrendingUp,
 } from 'lucide-react';
 import { AdminHeader, AdminCard } from '../../../../lib/componentes/admin';
 import { Button } from '../../../../lib/componentes/ui/button';
@@ -123,6 +126,17 @@ export default function DetallesUsuario() {
     totalEvaluaciones: 0,
     totalPagos: 0,
     totalCitas: 0,
+  });
+  const [metricsUso, setMetricsUso] = useState({
+    totalMensajes: 0,
+    tiempoTotalMinutos: 0,
+    ultimaActividad: null as string | null,
+    promedioMensajesPorConversacion: 0,
+    funcionalidadesMasUsadas: [] as { nombre: string; cantidad: number }[],
+    progresoEvaluaciones: {
+      completadas: 0,
+      enProgreso: 0,
+    },
   });
 
   useEffect(() => {
@@ -234,6 +248,57 @@ export default function DetallesUsuario() {
         totalEvaluaciones: evaluacionesData?.length || 0,
         totalPagos: pagosData?.length || 0,
         totalCitas: citasData?.length || 0,
+      });
+
+      // Calcular métricas de uso de la plataforma
+      // Contar total de mensajes del usuario
+      const { count: totalMensajes } = await supabase
+        .from('Mensaje')
+        .select('*', { count: 'exact', head: true })
+        .eq('usuario_id', usuarioId);
+
+      // Calcular tiempo total en plataforma (suma de duraciones de conversaciones)
+      const tiempoTotal = (conversacionesData || []).reduce(
+        (acc, conv) => acc + (conv.duracion || 0),
+        0
+      );
+
+      // Encontrar última actividad
+      const todasLasFechas = [
+        ...(conversacionesData || []).map((c) => c.creado_en),
+        ...(evaluacionesData || []).map((e) => e.creado_en),
+        ...(pagosData || []).map((p) => p.creado_en),
+      ];
+      const ultimaActividad =
+        todasLasFechas.length > 0
+          ? todasLasFechas.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0]
+          : null;
+
+      // Calcular promedio de mensajes por conversación
+      const promedioMensajes =
+        conversacionesData && conversacionesData.length > 0
+          ? (totalMensajes || 0) / conversacionesData.length
+          : 0;
+
+      // Calcular funcionalidades más usadas
+      const funcionalidades = [
+        { nombre: 'Chat de Texto', cantidad: conversacionesData?.filter((c) => c.tipo === 'chat')?.length || 0 },
+        { nombre: 'Chat de Voz', cantidad: conversacionesData?.filter((c) => c.tipo === 'voz')?.length || 0 },
+        { nombre: 'Evaluaciones PHQ-9', cantidad: evaluacionesData?.filter((e) => e.tipo === 'PHQ-9')?.length || 0 },
+        { nombre: 'Evaluaciones GAD-7', cantidad: evaluacionesData?.filter((e) => e.tipo === 'GAD-7')?.length || 0 },
+        { nombre: 'Citas Programadas', cantidad: citasData?.length || 0 },
+      ].sort((a, b) => b.cantidad - a.cantidad);
+
+      setMetricsUso({
+        totalMensajes: totalMensajes || 0,
+        tiempoTotalMinutos: Math.round(tiempoTotal / 60),
+        ultimaActividad,
+        promedioMensajesPorConversacion: Math.round(promedioMensajes * 10) / 10,
+        funcionalidadesMasUsadas: funcionalidades,
+        progresoEvaluaciones: {
+          completadas: evaluacionesData?.length || 0,
+          enProgreso: 0, // Esto depende de si tienes un estado para evaluaciones en progreso
+        },
       });
     } catch (error) {
       console.error('Error al cargar datos:', error);
@@ -362,10 +427,14 @@ export default function DetallesUsuario() {
 
         {/* Tabs con información detallada */}
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-6">
+          <TabsList className="grid w-full grid-cols-6 mb-6">
             <TabsTrigger value="general">
               <User className="w-4 h-4 mr-2" />
               General
+            </TabsTrigger>
+            <TabsTrigger value="uso">
+              <BarChart3 className="w-4 h-4 mr-2" />
+              Uso
             </TabsTrigger>
             <TabsTrigger value="conversaciones">
               <MessageSquare className="w-4 h-4 mr-2" />
@@ -483,7 +552,203 @@ export default function DetallesUsuario() {
             </AdminCard>
           </TabsContent>
 
-          {/* Tab 2: Conversaciones */}
+          {/* Tab 2: Uso de la Plataforma */}
+          <TabsContent value="uso">
+            <div className="space-y-6">
+              {/* Métricas principales */}
+              <AdminCard
+                titulo="Métricas de Uso"
+                icono={<BarChart3 className="w-5 h-5" />}
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-6 border border-blue-200">
+                    <div className="flex items-center gap-3 mb-2">
+                      <MessageSquare className="w-8 h-8 text-blue-600" />
+                      <div>
+                        <p className="text-sm text-blue-700 font-medium">Total Mensajes</p>
+                        <p className="text-3xl font-bold text-blue-900">
+                          {metricsUso.totalMensajes}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-blue-600 mt-2">
+                      Promedio: {metricsUso.promedioMensajesPorConversacion} por conversación
+                    </p>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-6 border border-purple-200">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Clock className="w-8 h-8 text-purple-600" />
+                      <div>
+                        <p className="text-sm text-purple-700 font-medium">Tiempo Total</p>
+                        <p className="text-3xl font-bold text-purple-900">
+                          {metricsUso.tiempoTotalMinutos}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-purple-600 mt-2">Minutos en la plataforma</p>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-6 border border-green-200">
+                    <div className="flex items-center gap-3 mb-2">
+                      <MessageSquare className="w-8 h-8 text-green-600" />
+                      <div>
+                        <p className="text-sm text-green-700 font-medium">Conversaciones</p>
+                        <p className="text-3xl font-bold text-green-900">
+                          {estadisticas.totalConversaciones}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-green-600 mt-2">Total de sesiones de chat</p>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-6 border border-orange-200">
+                    <div className="flex items-center gap-3 mb-2">
+                      <FileText className="w-8 h-8 text-orange-600" />
+                      <div>
+                        <p className="text-sm text-orange-700 font-medium">Evaluaciones</p>
+                        <p className="text-3xl font-bold text-orange-900">
+                          {metricsUso.progresoEvaluaciones.completadas}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-orange-600 mt-2">Completadas</p>
+                  </div>
+                </div>
+              </AdminCard>
+
+              {/* Última actividad */}
+              <AdminCard titulo="Actividad Reciente" icono={<Activity className="w-5 h-5" />}>
+                <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg p-6 border border-teal-200">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-teal-400 to-cyan-500 rounded-full flex items-center justify-center">
+                      <Clock className="w-8 h-8 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 font-medium">Última Actividad</p>
+                      <p className="text-lg font-semibold text-gray-900">
+                        {metricsUso.ultimaActividad
+                          ? format(new Date(metricsUso.ultimaActividad), "dd MMM yyyy 'a las' HH:mm", {
+                              locale: es,
+                            })
+                          : 'Sin actividad registrada'}
+                      </p>
+                      {metricsUso.ultimaActividad && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Hace{' '}
+                          {Math.floor(
+                            (new Date().getTime() - new Date(metricsUso.ultimaActividad).getTime()) /
+                              (1000 * 60 * 60 * 24)
+                          )}{' '}
+                          días
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </AdminCard>
+
+              {/* Funcionalidades más usadas */}
+              <AdminCard
+                titulo="Funcionalidades Más Usadas"
+                icono={<TrendingUp className="w-5 h-5" />}
+              >
+                <div className="space-y-3">
+                  {metricsUso.funcionalidadesMasUsadas.map((func, index) => (
+                    <div
+                      key={func.nombre}
+                      className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${
+                            index === 0
+                              ? 'bg-gradient-to-br from-yellow-400 to-orange-500'
+                              : index === 1
+                              ? 'bg-gradient-to-br from-gray-300 to-gray-400'
+                              : index === 2
+                              ? 'bg-gradient-to-br from-orange-300 to-orange-400'
+                              : 'bg-gradient-to-br from-blue-400 to-blue-500'
+                          }`}
+                        >
+                          {index + 1}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">{func.nombre}</p>
+                          <p className="text-sm text-gray-600">{func.cantidad} usos</p>
+                        </div>
+                      </div>
+                      <div className="w-32 bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-gradient-to-r from-teal-400 to-cyan-500 h-2 rounded-full transition-all"
+                          style={{
+                            width: `${
+                              metricsUso.funcionalidadesMasUsadas[0].cantidad > 0
+                                ? (func.cantidad /
+                                    metricsUso.funcionalidadesMasUsadas[0].cantidad) *
+                                  100
+                                : 0
+                            }%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  {metricsUso.funcionalidadesMasUsadas.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      No hay datos de uso disponibles
+                    </div>
+                  )}
+                </div>
+              </AdminCard>
+
+              {/* Progreso en evaluaciones */}
+              <AdminCard
+                titulo="Progreso en Evaluaciones"
+                icono={<FileText className="w-5 h-5" />}
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-lg p-6 border border-green-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <p className="text-sm text-green-700 font-medium">
+                          Evaluaciones Completadas
+                        </p>
+                        <p className="text-4xl font-bold text-green-900 mt-2">
+                          {metricsUso.progresoEvaluaciones.completadas}
+                        </p>
+                      </div>
+                      <FileText className="w-12 h-12 text-green-600" />
+                    </div>
+                    <div className="w-full bg-green-200 rounded-full h-3">
+                      <div
+                        className="bg-gradient-to-r from-green-500 to-emerald-600 h-3 rounded-full"
+                        style={{ width: '100%' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-6 border border-blue-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <p className="text-sm text-blue-700 font-medium">Total de Sesiones</p>
+                        <p className="text-4xl font-bold text-blue-900 mt-2">
+                          {estadisticas.totalConversaciones}
+                        </p>
+                      </div>
+                      <MessageSquare className="w-12 h-12 text-blue-600" />
+                    </div>
+                    <p className="text-xs text-blue-600 mt-2">
+                      Incluye {metricsUso.funcionalidadesMasUsadas.find((f) => f.nombre === 'Chat de Texto')?.cantidad || 0} chats de texto y{' '}
+                      {metricsUso.funcionalidadesMasUsadas.find((f) => f.nombre === 'Chat de Voz')?.cantidad || 0} de voz
+                    </p>
+                  </div>
+                </div>
+              </AdminCard>
+            </div>
+          </TabsContent>
+
+          {/* Tab 3: Conversaciones */}
           <TabsContent value="conversaciones">
             <AdminCard
               titulo={`Conversaciones (${conversaciones.length})`}

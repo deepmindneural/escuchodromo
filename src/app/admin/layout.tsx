@@ -7,7 +7,7 @@ import {
   LayoutDashboard,
   Users,
   MessageSquare,
-  Brain,
+  Sparkles,
   CreditCard,
   Bell,
   Settings,
@@ -82,10 +82,10 @@ const menuItems: ItemMenu[] = [
 
   // Análisis IA
   {
-    icon: Brain,
+    icon: Sparkles,
     label: 'Análisis IA',
     href: '/admin/ia',
-    descripcion: 'Análisis de emociones y conversaciones',
+    descripcion: 'Análisis de emociones y conversaciones con IA',
     categoria: 'sistema'
   },
 

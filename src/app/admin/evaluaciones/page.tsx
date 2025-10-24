@@ -84,7 +84,7 @@ const COLORES_SEVERIDAD = {
 };
 
 const NIVELES_SEVERIDAD = [
-  { valor: '', etiqueta: 'Todas las severidades' },
+  { valor: 'todas', etiqueta: 'Todas las severidades' },
   { valor: 'sin sintomas', etiqueta: 'Sin síntomas' },
   { valor: 'leve', etiqueta: 'Leve' },
   { valor: 'moderada', etiqueta: 'Moderada' },
@@ -289,12 +289,12 @@ export default function AdminEvaluaciones() {
     }
 
     // Filtro de tipo
-    if (filtroTipo) {
+    if (filtroTipo && filtroTipo !== 'todos') {
       resultados = resultados.filter((e) => e.tipo === filtroTipo);
     }
 
     // Filtro de severidad
-    if (filtroSeveridad) {
+    if (filtroSeveridad && filtroSeveridad !== 'todas') {
       resultados = resultados.filter((e) => e.severidad === filtroSeveridad);
     }
 
@@ -327,8 +327,8 @@ export default function AdminEvaluaciones() {
 
   const limpiarFiltros = () => {
     setBusqueda('');
-    setFiltroTipo('');
-    setFiltroSeveridad('');
+    setFiltroTipo('todos');
+    setFiltroSeveridad('todas');
   };
 
   // Handlers de modales
@@ -593,18 +593,18 @@ export default function AdminEvaluaciones() {
               />
             </div>
 
-            <Select value={filtroTipo} onValueChange={setFiltroTipo}>
+            <Select value={filtroTipo || 'todos'} onValueChange={setFiltroTipo}>
               <SelectTrigger aria-label="Filtrar por tipo de evaluación">
                 <SelectValue placeholder="Todos los tipos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos los tipos</SelectItem>
+                <SelectItem value="todos">Todos los tipos</SelectItem>
                 <SelectItem value="PHQ-9">PHQ-9 (Depresión)</SelectItem>
                 <SelectItem value="GAD-7">GAD-7 (Ansiedad)</SelectItem>
               </SelectContent>
             </Select>
 
-            <Select value={filtroSeveridad} onValueChange={setFiltroSeveridad}>
+            <Select value={filtroSeveridad || 'todas'} onValueChange={setFiltroSeveridad}>
               <SelectTrigger aria-label="Filtrar por severidad">
                 <SelectValue placeholder="Todas las severidades" />
               </SelectTrigger>

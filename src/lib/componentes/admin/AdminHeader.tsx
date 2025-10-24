@@ -11,15 +11,18 @@ interface AdminHeaderProps {
   descripcion?: string;
   acciones?: ReactNode;
   icono?: ReactNode;
+  gradiente?: string; // Clases de gradiente personalizadas (ej: "from-purple-500 via-pink-500 to-rose-500")
 }
 
-export function AdminHeader({ titulo, descripcion, acciones, icono }: AdminHeaderProps) {
+export function AdminHeader({ titulo, descripcion, acciones, icono, gradiente }: AdminHeaderProps) {
+  const claseGradiente = gradiente || 'from-teal-500 to-cyan-500';
+
   return (
     <motion.div
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
-      className="bg-gradient-to-r from-teal-500 to-cyan-500 rounded-2xl shadow-xl p-8 mb-8 text-white"
+      className={`bg-gradient-to-r ${claseGradiente} rounded-2xl shadow-xl p-8 mb-8 text-white`}
     >
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-start gap-4">
