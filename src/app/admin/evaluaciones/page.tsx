@@ -21,8 +21,14 @@ import {
   Filter,
   Eye,
   AlertCircle,
+  Edit2,
+  Trash2,
+  Plus,
 } from 'lucide-react';
 import { AdminHeader, AdminStatCard, AdminCard } from '../../../lib/componentes/admin';
+import { ModalResultadosEvaluacion } from '../../../lib/componentes/admin/ModalResultadosEvaluacion';
+import { ModalEvaluacion } from '../../../lib/componentes/admin/ModalEvaluacion';
+import { ModalEliminarEvaluacion } from '../../../lib/componentes/admin/ModalEliminarEvaluacion';
 import {
   Table,
   TableBody,
@@ -105,6 +111,12 @@ export default function AdminEvaluaciones() {
   const [filtroTipo, setFiltroTipo] = useState<string>('');
   const [filtroSeveridad, setFiltroSeveridad] = useState<string>('');
   const [evaluacionesFiltradas, setEvaluacionesFiltradas] = useState<Evaluacion[]>([]);
+
+  // Estados de modales
+  const [modalResultadosAbierto, setModalResultadosAbierto] = useState(false);
+  const [modalCrearEditarAbierto, setModalCrearEditarAbierto] = useState(false);
+  const [modalEliminarAbierto, setModalEliminarAbierto] = useState(false);
+  const [evaluacionSeleccionada, setEvaluacionSeleccionada] = useState<Evaluacion | null>(null);
 
   useEffect(() => {
     cargarDatos();
@@ -319,6 +331,31 @@ export default function AdminEvaluaciones() {
     setFiltroSeveridad('');
   };
 
+  // Handlers de modales
+  const handleVerResultados = (evaluacion: Evaluacion) => {
+    setEvaluacionSeleccionada(evaluacion);
+    setModalResultadosAbierto(true);
+  };
+
+  const handleCrearNueva = () => {
+    setEvaluacionSeleccionada(null);
+    setModalCrearEditarAbierto(true);
+  };
+
+  const handleEditar = (evaluacion: Evaluacion) => {
+    setEvaluacionSeleccionada(evaluacion);
+    setModalCrearEditarAbierto(true);
+  };
+
+  const handleEliminar = (evaluacion: Evaluacion) => {
+    setEvaluacionSeleccionada(evaluacion);
+    setModalEliminarAbierto(true);
+  };
+
+  const handleExitoModal = () => {
+    cargarDatos();
+  };
+
   if (cargando) {
     return (
       <div
@@ -349,7 +386,12 @@ export default function AdminEvaluaciones() {
       <AdminHeader
         titulo="Administración de Evaluaciones"
         descripcion="Gestiona todas las evaluaciones psicológicas (PHQ-9, GAD-7, etc.) realizadas en la plataforma"
-      />
+      >
+        <Button onClick={handleCrearNueva} className="flex items-center gap-2">
+          <Plus className="w-4 h-4" />
+          Nueva Evaluación
+        </Button>
+      </AdminHeader>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
         {/* Tarjetas de estadísticas */}
@@ -439,7 +481,11 @@ export default function AdminEvaluaciones() {
                         </div>
                         <div className="flex items-center gap-3">
                           {obtenerBadgeSeveridad(evaluacion.severidad)}
-                          <Button size="sm" variant="outline">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleVerResultados(evaluacion)}
+                          >
                             <Eye className="w-4 h-4 mr-1" />
                             Ver
                           </Button>
@@ -648,14 +694,33 @@ export default function AdminEvaluaciones() {
                         })}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`Ver resultados completos de ${evaluacion.usuario.nombre}`}
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          Ver Resultados
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleVerResultados(evaluacion)}
+                            aria-label={`Ver resultados completos de ${evaluacion.usuario.nombre}`}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditar(evaluacion)}
+                            aria-label={`Editar evaluación de ${evaluacion.usuario.nombre}`}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEliminar(evaluacion)}
+                            aria-label={`Eliminar evaluación de ${evaluacion.usuario.nombre}`}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -674,6 +739,27 @@ export default function AdminEvaluaciones() {
           )}
         </AdminCard>
       </main>
+
+      {/* Modales */}
+      <ModalResultadosEvaluacion
+        abierto={modalResultadosAbierto}
+        onCerrar={() => setModalResultadosAbierto(false)}
+        evaluacion={evaluacionSeleccionada}
+      />
+
+      <ModalEvaluacion
+        abierto={modalCrearEditarAbierto}
+        onCerrar={() => setModalCrearEditarAbierto(false)}
+        onExito={handleExitoModal}
+        evaluacion={evaluacionSeleccionada}
+      />
+
+      <ModalEliminarEvaluacion
+        abierto={modalEliminarAbierto}
+        onCerrar={() => setModalEliminarAbierto(false)}
+        onExito={handleExitoModal}
+        evaluacion={evaluacionSeleccionada}
+      />
     </>
   );
 }
