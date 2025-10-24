@@ -78,7 +78,21 @@
       "Bash(vercel --prod --yes)",
       "mcp__supabase__get_logs",
       "mcp__supabase__list_migrations",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(npx playwright test e2e/login-simple.spec.ts --project=chromium --reporter=list --timeout=60000)",
+      "Bash(test -f:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(test:*)",
+      "Bash(echo $STRIPE_TEST_SECRET_KEY)",
+      "WebFetch(domain:docs.stripe.com)",
+      "Bash(git reset:*)",
+      "Bash(wc:*)",
+      "Bash(SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2ZXpuY2djZHNqbnR6cnp6dHJqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDQ2NjY2NywiZXhwIjoyMDc2MDQyNjY3fQ.oXTNtdzb5S316LlNguKOZzssvax--BxT1ypZBgjwRPs GEMINI_API_KEY=AIzaSyDgDUvZSVWz58pgBCTrgCA-uDLk0UZksYg node generar-embeddings-simple.js)",
+      "Bash(SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2ZXpuY2djZHNqbnR6cnp6dHJqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDQ2NjY2NywiZXhwIjoyMDc2MDQyNjY3fQ.oXTNtdzb5S316LlNguKOZzssvax--BxT1ypZBgjwRPs GEMINI_API_KEY=AIzaSyDgDUvZSVWz58pgBCTrgCA-uDLk0UZksYg node verificar-rag.js)",
+      "Read(//private/tmp/**)",
+      "Bash(npx next build)",
+      "Bash(git remote get-url:*)",
+      "Bash(git fetch:*)"
     ],
     "deny": []
   }

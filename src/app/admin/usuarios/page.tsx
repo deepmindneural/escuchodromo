@@ -35,11 +35,12 @@ import {
   SelectValue,
 } from '../../../lib/componentes/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../lib/componentes/ui/card';
-import { Search, ChevronLeft, ChevronRight, User, Shield, ShieldCheck, Activity } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, User, Shield, ShieldCheck, Activity, Edit2, Trash2, Eye, UserPlus } from 'lucide-react';
 import { Skeleton } from '../../../lib/componentes/ui/skeleton';
 import { obtenerClienteNavegador } from '../../../lib/supabase/cliente';
 import { toast, Toaster } from 'react-hot-toast';
-import { AdminHeader, AdminStatCard } from '../../../lib/componentes/admin';
+import { AdminHeader, AdminStatCard, ModalUsuario } from '../../../lib/componentes/admin';
+import { ModalConfirmacion } from '../../../lib/componentes/ui/modal-confirmacion';
 
 interface Usuario {
   id: string;
@@ -80,6 +81,12 @@ export default function AdminUsuarios() {
   const [filtroEstado, setFiltroEstado] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
   const [paginaActual, setPaginaActual] = useState(1);
+
+  // Estados para modales CRUD
+  const [modalCrearEditarAbierto, setModalCrearEditarAbierto] = useState(false);
+  const [usuarioAEditar, setUsuarioAEditar] = useState<Usuario | null>(null);
+  const [modalEliminarAbierto, setModalEliminarAbierto] = useState(false);
+  const [usuarioAEliminar, setUsuarioAEliminar] = useState<Usuario | null>(null);
 
   // Estados para gráficos y estadísticas mejoradas
   const [datosUsuariosPorMes, setDatosUsuariosPorMes] = useState<any[]>([]);
@@ -297,6 +304,54 @@ export default function AdminUsuarios() {
     return `Hace ${Math.floor(diffDias / 365)} años`;
   };
 
+  // Funciones para manejar CRUD
+  const abrirModalCrear = () => {
+    setUsuarioAEditar(null);
+    setModalCrearEditarAbierto(true);
+  };
+
+  const abrirModalEditar = (usuario: Usuario) => {
+    setUsuarioAEditar(usuario);
+    setModalCrearEditarAbierto(true);
+  };
+
+  const abrirModalEliminar = (usuario: Usuario) => {
+    setUsuarioAEliminar(usuario);
+    setModalEliminarAbierto(true);
+  };
+
+  const cerrarModales = () => {
+    setModalCrearEditarAbierto(false);
+    setModalEliminarAbierto(false);
+    setUsuarioAEditar(null);
+    setUsuarioAEliminar(null);
+  };
+
+  const handleEliminarUsuario = async () => {
+    if (!usuarioAEliminar) return;
+
+    try {
+      const response = await fetch('/api/admin/usuarios/eliminar', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuarioId: usuarioAEliminar.id }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al eliminar usuario');
+      }
+
+      toast.success('Usuario desactivado exitosamente');
+      cargarUsuarios(); // Recargar lista
+      cerrarModales();
+    } catch (error: any) {
+      console.error('Error al eliminar usuario:', error);
+      toast.error(error.message || 'Error al eliminar usuario');
+    }
+  };
+
   if (cargando) {
     return (
       <div
@@ -461,7 +516,7 @@ export default function AdminUsuarios() {
         </motion.div>
       </div>
 
-      {/* Filtros */}
+      {/* Filtros y Botón Crear */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -469,10 +524,19 @@ export default function AdminUsuarios() {
       >
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Search className="h-5 w-5" />
-              Filtros de búsqueda
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Search className="h-5 w-5" />
+                Filtros de búsqueda
+              </CardTitle>
+              <Button
+                onClick={abrirModalCrear}
+                className="bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg"
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                Crear Nuevo Usuario
+              </Button>
+            </div>
           </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
@@ -657,25 +721,32 @@ export default function AdminUsuarios() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Select
-                            value={usuario.rol}
-                            onValueChange={(value) => cambiarRol(usuario.id, value)}
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="USUARIO">Usuario</SelectItem>
-                              <SelectItem value="TERAPEUTA">Terapeuta</SelectItem>
-                              <SelectItem value="ADMIN">Admin</SelectItem>
-                            </SelectContent>
-                          </Select>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => toggleEstado(usuario.id)}
+                            onClick={() => abrirModalEditar(usuario)}
+                            className="hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300"
+                            title="Editar usuario"
                           >
-                            {usuario.esta_activo ? 'Desactivar' : 'Activar'}
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => abrirModalEliminar(usuario)}
+                            className="hover:bg-red-50 hover:text-red-600 hover:border-red-300"
+                            title="Eliminar usuario"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => toast.info('Vista de detalles en desarrollo')}
+                            className="hover:bg-purple-50 hover:text-purple-600 hover:border-purple-300"
+                            title="Ver detalles"
+                          >
+                            <Eye className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>
@@ -747,6 +818,32 @@ export default function AdminUsuarios() {
         </Card>
       )}
       </main>
+
+      {/* Modales */}
+      <ModalUsuario
+        abierto={modalCrearEditarAbierto}
+        onCerrar={cerrarModales}
+        onExito={() => {
+          cargarUsuarios();
+          cerrarModales();
+        }}
+        usuario={usuarioAEditar}
+      />
+
+      <ModalConfirmacion
+        abierto={modalEliminarAbierto}
+        onCerrar={cerrarModales}
+        onConfirmar={handleEliminarUsuario}
+        titulo="Desactivar Usuario"
+        descripcion={
+          usuarioAEliminar
+            ? `¿Estás seguro de que deseas desactivar al usuario ${usuarioAEliminar.email}? El usuario no podrá acceder a la plataforma hasta que sea reactivado.`
+            : ''
+        }
+        textoConfirmar="Sí, desactivar"
+        textoCancelar="Cancelar"
+        peligroso={true}
+      />
     </>
   );
 }

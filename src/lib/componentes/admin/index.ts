@@ -18,3 +18,4 @@ export { AdminFilters } from './AdminFilters';
 export { default as AlertasCriticas } from './AlertasCriticas';
 export { default as ModalAprobar } from './ModalAprobar';
 export { default as VisorDocumento } from './VisorDocumento';
+export { ModalUsuario } from './ModalUsuario';
