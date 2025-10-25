@@ -2,6 +2,19 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@14.10.0?target=deno'
 
+// ✅ SEGURIDAD: CORS restrictivo - Solo orígenes permitidos
+const ALLOWED_ORIGINS = [
+  'http://localhost:3000',
+  'http://localhost:4000',
+  'https://escuchodromo.com',
+  'https://www.escuchodromo.com',
+  'https://escuchodromo.vercel.app'
+]
+
+// ✅ SEGURIDAD: Rate limiting
+const RATE_LIMIT_WINDOW_MS = 60000 // 1 minuto
+const RATE_LIMIT_MAX_REQUESTS = 3   // 3 intentos por minuto
+
 interface DatosFacturacion {
   nombre: string
   email: string
@@ -21,11 +34,17 @@ interface RequestBody {
 }
 
 serve(async (req) => {
+  // ✅ SEGURIDAD: Validar origen permitido
+  const origin = req.headers.get('origin') || ''
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', {
       headers: {
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+        'Access-Control-Max-Age': '86400',
       }
     })
   }
@@ -51,7 +70,7 @@ serve(async (req) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: 'No autorizado' }),
-        { status: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+        { status: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': allowedOrigin } }
       )
     }
 
@@ -61,7 +80,7 @@ serve(async (req) => {
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: 'Token inválido' }),
-        { status: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+        { status: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': allowedOrigin } }
       )
     }
 
@@ -75,7 +94,43 @@ serve(async (req) => {
     if (usuarioError || !usuarioData) {
       return new Response(
         JSON.stringify({ error: 'Usuario no encontrado' }),
-        { status: 404, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+        { status: 404, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': allowedOrigin } }
+      )
+    }
+
+    // ✅ SEGURIDAD: Rate limiting - Verificar intentos recientes de pago
+    const { data: recentCheckouts, error: rateLimitError } = await supabase
+      .from('Pago')
+      .select('id, creado_en')
+      .eq('usuario_id', usuarioData.id)
+      .eq('estado', 'pendiente')
+      .gte('creado_en', new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString())
+      .order('creado_en', { ascending: false })
+
+    if (!rateLimitError && recentCheckouts && recentCheckouts.length >= RATE_LIMIT_MAX_REQUESTS) {
+      console.warn('[crear-checkout-stripe] Rate limit excedido:', {
+        usuario_hash: usuarioData.id.substring(0, 8) + '***',
+        intentos: recentCheckouts.length,
+        timestamp: new Date().toISOString()
+      })
+
+      return new Response(
+        JSON.stringify({
+          error: 'Demasiados intentos de pago. Por favor intenta en 1 minuto.',
+          retry_after: 60,
+          codigo: 'RATE_LIMIT_EXCEEDED'
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': '60',
+            'X-RateLimit-Limit': RATE_LIMIT_MAX_REQUESTS.toString(),
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': new Date(Date.now() + RATE_LIMIT_WINDOW_MS).toISOString(),
+            'Access-Control-Allow-Origin': allowedOrigin
+          }
+        }
       )
     }
 
@@ -108,7 +163,7 @@ serve(async (req) => {
           codigo: planCodigo,
           detalles: planError?.message
         }),
-        { status: 404, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+        { status: 404, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': allowedOrigin } }
       )
     }
 
@@ -140,7 +195,7 @@ serve(async (req) => {
           message: 'Plan gratuito activado',
           redirect_url: tipo_usuario === 'profesional' ? '/profesional/dashboard' : '/dashboard'
         }),
-        { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+        { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': allowedOrigin } }
       )
     }
 
@@ -152,7 +207,7 @@ serve(async (req) => {
           plan: planCodigo,
           periodo
         }),
-        { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+        { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': allowedOrigin } }
       )
     }
 
@@ -261,7 +316,7 @@ serve(async (req) => {
         status: 200,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
+          'Access-Control-Allow-Origin': allowedOrigin
         }
       }
     )
@@ -277,7 +332,7 @@ serve(async (req) => {
         status: 500,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
+          'Access-Control-Allow-Origin': allowedOrigin
         }
       }
     )

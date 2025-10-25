@@ -81,7 +81,22 @@ export default function PaginaConfirmacionPago() {
         throw new Error('Usuario no encontrado en BD');
       }
 
-      // Obtener la última suscripción del usuario (query directa)
+      // ✅ VALIDAR: Buscar pago asociado al session_id Y que pertenezca al usuario autenticado
+      const { data: pago, error: pagoError } = await supabase
+        .from('Pago')
+        .select('*')
+        .eq('stripe_sesion_id', sesionId)
+        .eq('usuario_id', usuarioData.id)  // ✅ VALIDACIÓN CRÍTICA: El pago debe pertenecer al usuario
+        .single();
+
+      if (pagoError || !pago) {
+        console.error('Pago no encontrado o no autorizado:', pagoError);
+        toast.error('No se encontró información de pago válida para este usuario');
+        setTimeout(() => router.push('/dashboard'), 2000);
+        return;
+      }
+
+      // Obtener la suscripción asociada al pago
       const { data: suscripcion, error: suscripcionError } = await supabase
         .from('Suscripcion')
         .select('*')
@@ -94,13 +109,6 @@ export default function PaginaConfirmacionPago() {
         console.error('Error obteniendo suscripción:', suscripcionError);
         throw new Error('No se encontró la suscripción');
       }
-
-      // Obtener el pago asociado
-      const { data: pago } = await supabase
-        .from('Pago')
-        .select('*')
-        .eq('stripe_sesion_id', sesionId)
-        .single();
 
       // Construir objeto de confirmación
       const datosConfirmacion: ConfirmacionPago = {
@@ -121,23 +129,13 @@ export default function PaginaConfirmacionPago() {
       toast.success('¡Pago confirmado exitosamente!');
 
     } catch (error) {
-      console.error('Error:', error);
-      toast.error('Error al cargar la confirmación');
+      console.error('Error cargando confirmación de pago:', error);
+      toast.error('Error al cargar la confirmación del pago');
 
-      // Mostrar datos básicos de confirmación
-      setConfirmacion({
-        transaccionId: sesionId,
-        planNombre: 'Suscripción Premium',
-        monto: 49900,
-        moneda: 'COP',
-        proveedor: 'stripe',
-        fecha: new Date().toISOString(),
-        estado: 'completado',
-        siguienteFacturacion: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        metodoPago: 'Tarjeta de crédito/débito',
-        emailFacturacion: 'usuario@email.com',
-        numeroFactura: sesionId.slice(0, 16)
-      });
+      // ✅ SEGURIDAD: NO mostrar datos falsos, redirigir al dashboard
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 2000);
     } finally {
       setCargando(false);
     }
